@@ -1,0 +1,434 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Html5Qrcode } from 'html5-qrcode';
+import { ArrowLeft, CheckCircle, Camera, RefreshCw, Gift } from 'lucide-react';
+import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
+import { motion, AnimatePresence } from 'framer-motion';
+
+type PermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'unavailable';
+
+interface ScanResult {
+  type: 'add' | 'redeem';
+  earned?: Record<CardType, number>;
+  claimedType?: CardType;
+}
+
+function getDeviceInstructions(): { browser: string; steps: string[] } {
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+  const isFirefox = /Firefox/.test(ua);
+  const isSamsungBrowser = /SamsungBrowser/.test(ua);
+
+  if (isIOS && isSafari) {
+    return {
+      browser: 'Safari op iPhone/iPad',
+      steps: [
+        'Ga naar Instellingen op je iPhone',
+        'Scroll naar beneden en tik op "Safari"',
+        'Tik op "Camera"',
+        'Kies "Toestaan"',
+        'Kom terug en probeer opnieuw',
+      ],
+    };
+  }
+  if (isIOS) {
+    return {
+      browser: 'Chrome op iPhone/iPad',
+      steps: [
+        'Ga naar Instellingen op je iPhone',
+        'Scroll naar beneden en tik op "Chrome"',
+        'Tik op "Camera" en zet het aan',
+        'Kom terug en probeer opnieuw',
+      ],
+    };
+  }
+  if (isSamsungBrowser) {
+    return {
+      browser: 'Samsung Internet',
+      steps: [
+        'Tik op het slotje of ⓘ in de adresbalk',
+        'Tik op "Machtigingen"',
+        'Zet "Camera" op "Toestaan"',
+        'Herlaad de pagina en probeer opnieuw',
+      ],
+    };
+  }
+  if (isFirefox) {
+    return {
+      browser: 'Firefox',
+      steps: [
+        'Tik op het slotje in de adresbalk',
+        'Tik op "Verbindingsinfo"',
+        'Tik op "Machtigingen wijzigen"',
+        'Zet "Camera gebruiken" op "Toestaan"',
+        'Herlaad de pagina en probeer opnieuw',
+      ],
+    };
+  }
+  // Default: Chrome / Android
+  return {
+    browser: 'Chrome',
+    steps: [
+      'Tik op het slotje 🔒 links in de adresbalk',
+      'Tik op "Machtigingen"',
+      'Zet "Camera" op "Toestaan"',
+      'Herlaad de pagina en probeer opnieuw',
+    ],
+  };
+}
+
+export const Scanner: React.FC = () => {
+  const navigate = useNavigate();
+  const { currentCustomer, addConsumptions, claimReward } = useLoyalty();
+  const [permission, setPermission] = useState<PermissionState>('idle');
+  const [scanned, setScanned] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isRunningRef = useRef(false);
+
+  // Check if camera permission was already granted/denied before asking
+  useEffect(() => {
+    if (!window.isSecureContext) {
+      setPermission('unavailable');
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setPermission('unavailable');
+      return;
+    }
+    if ('permissions' in navigator) {
+      navigator.permissions.query({ name: 'camera' as PermissionName }).then(result => {
+        if (result.state === 'granted') {
+          setPermission('granted');
+        } else if (result.state === 'denied') {
+          setPermission('denied');
+        }
+        // 'prompt' → stay on idle, user needs to tap the button
+      }).catch(() => {
+        // permissions API not supported, stay idle
+      });
+    }
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    setPermission('requesting');
+    try {
+      // First explicitly request permission so browser shows the native dialog
+      await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    } catch {
+      setPermission('denied');
+      return;
+    }
+
+    setPermission('granted');
+  }, []);
+
+  // Start QR scanner once permission is granted
+  useEffect(() => {
+    if (permission !== 'granted' || scanned) return;
+
+    // Small delay to let the #reader div mount
+    const timer = setTimeout(() => {
+      const html5Qrcode = new Html5Qrcode('reader', false);
+      scannerRef.current = html5Qrcode;
+
+      html5Qrcode.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 240, height: 240 }, disableFlip: false },
+        (decodedText) => {
+          try {
+            const payload = JSON.parse(decodedText);
+
+            if (!currentCustomer) {
+              setScanError('Geen klant geselecteerd');
+              setTimeout(() => setScanError(null), 3000);
+              return;
+            }
+
+            // ── Redeem QR ──
+            if (payload.type === 'redeem' && payload.cardType) {
+              const cardType = payload.cardType as CardType;
+              if (!['coffee', 'wine', 'beer'].includes(cardType)) {
+                setScanError('Ongeldige QR code');
+                setTimeout(() => setScanError(null), 3000);
+                return;
+              }
+
+              if ((currentCustomer.rewards[cardType] || 0) <= 0) {
+                setScanError(`Geen gratis ${cardTypeLabels[cardType].toLowerCase()} beschikbaar`);
+                setTimeout(() => setScanError(null), 3000);
+                return;
+              }
+
+              html5Qrcode.stop().then(() => { isRunningRef.current = false; }).catch(console.error);
+              claimReward(currentCustomer.id, cardType).then(() => {
+                setScanResult({ type: 'redeem', claimedType: cardType });
+                setScanned(true);
+                setTimeout(() => navigate('/rewards'), 2500);
+              });
+              return;
+            }
+
+            // ── Add QR ──
+            if (
+              payload.coffee !== undefined &&
+              payload.wine !== undefined &&
+              payload.beer !== undefined
+            ) {
+              html5Qrcode.stop().then(() => { isRunningRef.current = false; }).catch(console.error);
+              addConsumptions(currentCustomer.id, {
+                coffee: payload.coffee,
+                wine: payload.wine,
+                beer: payload.beer,
+              }).then(result => {
+                setScanResult({ type: 'add', earned: result.earned });
+                setScanned(true);
+                setTimeout(() => navigate('/dashboard'), 2500);
+              });
+            } else {
+              setScanError('Ongeldige QR code — probeer opnieuw');
+              setTimeout(() => setScanError(null), 3000);
+            }
+          } catch {
+            setScanError('Ongeldige QR code — probeer opnieuw');
+            setTimeout(() => setScanError(null), 3000);
+          }
+        },
+        () => { /* ignore per-frame errors */ }
+      ).then(() => {
+        isRunningRef.current = true;
+      }).catch(() => {
+        setPermission('denied');
+      });
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (scannerRef.current && isRunningRef.current) {
+        scannerRef.current.stop().then(() => { isRunningRef.current = false; }).catch(console.error);
+      }
+    };
+  }, [permission, scanned, currentCustomer, addConsumptions, claimReward, navigate]);
+
+  const deviceInfo = getDeviceInstructions();
+
+  return (
+    <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col">
+      <header className="p-6 flex items-center flex-shrink-0">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="p-2 -ml-2 text-white/70 hover:text-white"
+        >
+          <ArrowLeft size={24} />
+        </button>
+        <h1 className="text-xl font-serif font-semibold ml-4">Scan QR Code</h1>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center p-6">
+        <AnimatePresence mode="wait">
+
+          {/* ── Success ── */}
+          {scanned && scanResult && (
+            scanResult.type === 'redeem' && scanResult.claimedType ? (
+              <motion.div
+                key="success-redeem"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex flex-col items-center text-center"
+              >
+                <div className="w-24 h-24 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center mb-6">
+                  <Gift size={48} />
+                </div>
+                <h2 className="text-3xl font-serif font-semibold mb-2">Ingewisseld!</h2>
+                <p className="text-white/70">
+                  Gratis {cardTypeLabels[scanResult.claimedType].toLowerCase()} is ingewisseld
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="success-add"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex flex-col items-center text-center"
+              >
+                <div className="w-24 h-24 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center mb-6">
+                  <CheckCircle size={48} />
+                </div>
+                <h2 className="text-3xl font-serif font-semibold mb-2">Succesvol!</h2>
+                <p className="text-white/70">Consumpties zijn toegevoegd aan je kaart.</p>
+
+                {scanResult.earned && Object.values(scanResult.earned).some(v => v > 0) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="mt-6 bg-white/10 rounded-2xl p-4 border border-white/20"
+                  >
+                    <p className="text-white font-semibold mb-2 flex items-center gap-2 justify-center">
+                      <Gift size={18} className="text-[var(--color-cozy-olive)]" />
+                      Beloning verdiend!
+                    </p>
+                    {(Object.keys(scanResult.earned) as CardType[]).map(type => {
+                      if (!scanResult.earned || scanResult.earned[type] <= 0) return null;
+                      return (
+                        <p key={type} className="text-white/80 text-sm">
+                          {scanResult.earned[type]}x gratis {cardTypeLabels[type].toLowerCase()}
+                        </p>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </motion.div>
+            )
+          )}
+
+          {/* ── Ask permission ── */}
+          {!scanned && permission === 'idle' && (
+            <motion.div
+              key="idle"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center text-center max-w-xs"
+            >
+              <div className="w-28 h-28 rounded-full bg-white/10 flex items-center justify-center mb-8 ring-4 ring-white/20">
+                <Camera size={52} className="text-white" />
+              </div>
+              <h2 className="text-2xl font-serif font-semibold mb-3">Camera toestemming</h2>
+              <p className="text-white/60 mb-10 leading-relaxed">
+                Om de QR code te scannen heeft de app toegang tot je camera nodig.
+                Tik hieronder en geef toestemming wanneer je browser erom vraagt.
+              </p>
+              <button
+                onClick={startCamera}
+                className="w-full bg-white text-[#1a1a1a] font-semibold text-base rounded-2xl py-4 px-6 flex items-center justify-center gap-3 hover:bg-white/90 active:scale-95 transition-all shadow-lg"
+              >
+                <Camera size={20} />
+                Camera toestaan &amp; scannen
+              </button>
+            </motion.div>
+          )}
+
+          {/* ── Requesting (native dialog shown) ── */}
+          {!scanned && permission === 'requesting' && (
+            <motion.div
+              key="requesting"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center text-center"
+            >
+              <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-6 animate-pulse">
+                <Camera size={40} className="text-white" />
+              </div>
+              <p className="text-white/70 text-lg">Wachten op toestemming...</p>
+              <p className="text-white/40 text-sm mt-2">Tik op "Toestaan" in het dialoogvenster</p>
+            </motion.div>
+          )}
+
+          {/* ── Scanner active ── */}
+          {!scanned && permission === 'granted' && (
+            <motion.div
+              key="scanner"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="w-full max-w-sm flex flex-col items-center"
+            >
+              <div
+                id="reader"
+                className="w-full rounded-3xl overflow-hidden border-2 border-white/10"
+              />
+              <AnimatePresence>
+                {scanError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-red-400 text-center mt-4 font-medium"
+                  >
+                    {scanError}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+              <p className="text-center text-white/40 mt-6 font-serif italic text-sm">
+                Richt de camera op de QR code van de zaak
+              </p>
+            </motion.div>
+          )}
+
+          {/* ── Denied ── */}
+          {!scanned && (permission === 'denied' || permission === 'unavailable') && (
+            <motion.div
+              key="denied"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center text-center max-w-sm w-full"
+            >
+              <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
+                <Camera size={44} className="text-red-400" />
+              </div>
+
+              {permission === 'unavailable' ? (
+                <>
+                  {!window.isSecureContext ? (
+                    <>
+                      <h2 className="text-2xl font-serif font-semibold mb-2">HTTPS vereist</h2>
+                      <p className="text-white/60 mb-4">
+                        Camera toegang werkt alleen via een beveiligde verbinding.
+                      </p>
+                      <div className="w-full bg-white/5 rounded-2xl p-5 text-left mb-6 border border-white/10">
+                        <p className="text-xs text-white/40 uppercase tracking-widest mb-3">Oplossing</p>
+                        <p className="text-sm text-white/80 leading-relaxed">
+                          Open de app via <span className="font-semibold text-white">https://</span> in plaats van http://.
+                          Typ het adres handmatig in de browser en vervang <span className="font-semibold text-white">http</span> door <span className="font-semibold text-white">https</span>.
+                        </p>
+                        <p className="text-xs text-white/40 mt-3">Je browser geeft mogelijk een certificaatwaarschuwing — kies dan "Toch doorgaan" of "Geavanceerd → Doorgaan".</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-2xl font-serif font-semibold mb-2">Geen camera gevonden</h2>
+                      <p className="text-white/60 mb-8">Dit apparaat heeft geen beschikbare camera.</p>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-serif font-semibold mb-2">Camera geblokkeerd</h2>
+                  <p className="text-white/60 mb-6">
+                    Je hebt camera toegang geweigerd. Volg de stappen hieronder om het in te schakelen.
+                  </p>
+
+                  {/* Step-by-step instructions */}
+                  <div className="w-full bg-white/5 rounded-2xl p-5 text-left mb-6 border border-white/10">
+                    <p className="text-xs text-white/40 uppercase tracking-widest mb-4">{deviceInfo.browser}</p>
+                    <ol className="space-y-3">
+                      {deviceInfo.steps.map((step, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/60">
+                            {i + 1}
+                          </span>
+                          <span className="text-sm text-white/80 leading-relaxed">{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  <button
+                    onClick={() => { window.location.reload(); }}
+                    className="w-full bg-white text-[#1a1a1a] font-semibold rounded-2xl py-4 px-6 flex items-center justify-center gap-3 hover:bg-white/90 active:scale-95 transition-all shadow-lg"
+                  >
+                    <RefreshCw size={18} />
+                    Pagina herladen &amp; opnieuw proberen
+                  </button>
+                </>
+              )}
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+};

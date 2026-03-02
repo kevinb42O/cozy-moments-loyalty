@@ -1,0 +1,5 @@
+{
+  "name": "Cozy Moments Loyalty",
+  "description": "Digital loyalty card system for Cozy Moments cafe and bar.",
+  "requestFramePermissions": ["camera"]
+}

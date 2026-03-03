@@ -54,10 +54,7 @@ export const BusinessPage: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="w-10" />
           <div className="flex items-center gap-2">
-            <img src="/cozylogo.png" alt="COZY Moments" className="w-8 h-8 object-contain" />
-            <h1 className="text-2xl font-serif font-bold tracking-tight text-[var(--color-cozy-text)]">
-              <span className="font-black">COZY</span> Moments
-            </h1>
+            <img src="/cozylogo.png" alt="COZY Moments" className="w-16 h-16 object-contain" />
           </div>
           <button
             onClick={logout}

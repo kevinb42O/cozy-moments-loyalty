@@ -29,12 +29,9 @@ export const AdminLoginPage: React.FC = () => {
           <img
             src="/cozylogo.png"
             alt="COZY Moments"
-            className="w-24 h-24 object-contain mb-4 drop-shadow-md"
+            className="w-52 h-52 object-contain drop-shadow-md"
           />
-          <h1 className="text-3xl font-serif font-semibold text-[var(--color-cozy-text)]">
-            <span className="font-black tracking-wide">COZY</span> Moments
-          </h1>
-          <p className="text-sm text-gray-400 mt-1 tracking-wider uppercase font-medium">
+          <p className="text-sm text-gray-400 mt-2 tracking-wider uppercase font-medium">
             Beheerspaneel
           </p>
         </div>

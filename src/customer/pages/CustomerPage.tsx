@@ -23,12 +23,9 @@ export const CustomerPage: React.FC = () => {
           <button onClick={logout} className="p-2 -ml-2 text-gray-400 hover:text-gray-600" title="Uitloggen">
             <LogOut size={22} />
           </button>
-          <div className="flex items-center gap-2 text-[var(--color-cozy-coffee)]">
-            <img src="/cozylogo.png" alt="COZY Moments" className="w-9 h-9 object-contain" />
-            <h1 className="text-2xl font-serif font-bold tracking-tight">
-              <span className="font-black">COZY</span> Moments
-            </h1>
-          </div>
+          <a href="https://www.cozy-moments.be/" target="_blank" rel="noopener noreferrer">
+            <img src="/cozylogo.png" alt="COZY Moments" className="w-16 h-16 object-contain" />
+          </a>
           <div className="w-10 h-10 bg-[#e8dcc8] rounded-full flex items-center justify-center text-[var(--color-cozy-coffee)] font-serif font-bold text-lg">
             {displayName.charAt(0)}
           </div>

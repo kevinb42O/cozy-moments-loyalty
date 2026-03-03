@@ -42,17 +42,13 @@ export const LoginPage: React.FC = () => {
       >
         {/* Logo */}
         <div className="mb-10 flex flex-col items-center text-center">
-          <img
-            src="/cozylogo.png"
-            alt="COZY Moments"
-            className="w-28 h-28 object-contain mb-5 drop-shadow-md"
-          />
-          <h1 className="text-4xl font-serif font-semibold text-[var(--color-cozy-coffee)]">
-            <span className="font-black tracking-wide">COZY</span> Moments
-          </h1>
-          <p className="text-sm text-gray-500 mt-2 font-serif italic">
-            Jouw digitale spaarkaart
-          </p>
+          <a href="https://www.cozy-moments.be/" target="_blank" rel="noopener noreferrer">
+            <img
+              src="/cozylogo.png"
+              alt="COZY Moments"
+              className="w-52 h-52 object-contain drop-shadow-md"
+            />
+          </a>
         </div>
 
         {/* Social login buttons */}
@@ -146,6 +142,16 @@ export const LoginPage: React.FC = () => {
         <p className="text-center text-xs text-gray-400 mt-8">
           Door in te loggen ga je akkoord met onze voorwaarden
         </p>
+        <div className="text-center mt-4">
+          <a
+            href="https://www.cozy-moments.be/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[var(--color-cozy-coffee)] hover:underline font-medium"
+          >
+            Bezoek onze website →
+          </a>
+        </div>
       </motion.div>
     </div>
   );

@@ -28,10 +28,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Supabase session restore ──────────────────────────────────────────────
   useEffect(() => {
     if (SUPABASE_READY && supabase) {
-      // Use onAuthStateChange as single source of truth.
-      // It fires INITIAL_SESSION immediately (with or without a session),
-      // and also handles the OAuth hash on redirect — so no race condition.
-      const { data: { subscription } } = supabase!.auth.onAuthStateChange((_event, session) => {
+      // Detect if this page load is an OAuth redirect callback.
+      // Supabase implicit flow puts tokens in the hash; PKCE flow uses ?code=
+      const hasOAuthParams =
+        window.location.hash.includes("access_token") ||
+        window.location.search.includes("code=");
+
+      const { data: { subscription } } = supabase!.auth.onAuthStateChange((event, session) => {
+        // INITIAL_SESSION fires immediately — if it's null AND we're mid-OAuth
+        // exchange, stay in loading state and wait for the real SIGNED_IN event.
+        if (event === "INITIAL_SESSION" && !session && hasOAuthParams) return;
+
         setUser(session?.user ? sessionToUser(session.user) : null);
         setIsLoading(false);
       });

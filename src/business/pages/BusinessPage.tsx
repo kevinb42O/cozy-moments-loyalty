@@ -522,11 +522,8 @@ export const BusinessPage: React.FC = () => {
                     const Icon = icons[type];
 
                     return (
-                      <motion.button
+                      <button
                         key={type}
-                        initial={{ x: 80, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ type: 'spring', stiffness: 220, damping: 22, delay: index * 0.08 }}
                         onClick={() => {
                           customersSnapshotRef.current = JSON.stringify(customers);
                           const payload = {
@@ -537,15 +534,25 @@ export const BusinessPage: React.FC = () => {
                           };
                           setQrPayload(JSON.stringify(payload));
                         }}
-                        className="w-full bg-white rounded-[24px] p-5 shadow-sm flex items-center gap-4 hover:bg-gray-50 active:scale-[0.98] transition-all"
+                        className="w-full bg-white rounded-[24px] p-5 shadow-sm flex items-center gap-4 hover:bg-gray-50 active:scale-[0.98] transition-all overflow-hidden"
                       >
-                        <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", colors[type])}>
+                        <motion.div
+                          className={cn("w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0", colors[type])}
+                          initial={{ x: 80, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ duration: 0.55, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                        >
                           <Icon size={28} className={textColors[type]} />
-                        </div>
-                        <span className="font-serif font-semibold text-xl text-[var(--color-cozy-text)]">
+                        </motion.div>
+                        <motion.span
+                          className="font-serif font-semibold text-xl text-[var(--color-cozy-text)]"
+                          initial={{ x: 60, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ duration: 0.55, delay: index * 0.08 + 0.07, ease: [0.22, 1, 0.36, 1] }}
+                        >
                           Gratis {cardTypeLabels[type]}
-                        </span>
-                      </motion.button>
+                        </motion.span>
+                      </button>
                     );
                   })}
                 </div>

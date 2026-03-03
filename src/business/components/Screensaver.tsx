@@ -12,12 +12,16 @@ const IMAGES = {
   cozy7: '/cozy7.png',
   cozy8: '/cozy8.png',
   cozy9: '/cozy9.png',
+  cozy10: '/cozy10.png',
+  cozy11: '/cozy11.png',
+  cozy12: '/cozy12.png',
+  cozy13: '/cozy13.png',
 };
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const IDLE_TIMEOUT = 60_000;       // 60s before screensaver activates
 const SCENE_DURATION = 18_000;     // 18s per scene
-const TOTAL_SCENES = 5;
+const TOTAL_SCENES = 9;
 
 // ── Ken Burns keyframes (random-ish per render to avoid burn-in) ─────────────
 const kenBurnsVariants = (seed: number) => {
@@ -138,6 +142,14 @@ const SCENES: React.FC<{ idx: number }>[] = [
   ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy6} rightImg={IMAGES.cozy7} idx={idx} />,
   // Scene 4: cozy8 (description) + cozy9 (photo)
   ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy8} rightImg={IMAGES.cozy9} idx={idx} />,
+  // Scene 5: cozy10 — single image scroll
+  ({ idx }) => <SingleScrollScene img={IMAGES.cozy10} idx={idx} />,
+  // Scene 6: cozy11 — single image scroll
+  ({ idx }) => <SingleScrollScene img={IMAGES.cozy11} idx={idx} />,
+  // Scene 7: cozy12 — single image scroll
+  ({ idx }) => <SingleScrollScene img={IMAGES.cozy12} idx={idx} />,
+  // Scene 8: cozy13 — single image scroll
+  ({ idx }) => <SingleScrollScene img={IMAGES.cozy13} idx={idx} />,
 ];
 
 // ── Scene renderer ───────────────────────────────────────────────────────────

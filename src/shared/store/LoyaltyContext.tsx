@@ -13,6 +13,7 @@ export interface Customer {
   id: string;
   name: string;
   email: string;
+  createdAt: string;
   cards: Record<CardType, number>;
   rewards: Record<CardType, number>;
   claimedRewards: Record<CardType, number>;
@@ -41,6 +42,7 @@ function rowToCustomer(row: any): Customer {
     id: row.id,
     name: row.name,
     email: row.email ?? '',
+    createdAt: row.created_at ?? new Date().toISOString(),
     cards: { coffee: row.coffee_stamps ?? 0, wine: row.wine_stamps ?? 0, beer: row.beer_stamps ?? 0 },
     rewards: { coffee: row.coffee_rewards ?? 0, wine: row.wine_rewards ?? 0, beer: row.beer_rewards ?? 0 },
     claimedRewards: { coffee: row.coffee_claimed ?? 0, wine: row.wine_claimed ?? 0, beer: row.beer_claimed ?? 0 },

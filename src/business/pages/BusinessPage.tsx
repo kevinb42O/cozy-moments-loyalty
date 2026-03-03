@@ -52,6 +52,25 @@ async function playAdminChime() {
   } catch { /* ignore */ }
 }
 
+// ── Consumption stats helper ─────────────────────────────────────────────────
+const MS_PER_MONTH = 30.4375 * 24 * 60 * 60 * 1000;
+
+function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext').Customer, nowMs: number) {
+  const createdMs = new Date(customer.createdAt).getTime();
+  const monthsActive = Math.max(1, (nowMs - createdMs) / MS_PER_MONTH);
+  const total: Record<CardType, number> = {
+    coffee: (customer.claimedRewards.coffee + customer.rewards.coffee) * 10 + customer.cards.coffee,
+    wine:   (customer.claimedRewards.wine   + customer.rewards.wine  ) * 10 + customer.cards.wine,
+    beer:   (customer.claimedRewards.beer   + customer.rewards.beer  ) * 10 + customer.cards.beer,
+  };
+  const avgPerMonth: Record<CardType, number> = {
+    coffee: total.coffee / monthsActive,
+    wine:   total.wine   / monthsActive,
+    beer:   total.beer   / monthsActive,
+  };
+  return { total, avgPerMonth, monthsActive };
+}
+
 export const BusinessPage: React.FC = () => {
   const { customers, refreshCustomers } = useLoyalty();
   const { logout } = useBusinessAuth();
@@ -355,16 +374,28 @@ export const BusinessPage: React.FC = () => {
                     URL.revokeObjectURL(url);
                   };
 
+                  // ── Pre-compute stats for all customers ────────────
+                  const nowMs = now.getTime();
+                  const allStats = customers.map(c => calcCustomerStats(c, nowMs));
+                  const grandTotal = {
+                    coffee: allStats.reduce((s, st) => s + st.total.coffee, 0),
+                    wine:   allStats.reduce((s, st) => s + st.total.wine,   0),
+                    beer:   allStats.reduce((s, st) => s + st.total.beer,   0),
+                  };
+
                   // ── 1. CSV (Excel / nieuwsbrief import) ────────────
                   // Belgian/Dutch Excel uses semicolons as separator
                   const SEP = ';';
-                  const csvHeader = ['Naam','Email','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Koffie_Beloningen','Wijn_Beloningen','Bier_Beloningen','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld'].join(SEP);
-                  const csvRows = customers.map(c => {
+                  const csvHeader = ['Naam','Email','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Klant_Sinds'].join(SEP);
+                  const csvRows = customers.map((c, idx) => {
+                    const st = allStats[idx];
                     const name = `"${c.name.replace(/"/g, '""')}"`;
                     const email = `"${(c.email || '').replace(/"/g, '""')}"`;
-                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0].join(SEP);
+                    const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, st.total.coffee, st.total.wine, st.total.beer, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), since].join(SEP);
                   });
-                  download([csvHeader, ...csvRows].join('\n'), `cozy-moments-klanten-${fileDate}.csv`, 'text/csv');
+                  const csvTotalsRow = ['"TOTAAL ALLE KLANTEN"', '', '', '', '', '', '', '', '', '', '', grandTotal.coffee, grandTotal.wine, grandTotal.beer, '', '', '', ''].join(SEP);
+                  download([csvHeader, ...csvRows, '', csvTotalsRow].join('\n'), `cozy-moments-klanten-${fileDate}.csv`, 'text/csv');
 
                   // ── 2. TXT (leesbaar overzicht) ────────────────────
                   const lines: string[] = [
@@ -377,15 +408,25 @@ export const BusinessPage: React.FC = () => {
                     '',
                   ];
                   customers.forEach((c, i) => {
+                    const st = allStats[i];
+                    const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     lines.push('────────────────────────────────────────');
                     lines.push(`${i + 1}. ${c.name}`);
-                    lines.push(`   E-mail:      ${c.email || '—'}`);
-                    lines.push(`   Stempels:    Koffie: ${c.cards.coffee}/10  |  Wijn: ${c.cards.wine}/10  |  Bier: ${c.cards.beer}/10`);
-                    lines.push(`   Beloningen:  Koffie: ${c.rewards.coffee || 0}  |  Wijn: ${c.rewards.wine || 0}  |  Bier: ${c.rewards.beer || 0}`);
-                    lines.push(`   Ingewisseld: Koffie: ${c.claimedRewards?.coffee || 0}  |  Wijn: ${c.claimedRewards?.wine || 0}  |  Bier: ${c.claimedRewards?.beer || 0}`);
+                    lines.push(`   E-mail:        ${c.email || '—'}`);
+                    lines.push(`   Klant sinds:   ${since}`);
+                    lines.push(`   Totaal:        Koffie: ${st.total.coffee}  |  Wijn: ${st.total.wine}  |  Bier: ${st.total.beer}`);
+                    lines.push(`   Gem/maand:     Koffie: ${st.avgPerMonth.coffee.toFixed(1)}  |  Wijn: ${st.avgPerMonth.wine.toFixed(1)}  |  Bier: ${st.avgPerMonth.beer.toFixed(1)}`);
+                    lines.push(`   Stempels:      Koffie: ${c.cards.coffee}/10  |  Wijn: ${c.cards.wine}/10  |  Bier: ${c.cards.beer}/10`);
+                    lines.push(`   Volle kaarten: Koffie: ${c.rewards.coffee || 0}  |  Wijn: ${c.rewards.wine || 0}  |  Bier: ${c.rewards.beer || 0}`);
+                    lines.push(`   Ingewisseld:   Koffie: ${c.claimedRewards?.coffee || 0}  |  Wijn: ${c.claimedRewards?.wine || 0}  |  Bier: ${c.claimedRewards?.beer || 0}`);
                     lines.push('');
                   });
-                  lines.push('────────────────────────────────────────');
+                  lines.push('════════════════════════════════════════════════════');
+                  lines.push('  TOTAAL VERKOCHT — ALLE KLANTEN SAMEN');
+                  lines.push('════════════════════════════════════════════════════');
+                  lines.push(`  Koffie: ${grandTotal.coffee} consumpties`);
+                  lines.push(`  Wijn:   ${grandTotal.wine} consumpties`);
+                  lines.push(`  Bier:   ${grandTotal.beer} consumpties`);
                   lines.push('');
                   lines.push('Geëxporteerd door Cozy Moments Loyalty');
 
@@ -403,6 +444,7 @@ export const BusinessPage: React.FC = () => {
             
             {customers.map(customer => {
               const isExpanded = expandedCustomer === customer.id;
+              const stats = calcCustomerStats(customer, Date.now());
               return (
                 <div key={customer.id} className="bg-white rounded-[24px] shadow-sm overflow-hidden">
                   {/* Header row — always visible, tap to expand */}
@@ -459,6 +501,45 @@ export const BusinessPage: React.FC = () => {
                             <span className="text-sm text-gray-600 break-all">{customer.email || 'Geen e-mail beschikbaar'}</span>
                           </div>
 
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Totale consumptions</p>
+                          <div className="grid grid-cols-3 gap-2 mb-1">
+                            <div className="bg-[#e8dcc8]/40 rounded-xl p-3 flex flex-col items-center">
+                              <Coffee size={16} className="text-[var(--color-cozy-coffee)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{stats.total.coffee}</span>
+                              <span className="text-[10px] text-gray-400">totaal</span>
+                            </div>
+                            <div className="bg-[#f0d8dc]/40 rounded-xl p-3 flex flex-col items-center">
+                              <Wine size={16} className="text-[var(--color-cozy-wine)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{stats.total.wine}</span>
+                              <span className="text-[10px] text-gray-400">totaal</span>
+                            </div>
+                            <div className="bg-[#fcf4d9]/40 rounded-xl p-3 flex flex-col items-center">
+                              <Beer size={16} className="text-[var(--color-cozy-beer)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{stats.total.beer}</span>
+                              <span className="text-[10px] text-gray-400">totaal</span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 mb-1">
+                            <div className="bg-[#e8dcc8]/20 rounded-xl p-3 flex flex-col items-center">
+                              <Coffee size={14} className="text-[var(--color-cozy-coffee)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{stats.avgPerMonth.coffee.toFixed(1)}</span>
+                              <span className="text-[10px] text-gray-400">/maand</span>
+                            </div>
+                            <div className="bg-[#f0d8dc]/20 rounded-xl p-3 flex flex-col items-center">
+                              <Wine size={14} className="text-[var(--color-cozy-wine)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{stats.avgPerMonth.wine.toFixed(1)}</span>
+                              <span className="text-[10px] text-gray-400">/maand</span>
+                            </div>
+                            <div className="bg-[#fcf4d9]/20 rounded-xl p-3 flex flex-col items-center">
+                              <Beer size={14} className="text-[var(--color-cozy-beer)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{stats.avgPerMonth.beer.toFixed(1)}</span>
+                              <span className="text-[10px] text-gray-400">/maand</span>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-gray-300 text-right mb-4">
+                            klant sinds {new Date(customer.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' })} ({stats.monthsActive < 2 ? '< 1 maand' : `${Math.floor(stats.monthsActive)} maanden`})
+                          </p>
+
                           <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Stempelkaart</p>
                           <div className="grid grid-cols-3 gap-2">
                             <div className="bg-[#e8dcc8]/30 rounded-xl p-3 flex flex-col items-center">
@@ -472,6 +553,25 @@ export const BusinessPage: React.FC = () => {
                             <div className="bg-[#fcf4d9]/30 rounded-xl p-3 flex flex-col items-center">
                               <Beer size={20} className="text-[var(--color-cozy-beer)] mb-1" />
                               <span className="font-mono text-sm font-medium">{customer.cards.beer}/10</span>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Volle kaarten (ongeclaimd)</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-[#e8dcc8]/20 rounded-xl p-3 flex flex-col items-center border border-[#e8dcc8]/50">
+                              <Coffee size={16} className="text-[var(--color-cozy-coffee)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{customer.rewards.coffee || 0}</span>
+                              <span className="text-[10px] text-gray-400">te claimen</span>
+                            </div>
+                            <div className="bg-[#f0d8dc]/20 rounded-xl p-3 flex flex-col items-center border border-[#f0d8dc]/50">
+                              <Wine size={16} className="text-[var(--color-cozy-wine)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{customer.rewards.wine || 0}</span>
+                              <span className="text-[10px] text-gray-400">te claimen</span>
+                            </div>
+                            <div className="bg-[#fcf4d9]/20 rounded-xl p-3 flex flex-col items-center border border-[#fcf4d9]/50">
+                              <Beer size={16} className="text-[var(--color-cozy-beer)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{customer.rewards.beer || 0}</span>
+                              <span className="text-[10px] text-gray-400">te claimen</span>
                             </div>
                           </div>
 

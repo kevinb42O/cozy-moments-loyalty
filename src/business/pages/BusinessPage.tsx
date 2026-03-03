@@ -322,6 +322,33 @@ export const BusinessPage: React.FC = () => {
                   const now = new Date();
                   const dateStr = now.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                   const timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+                  const fileDate = now.toISOString().slice(0, 10);
+
+                  // ── Helper: trigger a download ─────────────────────
+                  const download = (content: string, filename: string, mime: string) => {
+                    const BOM = '\uFEFF'; // UTF-8 BOM so Excel reads accents correctly
+                    const blob = new Blob([BOM + content], { type: `${mime};charset=utf-8` });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  };
+
+                  // ── 1. CSV (Excel / nieuwsbrief import) ────────────
+                  const csvHeader = 'Naam,Email,Koffie_Stempels,Wijn_Stempels,Bier_Stempels,Koffie_Beloningen,Wijn_Beloningen,Bier_Beloningen,Koffie_Ingewisseld,Wijn_Ingewisseld,Bier_Ingewisseld';
+                  const csvRows = customers.map(c => {
+                    // Escape fields that might contain commas or quotes
+                    const name = `"${c.name.replace(/"/g, '""')}"`;
+                    const email = `"${(c.email || '').replace(/"/g, '""')}"`;
+                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0].join(',');
+                  });
+                  download([csvHeader, ...csvRows].join('\n'), `cozy-moments-klanten-${fileDate}.csv`, 'text/csv');
+
+                  // ── 2. TXT (leesbaar overzicht) ────────────────────
                   const lines: string[] = [
                     '════════════════════════════════════════════════════',
                     '         COZY MOMENTS — KLANTENEXPORT',
@@ -344,15 +371,10 @@ export const BusinessPage: React.FC = () => {
                   lines.push('');
                   lines.push('Geëxporteerd door Cozy Moments Loyalty');
 
-                  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `cozy-moments-klanten-${now.toISOString().slice(0,10)}.txt`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
+                  // Small delay so the browser doesn't block the second download
+                  setTimeout(() => {
+                    download(lines.join('\n'), `cozy-moments-klanten-${fileDate}.txt`, 'text/plain');
+                  }, 300);
                 }}
                 className="flex items-center gap-2 bg-white border border-gray-200 rounded-full py-2 px-4 text-sm font-medium text-[var(--color-cozy-text)] shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
               >

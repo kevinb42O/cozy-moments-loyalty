@@ -1,15 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QrCode, LogOut, Gift, ChevronRight } from 'lucide-react';
 import { useLoyalty } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const CustomerPage: React.FC = () => {
   const { currentCustomer } = useLoyalty();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [showWelcome, setShowWelcome] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowWelcome(false), 5000);
+    return () => clearTimeout(t);
+  }, []);
 
   if (!currentCustomer) return <div>Laden...</div>;
 
@@ -18,24 +24,33 @@ export const CustomerPage: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-24 bg-[var(--color-cozy-bg)]">
-      <header className="bg-white px-6 py-8 rounded-b-[40px] shadow-sm mb-8 sticky top-0 z-10">
+      <header className="bg-white px-5 py-4 rounded-b-[32px] shadow-sm mb-6 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <button onClick={logout} className="p-2 -ml-2 text-gray-400 hover:text-gray-600" title="Uitloggen">
-            <LogOut size={22} />
+            <LogOut size={20} />
           </button>
           <a href="https://www.cozy-moments.be/" target="_blank" rel="noopener noreferrer">
-            <img src="/cozylogo.png" alt="COZY Moments" className="w-16 h-16 object-contain" />
+            <img src="/cozylogo.png" alt="COZY Moments" className="w-20 h-20 object-contain -my-2" />
           </a>
-          <div className="w-10 h-10 bg-[#e8dcc8] rounded-full flex items-center justify-center text-[var(--color-cozy-coffee)] font-serif font-bold text-lg">
+          <div className="w-9 h-9 bg-[#e8dcc8] rounded-full flex items-center justify-center text-[var(--color-cozy-coffee)] font-serif font-bold text-base">
             {displayName.charAt(0)}
           </div>
         </div>
-        <div className="mt-8">
-          <p className="text-sm text-gray-500 font-medium uppercase tracking-wider mb-1">Welkom terug,</p>
-          <h2 className="text-3xl font-serif font-semibold text-[var(--color-cozy-text)]">
-            {displayName}
-          </h2>
-        </div>
+        <AnimatePresence>
+          {showWelcome && (
+            <motion.div
+              initial={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0, marginTop: 0 }}
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              className="mt-4 overflow-hidden"
+            >
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Welkom terug,</p>
+              <h2 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)]">
+                {displayName}
+              </h2>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {totalRewards > 0 && (

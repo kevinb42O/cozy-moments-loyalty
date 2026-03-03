@@ -87,6 +87,7 @@ export const Scanner: React.FC = () => {
   const [scanError, setScanError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isRunningRef = useRef(false);
+  const startingRef = useRef(false);
 
   // Check if camera permission was already granted/denied before asking
   useEffect(() => {
@@ -134,12 +135,17 @@ export const Scanner: React.FC = () => {
 
   const startCamera = useCallback(async () => {
     setPermission('requesting');
+    let stream: MediaStream | null = null;
     try {
       // First explicitly request permission so browser shows the native dialog
-      await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     } catch {
       setPermission('denied');
       return;
+    }
+    // Stop the probe stream immediately — the QR scanner will open its own
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
     }
     setPermission('granted');
   }, []);
@@ -150,6 +156,10 @@ export const Scanner: React.FC = () => {
 
     // Small delay to let the #reader div mount
     const timer = setTimeout(async () => {
+      // Prevent double-start from React strict mode or rapid re-renders
+      if (startingRef.current || isRunningRef.current) return;
+      startingRef.current = true;
+
       // Always start from a clean state
       await stopAndClear();
 
@@ -223,13 +233,16 @@ export const Scanner: React.FC = () => {
         () => { /* ignore per-frame errors */ }
       ).then(() => {
         isRunningRef.current = true;
+        startingRef.current = false;
       }).catch(() => {
+        startingRef.current = false;
         setPermission('denied');
       });
-    }, 100);
+    }, 300);
 
     return () => {
       clearTimeout(timer);
+      startingRef.current = false;
       stopAndClear();
     };
   }, [permission, scanned, currentCustomer, addConsumptions, claimReward, navigate, stopAndClear]);

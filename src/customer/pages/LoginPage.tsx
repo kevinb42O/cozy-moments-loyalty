@@ -152,6 +152,19 @@ export const LoginPage: React.FC = () => {
             Bezoek onze website →
           </a>
         </div>
+
+        <div className="text-center mt-10 mb-2">
+          <a
+            href="https://www.webaanzee.be"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[10px] tracking-widest uppercase font-semibold transition-opacity hover:opacity-80"
+            style={{ color: '#1a5c8a', letterSpacing: '0.12em' }}
+          >
+            <span style={{ color: '#2e9bce', fontSize: '14px', lineHeight: 1 }}>≋</span>
+            digitale ambacht door WebaanZee
+          </a>
+        </div>
       </motion.div>
     </div>
   );

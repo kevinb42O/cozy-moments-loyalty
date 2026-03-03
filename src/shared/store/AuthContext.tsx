@@ -28,12 +28,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Supabase session restore ──────────────────────────────────────────────
   useEffect(() => {
     if (SUPABASE_READY && supabase) {
-      supabase!.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) setUser(sessionToUser(session.user));
-        setIsLoading(false);
-      });
+      // Use onAuthStateChange as single source of truth.
+      // It fires INITIAL_SESSION immediately (with or without a session),
+      // and also handles the OAuth hash on redirect — so no race condition.
       const { data: { subscription } } = supabase!.auth.onAuthStateChange((_event, session) => {
         setUser(session?.user ? sessionToUser(session.user) : null);
+        setIsLoading(false);
       });
       return () => subscription.unsubscribe();
     } else {

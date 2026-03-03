@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut } from 'lucide-react';
+import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
-import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -21,6 +21,7 @@ export const BusinessPage: React.FC = () => {
   });
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [view, setView] = useState<'create' | 'customers' | 'redeem'>('create');
+  const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
 
   const handleIncrement = (type: CardType) => {
     setConsumptions(prev => ({ ...prev, [type]: prev[type] + 1 }));
@@ -57,11 +58,11 @@ export const BusinessPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] pb-24">
-      <header className="bg-white px-6 py-6 rounded-b-[40px] shadow-sm mb-8 sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-6">
+      <header className="bg-white px-6 py-2 rounded-b-[28px] shadow-sm mb-6 sticky top-0 z-10">
+        <div className="flex items-center justify-between">
           <div className="w-10" />
-          <div className="flex items-center gap-2">
-            <img src="/cozylogo.png" alt="COZY Moments" className="w-16 h-16 object-contain" />
+          <div className="flex items-center">
+            <img src="/cozylogo.png" alt="COZY Moments" className="w-20 h-20 object-contain" />
           </div>
           <button
             onClick={logout}
@@ -72,7 +73,7 @@ export const BusinessPage: React.FC = () => {
           </button>
         </div>
         
-        <div className="flex bg-gray-100 p-1 rounded-full mt-6">
+        <div className="flex bg-gray-100 p-1 rounded-full mb-1">
           <button
             onClick={() => { reset(); setView('create'); }}
             className={cn(
@@ -145,19 +146,31 @@ export const BusinessPage: React.FC = () => {
                   bg="bg-[#fcf4d9]"
                 />
 
-                <button
+                <motion.button
                   onClick={generateQR}
                   disabled={totalConsumptions === 0}
+                  animate={totalConsumptions > 0 ? { scale: [1, 1.025, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.35 }}
                   className={cn(
-                    "w-full mt-8 rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 transition-all",
+                    "w-full mt-8 rounded-full py-4 px-6 flex items-center justify-center gap-3 transition-all duration-300",
                     totalConsumptions > 0 
-                      ? "bg-white/60 backdrop-blur-md border border-white/80 text-[var(--color-cozy-text)] active:scale-[0.98]" 
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      ? "bg-gradient-to-r from-[#f0ebe0] to-[#e4dccf] border border-[var(--color-cozy-olive)]/25 text-[var(--color-cozy-text)] shadow-md active:scale-[0.98]" 
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed border border-transparent"
                   )}
                 >
                   <QrCode size={24} />
-                  <span className="font-serif font-semibold text-lg tracking-wide">Genereer QR Code</span>
-                </button>
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={totalConsumptions > 0 ? 'active' : 'inactive'}
+                      initial={{ opacity: 0.5, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="font-serif font-semibold text-lg tracking-wide"
+                    >
+                      Genereer QR Code
+                    </motion.span>
+                  </AnimatePresence>
+                </motion.button>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8">
@@ -189,54 +202,88 @@ export const BusinessPage: React.FC = () => {
               Klanten Overzicht
             </h2>
             
-            {customers.map(customer => (
-              <div key={customer.id} className="bg-white rounded-[24px] p-5 shadow-sm">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-serif font-bold text-xl">
-                    {customer.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h3 className="font-serif font-semibold text-lg">{customer.name}</h3>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Klant ID: {customer.id}</p>
-                  </div>
-                </div>
-                
-                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-1">Stempelkaart</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-[#e8dcc8]/30 rounded-xl p-3 flex flex-col items-center">
-                    <Coffee size={20} className="text-[var(--color-cozy-coffee)] mb-1" />
-                    <span className="font-mono text-sm font-medium">{customer.cards.coffee}/10</span>
-                  </div>
-                  <div className="bg-[#f0d8dc]/30 rounded-xl p-3 flex flex-col items-center">
-                    <Wine size={20} className="text-[var(--color-cozy-wine)] mb-1" />
-                    <span className="font-mono text-sm font-medium">{customer.cards.wine}/10</span>
-                  </div>
-                  <div className="bg-[#fcf4d9]/30 rounded-xl p-3 flex flex-col items-center">
-                    <Beer size={20} className="text-[var(--color-cozy-beer)] mb-1" />
-                    <span className="font-mono text-sm font-medium">{customer.cards.beer}/10</span>
-                  </div>
-                </div>
+            {customers.map(customer => {
+              const isExpanded = expandedCustomer === customer.id;
+              return (
+                <div key={customer.id} className="bg-white rounded-[24px] shadow-sm overflow-hidden">
+                  {/* Header row — always visible, tap to expand */}
+                  <button
+                    onClick={() => setExpandedCustomer(isExpanded ? null : customer.id)}
+                    className="w-full flex items-center gap-4 p-5 text-left active:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-serif font-bold text-xl flex-shrink-0">
+                      {customer.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-serif font-semibold text-lg">{customer.name}</h3>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs text-gray-400">☕ {customer.cards.coffee}/10</span>
+                        <span className="text-xs text-gray-400">🍷 {customer.cards.wine}/10</span>
+                        <span className="text-xs text-gray-400">🍺 {customer.cards.beer}/10</span>
+                      </div>
+                    </div>
+                    <motion.div
+                      animate={{ rotate: isExpanded ? 180 : 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="flex-shrink-0 text-gray-400"
+                    >
+                      <ChevronDown size={18} />
+                    </motion.div>
+                  </button>
 
-                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Ingewisseld</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-[#e8dcc8]/10 rounded-xl p-3 flex flex-col items-center border border-[#e8dcc8]/30">
-                    <Coffee size={16} className="text-[var(--color-cozy-coffee)] mb-1" />
-                    <span className="font-mono text-sm font-bold">{customer.claimedRewards?.coffee || 0}</span>
-                    <span className="text-[10px] text-gray-400">gratis</span>
-                  </div>
-                  <div className="bg-[#f0d8dc]/10 rounded-xl p-3 flex flex-col items-center border border-[#f0d8dc]/30">
-                    <Wine size={16} className="text-[var(--color-cozy-wine)] mb-1" />
-                    <span className="font-mono text-sm font-bold">{customer.claimedRewards?.wine || 0}</span>
-                    <span className="text-[10px] text-gray-400">gratis</span>
-                  </div>
-                  <div className="bg-[#fcf4d9]/10 rounded-xl p-3 flex flex-col items-center border border-[#fcf4d9]/30">
-                    <Beer size={16} className="text-[var(--color-cozy-beer)] mb-1" />
-                    <span className="font-mono text-sm font-bold">{customer.claimedRewards?.beer || 0}</span>
-                    <span className="text-[10px] text-gray-400">gratis</span>
-                  </div>
+                  {/* Collapsible detail */}
+                  <AnimatePresence initial={false}>
+                    {isExpanded && (
+                      <motion.div
+                        key="detail"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.28, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-5 pb-5 border-t border-gray-50">
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Stempelkaart</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-[#e8dcc8]/30 rounded-xl p-3 flex flex-col items-center">
+                              <Coffee size={20} className="text-[var(--color-cozy-coffee)] mb-1" />
+                              <span className="font-mono text-sm font-medium">{customer.cards.coffee}/10</span>
+                            </div>
+                            <div className="bg-[#f0d8dc]/30 rounded-xl p-3 flex flex-col items-center">
+                              <Wine size={20} className="text-[var(--color-cozy-wine)] mb-1" />
+                              <span className="font-mono text-sm font-medium">{customer.cards.wine}/10</span>
+                            </div>
+                            <div className="bg-[#fcf4d9]/30 rounded-xl p-3 flex flex-col items-center">
+                              <Beer size={20} className="text-[var(--color-cozy-beer)] mb-1" />
+                              <span className="font-mono text-sm font-medium">{customer.cards.beer}/10</span>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Ingewisseld</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-[#e8dcc8]/10 rounded-xl p-3 flex flex-col items-center border border-[#e8dcc8]/30">
+                              <Coffee size={16} className="text-[var(--color-cozy-coffee)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{customer.claimedRewards?.coffee || 0}</span>
+                              <span className="text-[10px] text-gray-400">gratis</span>
+                            </div>
+                            <div className="bg-[#f0d8dc]/10 rounded-xl p-3 flex flex-col items-center border border-[#f0d8dc]/30">
+                              <Wine size={16} className="text-[var(--color-cozy-wine)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{customer.claimedRewards?.wine || 0}</span>
+                              <span className="text-[10px] text-gray-400">gratis</span>
+                            </div>
+                            <div className="bg-[#fcf4d9]/10 rounded-xl p-3 flex flex-col items-center border border-[#fcf4d9]/30">
+                              <Beer size={16} className="text-[var(--color-cozy-beer)] mb-1" />
+                              <span className="font-mono text-sm font-bold">{customer.claimedRewards?.beer || 0}</span>
+                              <span className="text-[10px] text-gray-400">gratis</span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </motion.div>
         )}
 

@@ -160,6 +160,20 @@ export const BusinessPage: React.FC = () => {
       {/* Screensaver — activates after 60s idle, disappears on touch */}
       <Screensaver onWake={() => { /* admin is back */ }} />
 
+      {/* WebaanZee credit — fixed bottom right, all tabs */}
+      <a
+        href="https://www.webaanzee.be"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-4 right-5 flex items-center gap-1 opacity-50 hover:opacity-100 transition-opacity z-50"
+        style={{ fontSize: '10px', letterSpacing: '0.04em', textDecoration: 'none' }}
+      >
+        <span style={{ color: '#111', fontWeight: 500 }}>realisatie door </span>
+        <span style={{ fontWeight: 700 }}>
+          <span style={{ color: '#111' }}>Web</span><span style={{ color: '#f59e0b' }}>aan</span><span style={{ color: '#111' }}>Zee</span>
+        </span>
+      </a>
+
       <header className="bg-white px-6 py-2 rounded-b-[28px] shadow-sm mb-6 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="w-10" />

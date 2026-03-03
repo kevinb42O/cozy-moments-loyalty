@@ -31,7 +31,7 @@ export const AdminLoginPage: React.FC = () => {
             alt="COZY Moments"
             className="w-52 h-52 object-contain drop-shadow-md"
           />
-          <p className="text-sm text-gray-400 mt-2 tracking-wider uppercase font-medium">
+          <p className="text-sm text-gray-400 mt-2 tracking-wider uppercase font-display font-bold">
             Beheerspaneel
           </p>
         </div>

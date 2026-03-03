@@ -47,7 +47,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
   return (
     <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-2xl font-serif font-semibold flex items-center gap-2">
+        <h3 className="text-2xl font-display font-bold flex items-center gap-2">
           <Icon className={cn("w-6 h-6", config.color)} />
           {config.title} Kaart
         </h3>

@@ -45,7 +45,7 @@ export const CustomerPage: React.FC = () => {
               className="mt-4 overflow-hidden"
             >
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Welkom terug,</p>
-              <h2 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)]">
+              <h2 className="text-2xl font-display font-bold text-[var(--color-cozy-text)]">
                 {displayName}
               </h2>
             </motion.div>
@@ -69,7 +69,7 @@ export const CustomerPage: React.FC = () => {
               <Gift size={20} className="text-white" />
             </motion.div>
             <div className="flex-1 text-left">
-              <p className="font-serif font-semibold text-[var(--color-cozy-text)]">
+              <p className="font-display font-bold text-[var(--color-cozy-text)]">
                 {totalRewards} gratis {totalRewards === 1 ? 'consumptie' : 'consumpties'}!
               </p>
               <p className="text-xs text-gray-500">Tik om je beloningen te bekijken</p>
@@ -99,7 +99,7 @@ export const CustomerPage: React.FC = () => {
           className="w-full bg-white/60 backdrop-blur-md border border-white/80 text-[var(--color-cozy-text)] rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
         >
           <QrCode size={22} className="opacity-70" />
-          <span className="font-serif font-semibold text-lg tracking-wide">Scan QR Code</span>
+          <span className="font-display font-bold text-lg tracking-wide">Scan QR Code</span>
         </button>
       </div>
     </div>

@@ -212,7 +212,7 @@ export const BusinessPage: React.FC = () => {
           <button
             onClick={() => { reset(); setView('create'); }}
             className={cn(
-              "flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all",
+              "flex-1 py-2 px-4 rounded-full text-sm font-display font-bold transition-all",
               view === 'create' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
             )}
           >
@@ -221,7 +221,7 @@ export const BusinessPage: React.FC = () => {
           <button
             onClick={() => { reset(); setView('customers'); }}
             className={cn(
-              "flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all",
+              "flex-1 py-2 px-4 rounded-full text-sm font-display font-bold transition-all",
               view === 'customers' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
             )}
           >
@@ -230,7 +230,7 @@ export const BusinessPage: React.FC = () => {
           <button
             onClick={() => { reset(); setView('redeem'); }}
             className={cn(
-              "flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all",
+              "flex-1 py-2 px-4 rounded-full text-sm font-display font-bold transition-all",
               view === 'redeem' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
             )}
           >
@@ -244,7 +244,7 @@ export const BusinessPage: React.FC = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {!qrPayload ? (
               <div className="space-y-6">
-                <h2 className="text-3xl font-serif font-semibold text-[var(--color-cozy-text)] mb-8">
+                <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)] mb-8">
                   Selecteer Consumpties
                 </h2>
                 
@@ -350,7 +350,7 @@ export const BusinessPage: React.FC = () => {
         {view === 'customers' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-3xl font-serif font-semibold text-[var(--color-cozy-text)]">
+              <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)]">
                 Klanten Overzicht
               </h2>
               <button
@@ -607,7 +607,7 @@ export const BusinessPage: React.FC = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {!qrPayload ? (
               <div className="space-y-6">
-                <h2 className="text-3xl font-serif font-semibold text-[var(--color-cozy-text)] mb-4">
+                <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)] mb-4">
                   Inwisselen
                 </h2>
                 <p className="text-gray-500 -mt-2 mb-4">
@@ -645,7 +645,7 @@ export const BusinessPage: React.FC = () => {
                           <Icon size={28} className={textColors[type]} />
                         </motion.div>
                         <motion.span
-                          className="font-serif font-semibold text-xl text-[var(--color-cozy-text)]"
+                          className="font-display font-bold text-xl text-[var(--color-cozy-text)]"
                           initial={{ x: 60, opacity: 0 }}
                           animate={{ x: 0, opacity: 1 }}
                           transition={{ duration: 0.55, delay: index * 0.08 + 0.07, ease: [0.22, 1, 0.36, 1] }}
@@ -748,7 +748,7 @@ const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, coun
 
         {/* Title — slides in from right slightly after icon */}
         <motion.span
-          className="font-serif font-semibold text-xl"
+          className="font-display font-bold text-xl"
           initial={{ x: 60, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.55, delay: index * 0.08 + 0.07, ease: [0.22, 1, 0.36, 1] }}

@@ -27,7 +27,7 @@ export const RewardsPage: React.FC = () => {
           <button onClick={() => navigate('/dashboard')} className="p-2 -ml-2 text-gray-400 hover:text-gray-600">
             <ArrowLeft size={22} />
           </button>
-          <h1 className="text-2xl font-serif font-bold tracking-tight text-[var(--color-cozy-text)]">
+          <h1 className="text-2xl font-display font-bold tracking-tight text-[var(--color-cozy-text)]">
             Mijn Beloningen
           </h1>
         </div>
@@ -38,7 +38,7 @@ export const RewardsPage: React.FC = () => {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Gift size={20} className="text-[var(--color-cozy-olive)]" />
-            <h2 className="text-xl font-serif font-semibold text-[var(--color-cozy-text)]">
+            <h2 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">
               Beschikbaar
             </h2>
           </div>
@@ -76,7 +76,7 @@ export const RewardsPage: React.FC = () => {
                         <Icon size={28} className="text-white" />
                       </motion.div>
                       <div>
-                        <h3 className="font-serif font-semibold text-lg text-[var(--color-cozy-text)]">
+                        <h3 className="font-display font-bold text-lg text-[var(--color-cozy-text)]">
                           Gratis {cardTypeLabels[type]}
                         </h3>
                         <p className="text-sm text-gray-500">Scan aan de kassa om in te wisselen</p>
@@ -96,7 +96,7 @@ export const RewardsPage: React.FC = () => {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Trophy size={20} className="text-[var(--color-cozy-olive)]" />
-            <h2 className="text-xl font-serif font-semibold text-[var(--color-cozy-text)]">
+            <h2 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">
               Ingewisseld
             </h2>
           </div>

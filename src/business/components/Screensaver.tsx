@@ -33,7 +33,7 @@ const kenBurnsVariants = (seed: number) => {
   };
 };
 
-// ── Dual-slide scene: two images slide in from opposite sides ────────────────
+// ── Dual-slide scene: two images slide in, back one comes forward after 5s ───
 const DualSlideScene: React.FC<{
   leftImg: string;
   rightImg: string;
@@ -41,14 +41,29 @@ const DualSlideScene: React.FC<{
 }> = ({ leftImg, rightImg, idx }) => {
   const kbL = kenBurnsVariants(idx + 2);
   const kbR = kenBurnsVariants(idx + 5);
+
+  // Timings: slide-in ~1.4s, then at 5s the back image comes to front
+  const SWAP_DELAY = 5; // seconds
+  const SWAP_DUR = 1.2; // smooth transition duration
+
   return (
     <div className="absolute inset-0 bg-white overflow-hidden flex items-center justify-center">
-      {/* Left image — slides in from far left to ~1/3 center */}
+      {/* Left image — starts behind (z-10), comes to front at 5s (z-30) */}
       <motion.div
         className="absolute left-0 top-[5%] w-[58%] h-[90%]"
-        initial={{ x: '-110%', rotate: -4 }}
-        animate={{ x: '8%', rotate: -1.5 }}
-        transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ x: '-110%', rotate: -4, zIndex: 10, scale: 1 }}
+        animate={{
+          x: '8%',
+          rotate: -1.5,
+          zIndex: [10, 10, 30],
+          scale: [1, 1, 1.04],
+        }}
+        transition={{
+          x: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
+          rotate: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
+          zIndex: { times: [0, SWAP_DELAY / 18, (SWAP_DELAY + 0.1) / 18], duration: 18, ease: 'linear' },
+          scale: { times: [0, SWAP_DELAY / 18, (SWAP_DELAY + SWAP_DUR) / 18], duration: 18, ease: 'easeInOut' },
+        }}
       >
         <motion.img
           src={leftImg}
@@ -58,12 +73,22 @@ const DualSlideScene: React.FC<{
         />
       </motion.div>
 
-      {/* Right image — slides in from far right to ~2/3 center */}
+      {/* Right image — starts in front (z-20), goes behind at 5s (z-5) */}
       <motion.div
         className="absolute right-0 top-[8%] w-[55%] h-[85%]"
-        initial={{ x: '110%', rotate: 4 }}
-        animate={{ x: '-8%', rotate: 1.5 }}
-        transition={{ duration: 1.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ x: '110%', rotate: 4, zIndex: 20, scale: 1 }}
+        animate={{
+          x: '-8%',
+          rotate: 1.5,
+          zIndex: [20, 20, 5],
+          scale: [1, 1, 0.97],
+        }}
+        transition={{
+          x: { duration: 1.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] },
+          rotate: { duration: 1.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] },
+          zIndex: { times: [0, SWAP_DELAY / 18, (SWAP_DELAY + 0.1) / 18], duration: 18, ease: 'linear' },
+          scale: { times: [0, SWAP_DELAY / 18, (SWAP_DELAY + SWAP_DUR) / 18], duration: 18, ease: 'easeInOut' },
+        }}
       >
         <motion.img
           src={rightImg}
@@ -74,7 +99,7 @@ const DualSlideScene: React.FC<{
       </motion.div>
 
       {/* Soft center blend so overlap looks intentional */}
-      <div className="absolute inset-0 pointer-events-none bg-radial-[at_50%_50%] from-white/40 via-transparent to-transparent" />
+      <div className="absolute inset-0 pointer-events-none z-40 bg-radial-[at_50%_50%] from-white/40 via-transparent to-transparent" />
     </div>
   );
 };
@@ -101,18 +126,18 @@ const SingleScrollScene: React.FC<{ img: string; idx: number }> = ({ img, idx })
   );
 };
 
-// ── Scene list: dual-slide pairs + single-scroll for cozy3 ──────────────────
+// ── Scene list: correct product description + product photo pairs ────────────
 const SCENES: React.FC<{ idx: number }>[] = [
-  // Scene 0: cozy1 + cozy2 — dual slide (same style as scenes 2-4)
+  // Scene 0: cozy1 (description) + cozy2 (photo)
   ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy1} rightImg={IMAGES.cozy2} idx={idx} />,
   // Scene 1: cozy3 — single image scroll
   ({ idx }) => <SingleScrollScene img={IMAGES.cozy3} idx={idx} />,
-  // Scene 2: cozy5 + cozy6
-  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy5} rightImg={IMAGES.cozy6} idx={idx} />,
-  // Scene 3: cozy7 + cozy8
-  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy7} rightImg={IMAGES.cozy8} idx={idx} />,
-  // Scene 4: cozy9 + cozy4
-  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy9} rightImg={IMAGES.cozy4} idx={idx} />,
+  // Scene 2: cozy4 (description) + cozy5 (photo)
+  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy4} rightImg={IMAGES.cozy5} idx={idx} />,
+  // Scene 3: cozy6 (description) + cozy7 (photo)
+  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy6} rightImg={IMAGES.cozy7} idx={idx} />,
+  // Scene 4: cozy8 (description) + cozy9 (photo)
+  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy8} rightImg={IMAGES.cozy9} idx={idx} />,
 ];
 
 // ── Scene renderer ───────────────────────────────────────────────────────────

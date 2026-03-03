@@ -239,7 +239,7 @@ export const LoginPage: React.FC = () => {
                   </p>
                   <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs">
                     <strong>Cozy Moments</strong><br />
-                    Gevestigd in België<br />
+                    Grote Markt 2, 8370 Blankenberge, België<br />
                     E-mail: <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline">info@cozy-moments.be</a><br />
                     Website: <a href="https://www.cozy-moments.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline">www.cozy-moments.be</a>
                   </p>

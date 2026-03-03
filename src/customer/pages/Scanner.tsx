@@ -112,6 +112,26 @@ export const Scanner: React.FC = () => {
     }
   }, []);
 
+  // Reliably stop + clear the scanner and wipe the #reader div
+  const stopAndClear = useCallback(async () => {
+    const instance = scannerRef.current;
+    if (instance) {
+      try {
+        if (isRunningRef.current) {
+          await instance.stop();
+          isRunningRef.current = false;
+        }
+        await instance.clear();
+      } catch {
+        // ignore cleanup errors
+      }
+      scannerRef.current = null;
+    }
+    // Also wipe the DOM node so Html5Qrcode gets a clean slate next time
+    const el = document.getElementById('reader');
+    if (el) el.innerHTML = '';
+  }, []);
+
   const startCamera = useCallback(async () => {
     setPermission('requesting');
     try {
@@ -121,7 +141,6 @@ export const Scanner: React.FC = () => {
       setPermission('denied');
       return;
     }
-
     setPermission('granted');
   }, []);
 
@@ -130,7 +149,10 @@ export const Scanner: React.FC = () => {
     if (permission !== 'granted' || scanned) return;
 
     // Small delay to let the #reader div mount
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
+      // Always start from a clean state
+      await stopAndClear();
+
       const html5Qrcode = new Html5Qrcode('reader', false);
       scannerRef.current = html5Qrcode;
 
@@ -162,11 +184,12 @@ export const Scanner: React.FC = () => {
                 return;
               }
 
-              html5Qrcode.stop().then(() => { isRunningRef.current = false; }).catch(console.error);
-              claimReward(currentCustomer.id, cardType).then(() => {
-                setScanResult({ type: 'redeem', claimedType: cardType });
-                setScanned(true);
-                setTimeout(() => navigate('/rewards'), 2500);
+              stopAndClear().then(() => {
+                claimReward(currentCustomer.id, cardType).then(() => {
+                  setScanResult({ type: 'redeem', claimedType: cardType });
+                  setScanned(true);
+                  setTimeout(() => navigate('/rewards'), 2500);
+                });
               });
               return;
             }
@@ -177,15 +200,16 @@ export const Scanner: React.FC = () => {
               payload.wine !== undefined &&
               payload.beer !== undefined
             ) {
-              html5Qrcode.stop().then(() => { isRunningRef.current = false; }).catch(console.error);
-              addConsumptions(currentCustomer.id, {
-                coffee: payload.coffee,
-                wine: payload.wine,
-                beer: payload.beer,
-              }).then(result => {
-                setScanResult({ type: 'add', earned: result.earned });
-                setScanned(true);
-                setTimeout(() => navigate('/dashboard'), 2500);
+              stopAndClear().then(() => {
+                addConsumptions(currentCustomer.id, {
+                  coffee: payload.coffee,
+                  wine: payload.wine,
+                  beer: payload.beer,
+                }).then(result => {
+                  setScanResult({ type: 'add', earned: result.earned });
+                  setScanned(true);
+                  setTimeout(() => navigate('/dashboard'), 2500);
+                });
               });
             } else {
               setScanError('Ongeldige QR code — probeer opnieuw');
@@ -206,11 +230,9 @@ export const Scanner: React.FC = () => {
 
     return () => {
       clearTimeout(timer);
-      if (scannerRef.current && isRunningRef.current) {
-        scannerRef.current.stop().then(() => { isRunningRef.current = false; }).catch(console.error);
-      }
+      stopAndClear();
     };
-  }, [permission, scanned, currentCustomer, addConsumptions, claimReward, navigate]);
+  }, [permission, scanned, currentCustomer, addConsumptions, claimReward, navigate, stopAndClear]);
 
   const deviceInfo = getDeviceInstructions();
 

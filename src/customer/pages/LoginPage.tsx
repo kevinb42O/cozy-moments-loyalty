@@ -34,6 +34,20 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[var(--color-cozy-bg)]">
+      {/* WebaanZee credit — fixed bottom right */}
+      <a
+        href="https://www.webaanzee.be"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-4 right-5 flex items-center gap-1 opacity-50 hover:opacity-100 transition-opacity z-50"
+        style={{ fontSize: '10px', letterSpacing: '0.04em', textDecoration: 'none' }}
+      >
+        <span style={{ color: '#111', fontWeight: 500 }}>realisatie door </span>
+        <span style={{ fontWeight: 700 }}>
+          <span style={{ color: '#111' }}>Web</span><span style={{ color: '#f59e0b' }}>aan</span><span style={{ color: '#111' }}>Zee</span>
+        </span>
+      </a>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -49,6 +63,14 @@ export const LoginPage: React.FC = () => {
               className="w-52 h-52 object-contain drop-shadow-md"
             />
           </a>
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="mt-3 text-xs font-medium tracking-[0.22em] uppercase text-[var(--color-cozy-coffee)] opacity-70"
+          >
+            Digitale Spaarkaart
+          </motion.p>
         </div>
 
         {/* Social login buttons */}
@@ -150,19 +172,6 @@ export const LoginPage: React.FC = () => {
             className="text-xs text-[var(--color-cozy-coffee)] hover:underline font-medium"
           >
             Bezoek onze website →
-          </a>
-        </div>
-
-        <div className="text-center mt-10 mb-2">
-          <a
-            href="https://www.webaanzee.be"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-[10px] tracking-widest uppercase font-semibold transition-opacity hover:opacity-80"
-            style={{ color: '#1a5c8a', letterSpacing: '0.12em' }}
-          >
-            <span style={{ color: '#2e9bce', fontSize: '14px', lineHeight: 1 }}>≋</span>
-            digitale ambacht door WebaanZee
           </a>
         </div>
       </motion.div>

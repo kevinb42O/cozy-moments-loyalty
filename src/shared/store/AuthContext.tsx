@@ -28,21 +28,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Supabase session restore ──────────────────────────────────────────────
   useEffect(() => {
     if (SUPABASE_READY && supabase) {
-      // Detect if this page load is an OAuth redirect callback.
-      // Supabase implicit flow puts tokens in the hash; PKCE flow uses ?code=
-      const hasOAuthParams =
-        window.location.hash.includes("access_token") ||
-        window.location.search.includes("code=");
+      let settled = false;
 
-      const { data: { subscription } } = supabase!.auth.onAuthStateChange((event, session) => {
-        // INITIAL_SESSION fires immediately — if it's null AND we're mid-OAuth
-        // exchange, stay in loading state and wait for the real SIGNED_IN event.
-        if (event === "INITIAL_SESSION" && !session && hasOAuthParams) return;
-
+      const settle = (session: any) => {
+        if (settled) return;
+        settled = true;
         setUser(session?.user ? sessionToUser(session.user) : null);
         setIsLoading(false);
+      };
+
+      // Fallback: if onAuthStateChange doesn't resolve within 4 s
+      // (e.g. PKCE code exchange races ahead of the listener), call getSession()
+      const fallback = setTimeout(async () => {
+        if (settled) return;
+        const { data } = await supabase!.auth.getSession();
+        settle(data.session);
+      }, 4000);
+
+      const { data: { subscription } } = supabase!.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_OUT") {
+          settled = false; // allow future settle after sign-out
+          clearTimeout(fallback);
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+        // INITIAL_SESSION with no session might fire before the OAuth code
+        // is exchanged — wait for the real SIGNED_IN event in that case.
+        if (event === "INITIAL_SESSION" && !session) return;
+
+        clearTimeout(fallback);
+        settle(session);
       });
-      return () => subscription.unsubscribe();
+
+      return () => {
+        clearTimeout(fallback);
+        subscription.unsubscribe();
+      };
     } else {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Coffee, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { useAuth } from '../../shared/store/AuthContext';
 import { motion } from 'framer-motion';
 
@@ -42,11 +42,13 @@ export const LoginPage: React.FC = () => {
       >
         {/* Logo */}
         <div className="mb-10 flex flex-col items-center text-center">
-          <div className="w-20 h-20 bg-[var(--color-cozy-coffee)] text-[#f5f5f0] rounded-full flex items-center justify-center mb-5 shadow-xl">
-            <Coffee size={40} strokeWidth={1.5} />
-          </div>
+          <img
+            src="/cozylogo.png"
+            alt="COZY Moments"
+            className="w-28 h-28 object-contain mb-5 drop-shadow-md"
+          />
           <h1 className="text-4xl font-serif font-semibold text-[var(--color-cozy-coffee)]">
-            Cozy Moments
+            <span className="font-black tracking-wide">COZY</span> Moments
           </h1>
           <p className="text-sm text-gray-500 mt-2 font-serif italic">
             Jouw digitale spaarkaart

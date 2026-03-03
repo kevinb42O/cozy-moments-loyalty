@@ -53,9 +53,12 @@ export const BusinessPage: React.FC = () => {
       <header className="bg-white px-6 py-6 rounded-b-[40px] shadow-sm mb-8 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-6">
           <div className="w-10" />
-          <h1 className="text-2xl font-serif font-bold tracking-tight text-[var(--color-cozy-text)]">
-            Beheerder
-          </h1>
+          <div className="flex items-center gap-2">
+            <img src="/cozylogo.png" alt="COZY Moments" className="w-8 h-8 object-contain" />
+            <h1 className="text-2xl font-serif font-bold tracking-tight text-[var(--color-cozy-text)]">
+              <span className="font-black">COZY</span> Moments
+            </h1>
+          </div>
           <button
             onClick={logout}
             title="Uitloggen"

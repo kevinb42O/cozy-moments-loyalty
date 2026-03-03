@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, LogOut, Coffee, Gift, ChevronRight } from 'lucide-react';
+import { QrCode, LogOut, Gift, ChevronRight } from 'lucide-react';
 import { useLoyalty } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
@@ -24,8 +24,10 @@ export const CustomerPage: React.FC = () => {
             <LogOut size={22} />
           </button>
           <div className="flex items-center gap-2 text-[var(--color-cozy-coffee)]">
-            <Coffee size={24} />
-            <h1 className="text-2xl font-serif font-bold tracking-tight">Cozy Moments</h1>
+            <img src="/cozylogo.png" alt="COZY Moments" className="w-9 h-9 object-contain" />
+            <h1 className="text-2xl font-serif font-bold tracking-tight">
+              <span className="font-black">COZY</span> Moments
+            </h1>
           </div>
           <div className="w-10 h-10 bg-[#e8dcc8] rounded-full flex items-center justify-center text-[var(--color-cozy-coffee)] font-serif font-bold text-lg">
             {displayName.charAt(0)}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff, Coffee } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 
 export const AdminLoginPage: React.FC = () => {
@@ -26,11 +26,13 @@ export const AdminLoginPage: React.FC = () => {
       >
         {/* Logo */}
         <div className="mb-10 flex flex-col items-center text-center">
-          <div className="w-16 h-16 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center mb-4 shadow-lg">
-            <Coffee size={32} strokeWidth={1.5} className="text-white" />
-          </div>
+          <img
+            src="/cozylogo.png"
+            alt="COZY Moments"
+            className="w-24 h-24 object-contain mb-4 drop-shadow-md"
+          />
           <h1 className="text-3xl font-serif font-semibold text-[var(--color-cozy-text)]">
-            Cozy Moments
+            <span className="font-black tracking-wide">COZY</span> Moments
           </h1>
           <p className="text-sm text-gray-400 mt-1 tracking-wider uppercase font-medium">
             Beheerspaneel

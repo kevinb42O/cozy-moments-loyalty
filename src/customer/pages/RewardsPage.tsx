@@ -75,7 +75,7 @@ export const RewardsPage: React.FC = () => {
                         <h3 className="font-serif font-semibold text-lg text-[var(--color-cozy-text)]">
                           Gratis {cardTypeLabels[type]}
                         </h3>
-                        <p className="text-sm text-gray-500">Scan de inwisselen QR bij de zaak</p>
+                        <p className="text-sm text-gray-500">Toon aan de kassa om in te wisselen</p>
                       </div>
                     </div>
                     <div className="bg-[var(--color-cozy-olive)] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
@@ -120,9 +120,9 @@ export const RewardsPage: React.FC = () => {
         <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--color-cozy-bg)] via-[var(--color-cozy-bg)] to-transparent">
           <button
             onClick={() => navigate('/scanner')}
-            className="w-full bg-[var(--color-cozy-olive)] text-white rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 hover:bg-[#4a4a34] transition-colors"
+            className="w-full bg-white/60 backdrop-blur-md border border-white/80 text-[var(--color-cozy-text)] rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
           >
-            <QrCode size={24} />
+            <QrCode size={22} className="opacity-70" />
             <span className="font-serif font-semibold text-lg tracking-wide">Scan om in te wisselen</span>
           </button>
         </div>

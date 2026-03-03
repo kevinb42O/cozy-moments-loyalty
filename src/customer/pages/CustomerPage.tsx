@@ -92,9 +92,9 @@ export const CustomerPage: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--color-cozy-bg)] via-[var(--color-cozy-bg)] to-transparent">
         <button
           onClick={() => navigate('/scanner')}
-          className="w-full bg-[var(--color-cozy-olive)] text-white rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 hover:bg-[#4a4a34] transition-colors"
+          className="w-full bg-white/60 backdrop-blur-md border border-white/80 text-[var(--color-cozy-text)] rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
         >
-          <QrCode size={24} />
+          <QrCode size={22} className="opacity-70" />
           <span className="font-serif font-semibold text-lg tracking-wide">Scan QR Code</span>
         </button>
       </div>

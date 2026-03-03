@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut } from 'lucide-react';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -45,6 +45,13 @@ export const BusinessPage: React.FC = () => {
     setConsumptions({ coffee: 0, wine: 0, beer: 0 });
     setQrPayload(null);
   };
+
+  // Auto-reset QR after 60 seconds so it can't be reused
+  useEffect(() => {
+    if (!qrPayload) return;
+    const t = setTimeout(() => reset(), 60_000);
+    return () => clearTimeout(t);
+  }, [qrPayload]);
 
   const totalConsumptions = consumptions.coffee + consumptions.wine + consumptions.beer;
 

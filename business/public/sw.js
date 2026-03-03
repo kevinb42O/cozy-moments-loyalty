@@ -1,5 +1,5 @@
 // Cozy Moments — Business/Admin Service Worker
-const CACHE_NAME = 'cozy-moments-admin-v1';
+const CACHE_NAME = 'cozy-moments-admin-v2';
 const OFFLINE_URL = '/';
 
 // Assets to pre-cache
@@ -17,6 +17,10 @@ const PRE_CACHE = [
   '/cozy7.png',
   '/cozy8.png',
   '/cozy9.png',
+  '/cozy10.jpg',
+  '/cozy11.jpg',
+  '/cozy12.jpg',
+  '/cozy13.jpg',
 ];
 
 // Install — cache shell

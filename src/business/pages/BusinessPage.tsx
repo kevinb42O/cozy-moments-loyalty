@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
@@ -238,6 +238,7 @@ export const BusinessPage: React.FC = () => {
                   onDec={() => handleDecrement('coffee')}
                   color="text-[var(--color-cozy-coffee)]"
                   bg="bg-[#e8dcc8]"
+                  index={0}
                 />
                 
                 <ConsumptionRow 
@@ -249,6 +250,7 @@ export const BusinessPage: React.FC = () => {
                   onDec={() => handleDecrement('wine')}
                   color="text-[var(--color-cozy-wine)]"
                   bg="bg-[#f0d8dc]"
+                  index={1}
                 />
                 
                 <ConsumptionRow 
@@ -260,6 +262,7 @@ export const BusinessPage: React.FC = () => {
                   onDec={() => handleDecrement('beer')}
                   color="text-[var(--color-cozy-beer)]"
                   bg="bg-[#fcf4d9]"
+                  index={2}
                 />
 
                 <motion.button
@@ -592,30 +595,78 @@ interface ConsumptionRowProps {
   onDec: () => void;
   color: string;
   bg: string;
+  index: number; // for staggered slide-in delay
 }
 
-const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, count, onInc, onDec, color, bg }) => {
+const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, count, onInc, onDec, color, bg, index }) => {
+  const countControls = useAnimationControls();
+
+  const handleInc = () => {
+    onInc();
+    // Cheerful little bounce up
+    countControls.start({
+      y: [0, -8, 3, -3, 0],
+      scale: [1, 1.25, 1.1, 1.05, 1],
+      transition: { duration: 0.38, ease: 'easeOut' },
+    });
+  };
+
+  const handleDec = () => {
+    if (count === 0) return;
+    onDec();
+    // Quick drop + shrink — feels like removal
+    countControls.start({
+      y: [0, 5, -2, 0],
+      scale: [1, 0.75, 0.95, 1],
+      opacity: [1, 0.4, 0.8, 1],
+      transition: { duration: 0.32, ease: 'easeInOut' },
+    });
+  };
+
   return (
-    <div className="bg-white rounded-[24px] p-4 shadow-sm flex items-center justify-between">
+    <div className="bg-white rounded-[24px] p-4 shadow-sm flex items-center justify-between overflow-hidden">
       <div className="flex items-center gap-4">
-        <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", bg, color)}>
+        {/* Icon — slides in from right with stagger */}
+        <motion.div
+          className={cn('w-12 h-12 rounded-full flex items-center justify-center', bg, color)}
+          initial={{ x: 80, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.55, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+        >
           <Icon size={24} />
-        </div>
-        <span className="font-serif font-semibold text-xl">{title}</span>
+        </motion.div>
+
+        {/* Title — slides in from right slightly after icon */}
+        <motion.span
+          className="font-serif font-semibold text-xl"
+          initial={{ x: 60, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.55, delay: index * 0.08 + 0.07, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {title}
+        </motion.span>
       </div>
-      
+
       <div className="flex items-center gap-4">
-        <button 
-          onClick={onDec}
+        <button
+          onClick={handleDec}
           disabled={count === 0}
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 disabled:opacity-50"
+          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 disabled:opacity-50 active:scale-90 transition-transform"
         >
           <Minus size={20} />
         </button>
-        <span className="font-mono text-xl font-medium w-6 text-center">{count}</span>
-        <button 
-          onClick={onInc}
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600"
+
+        {/* Animated count */}
+        <motion.span
+          animate={countControls}
+          className="font-mono text-xl font-medium w-6 text-center inline-block"
+        >
+          {count}
+        </motion.span>
+
+        <button
+          onClick={handleInc}
+          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:scale-90 transition-transform"
         >
           <Plus size={20} />
         </button>

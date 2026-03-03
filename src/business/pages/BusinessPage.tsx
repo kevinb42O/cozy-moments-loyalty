@@ -515,15 +515,18 @@ export const BusinessPage: React.FC = () => {
                 </p>
 
                 <div className="space-y-3">
-                  {(['coffee', 'wine', 'beer'] as CardType[]).map(type => {
+                  {(['coffee', 'wine', 'beer'] as CardType[]).map((type, index) => {
                     const icons: Record<CardType, React.ElementType> = { coffee: Coffee, wine: Wine, beer: Beer };
                     const colors: Record<CardType, string> = { coffee: 'bg-[#e8dcc8]', wine: 'bg-[#f0d8dc]', beer: 'bg-[#fcf4d9]' };
                     const textColors: Record<CardType, string> = { coffee: 'text-[var(--color-cozy-coffee)]', wine: 'text-[var(--color-cozy-wine)]', beer: 'text-[var(--color-cozy-beer)]' };
                     const Icon = icons[type];
 
                     return (
-                      <button
+                      <motion.button
                         key={type}
+                        initial={{ x: 80, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 220, damping: 22, delay: index * 0.08 }}
                         onClick={() => {
                           customersSnapshotRef.current = JSON.stringify(customers);
                           const payload = {
@@ -542,7 +545,7 @@ export const BusinessPage: React.FC = () => {
                         <span className="font-serif font-semibold text-xl text-[var(--color-cozy-text)]">
                           Gratis {cardTypeLabels[type]}
                         </span>
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>

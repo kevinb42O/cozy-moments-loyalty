@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS public.customers (
 -- 2. Row Level Security — customers can only see their own row
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (safe to re-run)
+DROP POLICY IF EXISTS "Customers: own row read"   ON public.customers;
+DROP POLICY IF EXISTS "Customers: own row update" ON public.customers;
+DROP POLICY IF EXISTS "Customers: insert own row" ON public.customers;
+DROP POLICY IF EXISTS "Admin: read all customers" ON public.customers;
+DROP POLICY IF EXISTS "Admin: update all customers" ON public.customers;
+
 -- Customers can read/update only their own record
 CREATE POLICY "Customers: own row read"
   ON public.customers FOR SELECT
@@ -36,15 +43,13 @@ CREATE POLICY "Customers: insert own row"
   ON public.customers FOR INSERT
   WITH CHECK (auth.uid()::text = id);
 
--- Admin (service role) can read/write all — used by business panel via service key
--- No extra policy needed: service_role bypasses RLS automatically.
-
--- 3. Business panel: anon key can read all customers (for the admin UI)
---    Only add this if you want the business panel to use the anon key.
---    SAFER: create a separate admin Supabase project or use service key on a backend.
---    For now, allow anon SELECT so the admin UI works without a backend:
+-- 3. Business panel: anon key can read AND update all customers
 CREATE POLICY "Admin: read all customers"
   ON public.customers FOR SELECT
+  USING (true);
+
+CREATE POLICY "Admin: update all customers"
+  ON public.customers FOR UPDATE
   USING (true);
 
 -- 4. Indexes

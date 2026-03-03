@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
+import { Screensaver } from '../components/Screensaver';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -156,6 +157,9 @@ export const BusinessPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] pb-24">
+      {/* Screensaver — activates after 60s idle, disappears on touch */}
+      <Screensaver onWake={() => { /* admin is back */ }} />
+
       <header className="bg-white px-6 py-2 rounded-b-[28px] shadow-sm mb-6 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="w-10" />

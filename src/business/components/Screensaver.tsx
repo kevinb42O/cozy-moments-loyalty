@@ -48,15 +48,15 @@ const DualSlideScene: React.FC<{
 
   return (
     <div className="absolute inset-0 bg-white overflow-hidden flex items-center justify-center">
-      {/* Left image — starts behind (z-10), comes to front at 5s (z-30) */}
+      {/* Left image — starts in front (z-20), goes behind at 5s (z-5) */}
       <motion.div
         className="absolute left-0 top-[5%] w-[58%] h-[90%]"
-        initial={{ x: '-110%', rotate: -4, zIndex: 10, scale: 1 }}
+        initial={{ x: '-110%', rotate: -4, zIndex: 20, scale: 1 }}
         animate={{
           x: '8%',
           rotate: -1.5,
-          zIndex: [10, 10, 30],
-          scale: [1, 1, 1.04],
+          zIndex: [20, 20, 5],
+          scale: [1, 1, 0.97],
         }}
         transition={{
           x: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
@@ -73,15 +73,15 @@ const DualSlideScene: React.FC<{
         />
       </motion.div>
 
-      {/* Right image — starts in front (z-20), goes behind at 5s (z-5) */}
+      {/* Right image — starts behind (z-10), comes to front at 5s (z-30) */}
       <motion.div
         className="absolute right-0 top-[8%] w-[55%] h-[85%]"
-        initial={{ x: '110%', rotate: 4, zIndex: 20, scale: 1 }}
+        initial={{ x: '110%', rotate: 4, zIndex: 10, scale: 1 }}
         animate={{
           x: '-8%',
           rotate: 1.5,
-          zIndex: [20, 20, 5],
-          scale: [1, 1, 0.97],
+          zIndex: [10, 10, 30],
+          scale: [1, 1, 1.04],
         }}
         transition={{
           x: { duration: 1.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] },

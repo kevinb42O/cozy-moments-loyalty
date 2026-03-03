@@ -339,12 +339,13 @@ export const BusinessPage: React.FC = () => {
                   };
 
                   // ── 1. CSV (Excel / nieuwsbrief import) ────────────
-                  const csvHeader = 'Naam,Email,Koffie_Stempels,Wijn_Stempels,Bier_Stempels,Koffie_Beloningen,Wijn_Beloningen,Bier_Beloningen,Koffie_Ingewisseld,Wijn_Ingewisseld,Bier_Ingewisseld';
+                  // Belgian/Dutch Excel uses semicolons as separator
+                  const SEP = ';';
+                  const csvHeader = ['Naam','Email','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Koffie_Beloningen','Wijn_Beloningen','Bier_Beloningen','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld'].join(SEP);
                   const csvRows = customers.map(c => {
-                    // Escape fields that might contain commas or quotes
                     const name = `"${c.name.replace(/"/g, '""')}"`;
                     const email = `"${(c.email || '').replace(/"/g, '""')}"`;
-                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0].join(',');
+                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0].join(SEP);
                   });
                   download([csvHeader, ...csvRows].join('\n'), `cozy-moments-klanten-${fileDate}.csv`, 'text/csv');
 

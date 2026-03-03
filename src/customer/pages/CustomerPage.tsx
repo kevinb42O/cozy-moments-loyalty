@@ -61,9 +61,13 @@ export const CustomerPage: React.FC = () => {
             onClick={() => navigate('/rewards')}
             className="w-full bg-[var(--color-cozy-olive)]/10 border border-[var(--color-cozy-olive)]/20 rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform"
           >
-            <div className="w-10 h-10 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center flex-shrink-0">
+            <motion.div
+              animate={{ scale: [1, 1.18, 1] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-10 h-10 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center flex-shrink-0"
+            >
               <Gift size={20} className="text-white" />
-            </div>
+            </motion.div>
             <div className="flex-1 text-left">
               <p className="font-serif font-semibold text-[var(--color-cozy-text)]">
                 {totalRewards} gratis {totalRewards === 1 ? 'consumptie' : 'consumpties'}!

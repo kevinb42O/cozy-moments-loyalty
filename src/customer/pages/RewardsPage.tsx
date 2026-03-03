@@ -68,14 +68,18 @@ export const RewardsPage: React.FC = () => {
                     className="bg-white rounded-[24px] p-5 shadow-sm flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-14 h-14 rounded-full flex items-center justify-center ${config.activeBg}`}>
+                      <motion.div
+                        animate={{ scale: [1, 1.14, 1] }}
+                        transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                        className={`w-14 h-14 rounded-full flex items-center justify-center ${config.activeBg}`}
+                      >
                         <Icon size={28} className="text-white" />
-                      </div>
+                      </motion.div>
                       <div>
                         <h3 className="font-serif font-semibold text-lg text-[var(--color-cozy-text)]">
                           Gratis {cardTypeLabels[type]}
                         </h3>
-                        <p className="text-sm text-gray-500">Toon aan de kassa om in te wisselen</p>
+                        <p className="text-sm text-gray-500">Scan aan de kassa om in te wisselen</p>
                       </div>
                     </div>
                     <div className="bg-[var(--color-cozy-olive)] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">

@@ -300,7 +300,13 @@ export const Scanner: React.FC = () => {
         startingRef.current = false;
       }).catch(() => {
         startingRef.current = false;
-        setPermission('denied');
+        // If camera was previously granted but the scanner fails to initialise
+        // (stale camera context after navigation), silently reload to recover.
+        if (sessionStorage.getItem('camera-granted') === '1') {
+          setTimeout(() => window.location.reload(), 600);
+        } else {
+          setPermission('denied');
+        }
       });
     }, 300);
 

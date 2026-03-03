@@ -149,10 +149,10 @@ export const BusinessPage: React.FC = () => {
                   onClick={generateQR}
                   disabled={totalConsumptions === 0}
                   className={cn(
-                    "w-full mt-8 rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 transition-colors",
+                    "w-full mt-8 rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 transition-all",
                     totalConsumptions > 0 
-                      ? "bg-[var(--color-cozy-olive)] text-white hover:bg-[#4a4a34]" 
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      ? "bg-[#1a1a1a] text-white hover:bg-[#333] active:scale-[0.98]" 
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   )}
                 >
                   <QrCode size={24} />

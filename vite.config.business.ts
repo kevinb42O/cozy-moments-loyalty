@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     root: path.resolve(__dirname),
+    publicDir: path.resolve(__dirname, 'business/public'),
     cacheDir: path.resolve(__dirname, '.vite-cache/business'),
     build: {
       outDir: path.resolve(__dirname, 'dist/business'),

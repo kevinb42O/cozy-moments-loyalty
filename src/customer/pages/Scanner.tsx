@@ -13,6 +13,32 @@ interface ScanResult {
   claimedType?: CardType;
 }
 
+function playSuccessChime() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const notes = [
+      { freq: 880, start: 0,    duration: 0.18 },
+      { freq: 1320, start: 0.16, duration: 0.28 },
+    ];
+    notes.forEach(({ freq, start, duration }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      gain.gain.setValueAtTime(0, ctx.currentTime + start);
+      gain.gain.linearRampToValueAtTime(0.28, ctx.currentTime + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    });
+    setTimeout(() => ctx.close(), 800);
+  } catch {
+    // Audio not supported — silent fail
+  }
+}
+
 function getDeviceInstructions(): { browser: string; steps: string[] } {
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua);
@@ -196,6 +222,7 @@ export const Scanner: React.FC = () => {
 
               stopAndClear().then(() => {
                 claimReward(currentCustomer.id, cardType).then(() => {
+                  playSuccessChime();
                   setScanResult({ type: 'redeem', claimedType: cardType });
                   setScanned(true);
                   setTimeout(() => navigate('/rewards'), 2500);
@@ -216,6 +243,7 @@ export const Scanner: React.FC = () => {
                   wine: payload.wine,
                   beer: payload.beer,
                 }).then(result => {
+                  playSuccessChime();
                   setScanResult({ type: 'add', earned: result.earned });
                   setScanned(true);
                   setTimeout(() => navigate('/dashboard'), 2500);

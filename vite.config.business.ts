@@ -2,10 +2,12 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import path from 'path';
+import fs from 'fs';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const outDir = path.resolve(__dirname, 'dist/business');
   return {
     plugins: [
       {
@@ -17,6 +19,14 @@ export default defineConfig(({ mode }) => {
             }
             next();
           });
+        },
+        // After build: promote business/index.html to dist/business/index.html
+        closeBundle() {
+          const nested = path.join(outDir, 'business', 'index.html');
+          const target = path.join(outDir, 'index.html');
+          if (fs.existsSync(nested) && !fs.existsSync(target)) {
+            fs.copyFileSync(nested, target);
+          }
         },
       },
       react(),

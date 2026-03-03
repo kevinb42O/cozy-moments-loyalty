@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Mail } from 'lucide-react';
+import { Mail, X, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../shared/store/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const LoginPage: React.FC = () => {
   const { loginWithGoogle, loginWithEmail } = useAuth();
@@ -11,6 +11,7 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [error, setError] = useState('');
+  const [showTerms, setShowTerms] = useState(false);
 
   const handleGoogle = async () => {
     setLoading('google');
@@ -33,6 +34,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
+    <>
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[var(--color-cozy-bg)]">
       {/* WebaanZee credit — fixed bottom right */}
       <a
@@ -162,7 +164,13 @@ export const LoginPage: React.FC = () => {
         )}
 
         <p className="text-center text-xs text-gray-400 mt-8">
-          Door in te loggen ga je akkoord met onze voorwaarden
+          Door in te loggen ga je akkoord met onze{' '}
+          <button
+            onClick={() => setShowTerms(true)}
+            className="underline text-[var(--color-cozy-coffee)] hover:opacity-80 transition-opacity"
+          >
+            voorwaarden
+          </button>
         </p>
         <div className="text-center mt-4">
           <a
@@ -176,5 +184,201 @@ export const LoginPage: React.FC = () => {
         </div>
       </motion.div>
     </div>
+
+      {/* ─── GDPR Terms Modal ───────────────────────────────── */}
+      <AnimatePresence>
+        {showTerms && (
+          <motion.div
+            key="terms-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6"
+            onClick={() => setShowTerms(false)}
+          >
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
+                <div>
+                  <h2 className="font-display font-bold text-lg text-[var(--color-cozy-text)]">Gebruiksvoorwaarden &amp; Privacybeleid</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Cozy Moments — Digitale Spaarkaart</p>
+                </div>
+                <button
+                  onClick={() => setShowTerms(false)}
+                  className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors flex-shrink-0 ml-4"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Scroll hint */}
+              <div className="flex items-center justify-center gap-1 py-2 text-gray-300 flex-shrink-0">
+                <ChevronDown size={14} />
+                <span className="text-[10px] uppercase tracking-widest">Scroll om alles te lezen</span>
+                <ChevronDown size={14} />
+              </div>
+
+              {/* Content */}
+              <div className="overflow-y-auto px-6 pb-8 flex-1 text-sm text-gray-600 space-y-6 leading-relaxed">
+
+                <p className="text-xs text-gray-400 italic">Versie 1.0 — van kracht vanaf 3 maart 2026 &nbsp;|&nbsp; Onderneming: Cozy Moments</p>
+
+                {/* 1 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">1. Verwerkingsverantwoordelijke</h3>
+                  <p>
+                    De verwerkingsverantwoordelijke in de zin van de Algemene Verordening Gegevensbescherming (AVG / GDPR, EU 2016/679) is:
+                  </p>
+                  <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs">
+                    <strong>Cozy Moments</strong><br />
+                    Gevestigd in België<br />
+                    E-mail: <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline">info@cozy-moments.be</a><br />
+                    Website: <a href="https://www.cozy-moments.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline">www.cozy-moments.be</a>
+                  </p>
+                </section>
+
+                {/* 2 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">2. Welke gegevens verwerken wij?</h3>
+                  <p>Via de digitale spaarkaart verwerken wij de volgende persoonsgegevens:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li>Naam (voornaam en/of familienaam)</li>
+                    <li>E-mailadres</li>
+                    <li>Google-accountinformatie (enkel bij aanmelding via Google: profielnaam en e-mailadres)</li>
+                    <li>Spaarpunten en beloningshistoriek (koffie, wijn, bier)</li>
+                    <li>Datum en tijdstip van aanmaak van het account</li>
+                    <li>Technische gegevens: IP-adres, browsertype en sessie-informatie (verkregen via Supabase Auth)</li>
+                  </ul>
+                </section>
+
+                {/* 3 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">3. Doeleinden en rechtsgronden van verwerking</h3>
+                  <div className="space-y-3">
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <p className="font-semibold text-[var(--color-cozy-text)] text-xs uppercase tracking-wide mb-1">Uitvoering van de overeenkomst (art. 6.1.b AVG)</p>
+                      <p>Het beheren van uw digitale spaarkaart, het registreren van consumptie-stempels en het toekennen van gratis consumpties als beloning.</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <p className="font-semibold text-[var(--color-cozy-text)] text-xs uppercase tracking-wide mb-1">Gerechtvaardigd belang (art. 6.1.f AVG)</p>
+                      <p>Het beveiligen en verbeteren van onze digitale diensten, het voorkomen van misbruik en het bijhouden van statistieken over het gebruik van het spaarprogramma.</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <p className="font-semibold text-[var(--color-cozy-text)] text-xs uppercase tracking-wide mb-1">Toestemming (art. 6.1.a AVG) — Direct marketing</p>
+                      <p>
+                        Door gebruik te maken van de digitale spaarkaart en in te loggen, geeft u toestemming dat Cozy Moments uw e-mailadres mag gebruiken om u occasioneel te informeren over:
+                      </p>
+                      <ul className="list-disc pl-5 mt-2 space-y-1">
+                        <li>Promoties en kortingsacties</li>
+                        <li>Nieuwe producten of seizoensaanbiedingen</li>
+                        <li>Updates aan het spaarprogramma</li>
+                        <li>Uitnodigingen voor evenementen</li>
+                      </ul>
+                      <p className="mt-2 text-xs text-gray-500">
+                        U kunt deze toestemming te allen tijde intrekken door te klikken op de afmeldlink in elke e-mail die wij u sturen, of door ons te contacteren via <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline">info@cozy-moments.be</a>. Het intrekken van toestemming heeft geen invloed op de rechtmatigheid van de verwerking vóór de intrekking.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 4 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">4. Bewaartermijnen</h3>
+                  <p>Uw persoonsgegevens worden niet langer bewaard dan noodzakelijk voor de doeleinden waarvoor ze zijn verzameld:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li><strong>Accountgegevens en spaarpunten:</strong> zolang uw account actief is, en tot maximaal 3 jaar na uw laatste aanmelding.</li>
+                    <li><strong>Marketing-communicatie:</strong> tot u uw toestemming intrekt.</li>
+                    <li><strong>Technische logingegevens:</strong> maximaal 12 maanden.</li>
+                  </ul>
+                  <p className="mt-2">Na afloop van de bewaartermijn worden uw gegevens veilig gewist of anoniem gemaakt.</p>
+                </section>
+
+                {/* 5 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">5. Doorgifte aan derden</h3>
+                  <p>Wij geven uw persoonsgegevens niet door aan derden voor commerciële doeleinden zonder uw uitdrukkelijke toestemming. Wij maken gebruik van de volgende verwerkers:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li><strong>Supabase Inc.</strong> (VS) — opslag van gebruikersgegevens en authenticatie, met passende waarborgen conform de AVG (Standard Contractual Clauses).</li>
+                    <li><strong>Google LLC</strong> — optionele aanmelding via Google OAuth. Raadpleeg het <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline">privacybeleid van Google</a>.</li>
+                    <li><strong>Vercel Inc.</strong> — hosting van de webapplicatie.</li>
+                  </ul>
+                  <p className="mt-2">Al onze verwerkers zijn contractueel gebonden aan strikte geheimhoudings- en beveiligingsvereisten.</p>
+                </section>
+
+                {/* 6 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">6. Uw rechten als betrokkene</h3>
+                  <p>Op grond van de AVG heeft u de volgende rechten:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li><strong>Recht op inzage (art. 15 AVG):</strong> u kunt opvragen welke gegevens wij van u verwerken.</li>
+                    <li><strong>Recht op rectificatie (art. 16 AVG):</strong> u kunt onjuiste gegevens laten corrigeren.</li>
+                    <li><strong>Recht op gegevenswissing (art. 17 AVG):</strong> u kunt vragen uw account en gegevens volledig te verwijderen.</li>
+                    <li><strong>Recht op beperking van verwerking (art. 18 AVG).</strong></li>
+                    <li><strong>Recht op gegevensoverdraagbaarheid (art. 20 AVG):</strong> u kunt uw gegevens in een machineleesbaar formaat opvragen.</li>
+                    <li><strong>Recht van bezwaar (art. 21 AVG):</strong> u kunt bezwaar maken tegen verwerking op basis van gerechtvaardigd belang, in het bijzonder tegen direct marketing.</li>
+                    <li><strong>Recht op intrekking van toestemming (art. 7.3 AVG):</strong> u kunt uw toestemming voor marketing te allen tijde intrekken.</li>
+                  </ul>
+                  <p className="mt-2">
+                    Om een van bovenstaande rechten uit te oefenen, stuurt u een e-mail naar <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline">info@cozy-moments.be</a>. Wij behandelen uw verzoek binnen de wettelijke termijn van 30 kalenderdagen.
+                  </p>
+                </section>
+
+                {/* 7 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">7. Klachtenrecht</h3>
+                  <p>
+                    Indien u van mening bent dat uw persoonsgegevens onrechtmatig worden verwerkt, heeft u het recht om een klacht in te dienen bij de bevoegde toezichthoudende autoriteit in België:
+                  </p>
+                  <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs">
+                    <strong>Gegevensbeschermingsautoriteit (GBA)</strong><br />
+                    Drukpersstraat 35, 1000 Brussel<br />
+                    <a href="https://www.gegevensbeschermingsautoriteit.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline">www.gegevensbeschermingsautoriteit.be</a><br />
+                    Tel: +32 2 274 48 00
+                  </p>
+                </section>
+
+                {/* 8 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">8. Beveiliging</h3>
+                  <p>
+                    Cozy Moments neemt passende technische en organisatorische maatregelen om uw persoonsgegevens te beschermen tegen ongeoorloofde toegang, verlies, vernietiging of openbaarmaking. Hierbij maken wij gebruik van versleutelde verbindingen (HTTPS/TLS), veilige authenticatiemethoden en beperkte toegangsrechten.
+                  </p>
+                </section>
+
+                {/* 9 */}
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">9. Wijzigingen aan dit beleid</h3>
+                  <p>
+                    Wij behouden ons het recht voor dit privacybeleid te allen tijde te wijzigen. Bij wezenlijke wijzigingen zullen wij u hiervan op de hoogte stellen via de app of per e-mail. De meest recente versie is steeds beschikbaar in de applicatie.
+                  </p>
+                </section>
+
+                <p className="text-xs text-gray-400 pt-4 border-t border-gray-100">
+                  Door gebruik te maken van de digitale spaarkaart van Cozy Moments bevestigt u deze voorwaarden gelezen en begrepen te hebben.
+                </p>
+              </div>
+
+              {/* Footer button */}
+              <div className="px-6 py-5 border-t border-gray-100 flex-shrink-0">
+                <button
+                  onClick={() => setShowTerms(false)}
+                  className="w-full bg-[var(--color-cozy-coffee)] text-white rounded-2xl py-4 font-display font-bold text-sm hover:opacity-90 transition-opacity"
+                >
+                  Begrepen, sluiten
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };

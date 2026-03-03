@@ -28,11 +28,17 @@ function unlockAudio() {
   } catch { /* ignore */ }
 }
 
-function playSuccessChime() {
+async function playSuccessChime() {
   try {
+    // If no context yet, try creating one (last-resort — may be blocked on iOS without gesture)
+    if (!unlockedAudioCtx || unlockedAudioCtx.state === 'closed') {
+      unlockedAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
     const ctx = unlockedAudioCtx;
-    if (!ctx || ctx.state === 'closed') return;
-    if (ctx.state === 'suspended') { ctx.resume(); }
+    // MUST await resume — stopping the camera stream can suspend the context on iOS
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
     const notes = [
       { freq: 880,  start: 0,    duration: 0.18 },
       { freq: 1320, start: 0.16, duration: 0.30 },

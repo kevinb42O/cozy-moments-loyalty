@@ -30,6 +30,7 @@ interface LoyaltyContextType {
   addConsumptions: (customerId: string, consumptions: Record<CardType, number>) => Promise<AddResult>;
   claimReward: (customerId: string, type: CardType) => Promise<boolean>;
   upsertCustomer: (id: string, name: string, email: string) => Promise<void>;
+  refreshCustomers: () => Promise<void>;
 }
 
 const emptyCards = (): Record<CardType, number> => ({ coffee: 0, wine: 0, beer: 0 });
@@ -62,6 +63,17 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (SUPABASE_READY && supabase) {
       fetchFromSupabase();
+
+      // Realtime subscription — any insert/update/delete on customers table
+      // will trigger a fresh fetch so both admin and customer views stay current.
+      const channel = supabase!
+        .channel('customers-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => {
+          fetchFromSupabase();
+        })
+        .subscribe();
+
+      return () => { supabase!.removeChannel(channel); };
     } else {
       loadFromLocalStorage();
     }
@@ -186,11 +198,17 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const currentCustomer = customers.find(c => c.id === currentCustomerId) ?? null;
 
+  const refreshCustomers = useCallback(async () => {
+    if (SUPABASE_READY && supabase) {
+      await fetchFromSupabase();
+    }
+  }, []);
+
   return (
     <LoyaltyContext.Provider value={{
       customers, currentCustomer, loading,
       setCurrentCustomer: setCurrentCustomerId,
-      addConsumptions, claimReward, upsertCustomer,
+      addConsumptions, claimReward, upsertCustomer, refreshCustomers,
     }}>
       {children}
     </LoyaltyContext.Provider>

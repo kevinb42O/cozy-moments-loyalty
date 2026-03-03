@@ -12,7 +12,7 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 export const BusinessPage: React.FC = () => {
-  const { customers } = useLoyalty();
+  const { customers, refreshCustomers } = useLoyalty();
   const { logout } = useBusinessAuth();
   const [consumptions, setConsumptions] = useState<Record<CardType, number>>({
     coffee: 0,
@@ -22,6 +22,11 @@ export const BusinessPage: React.FC = () => {
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [view, setView] = useState<'create' | 'customers' | 'redeem'>('create');
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
+
+  // Always fetch fresh data when the customers tab is opened
+  useEffect(() => {
+    if (view === 'customers') refreshCustomers();
+  }, [view]);
 
   const handleIncrement = (type: CardType) => {
     setConsumptions(prev => ({ ...prev, [type]: prev[type] + 1 }));

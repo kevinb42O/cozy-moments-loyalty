@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle } from 'lucide-react';
+import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -313,9 +313,53 @@ export const BusinessPage: React.FC = () => {
 
         {view === 'customers' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <h2 className="text-3xl font-serif font-semibold text-[var(--color-cozy-text)] mb-6">
-              Klanten Overzicht
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-serif font-semibold text-[var(--color-cozy-text)]">
+                Klanten Overzicht
+              </h2>
+              <button
+                onClick={() => {
+                  const now = new Date();
+                  const dateStr = now.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                  const timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+                  const lines: string[] = [
+                    '════════════════════════════════════════════════════',
+                    '         COZY MOMENTS — KLANTENEXPORT',
+                    `         ${dateStr} om ${timeStr}`,
+                    '════════════════════════════════════════════════════',
+                    '',
+                    `Totaal aantal klanten: ${customers.length}`,
+                    '',
+                  ];
+                  customers.forEach((c, i) => {
+                    lines.push('────────────────────────────────────────');
+                    lines.push(`${i + 1}. ${c.name}`);
+                    lines.push(`   E-mail:  ${c.email || '—'}`);
+                    lines.push(`   Stempels:  ☕ ${c.cards.coffee}/10  |  🍷 ${c.cards.wine}/10  |  🍺 ${c.cards.beer}/10`);
+                    lines.push(`   Beloningen: ☕ ${c.rewards.coffee || 0}  |  🍷 ${c.rewards.wine || 0}  |  🍺 ${c.rewards.beer || 0}`);
+                    lines.push(`   Ingewisseld: ☕ ${c.claimedRewards?.coffee || 0}  |  🍷 ${c.claimedRewards?.wine || 0}  |  🍺 ${c.claimedRewards?.beer || 0}`);
+                    lines.push('');
+                  });
+                  lines.push('────────────────────────────────────────');
+                  lines.push('');
+                  lines.push('Geëxporteerd door Cozy Moments Loyalty');
+
+                  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `cozy-moments-klanten-${now.toISOString().slice(0,10)}.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-2 bg-white border border-gray-200 rounded-full py-2 px-4 text-sm font-medium text-[var(--color-cozy-text)] shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+              >
+                <Download size={16} />
+                Export
+              </button>
+            </div>
             
             {customers.map(customer => {
               const isExpanded = expandedCustomer === customer.id;
@@ -331,6 +375,7 @@ export const BusinessPage: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-serif font-semibold text-lg">{customer.name}</h3>
+                      <p className="text-xs text-gray-400 truncate">{customer.email}</p>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-xs text-gray-400">☕ {customer.cards.coffee}/10</span>
                         <span className="text-xs text-gray-400">🍷 {customer.cards.wine}/10</span>
@@ -358,7 +403,13 @@ export const BusinessPage: React.FC = () => {
                         className="overflow-hidden"
                       >
                         <div className="px-5 pb-5 border-t border-gray-50">
-                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Stempelkaart</p>
+                          {/* Email */}
+                          <div className="flex items-center gap-2 mt-4 mb-4 bg-gray-50 rounded-xl px-4 py-3">
+                            <Mail size={16} className="text-gray-400 flex-shrink-0" />
+                            <span className="text-sm text-gray-600 break-all">{customer.email || 'Geen e-mail beschikbaar'}</span>
+                          </div>
+
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Stempelkaart</p>
                           <div className="grid grid-cols-3 gap-2">
                             <div className="bg-[#e8dcc8]/30 rounded-xl p-3 flex flex-col items-center">
                               <Coffee size={20} className="text-[var(--color-cozy-coffee)] mb-1" />

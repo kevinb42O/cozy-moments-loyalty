@@ -16,7 +16,7 @@ const IMAGES = {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const IDLE_TIMEOUT = 60_000;       // 60s before screensaver activates
-const SCENE_DURATION = 10_000;     // 10s per scene
+const SCENE_DURATION = 18_000;     // 18s per scene
 const TOTAL_SCENES = 5;
 
 // ── Ken Burns keyframes (random-ish per render to avoid burn-in) ─────────────
@@ -31,72 +31,6 @@ const kenBurnsVariants = (seed: number) => {
       transition: { duration: SCENE_DURATION / 1000, ease: 'linear' },
     },
   };
-};
-
-// ── Scene 0: cozy1 + cozy2 dynamic combo ─────────────────────────────────────
-const Scene0: React.FC<{ idx: number }> = ({ idx }) => {
-  const kb1 = kenBurnsVariants(idx);
-  const kb2 = kenBurnsVariants(idx + 3);
-  return (
-    <div className="absolute inset-0 bg-white overflow-hidden">
-      {/* cozy1 — top half, slight rotation, Ken Burns */}
-      <motion.div
-        className="absolute inset-0"
-        initial={{ opacity: 0, y: -40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.2, ease: 'easeOut' }}
-      >
-        <motion.img
-          src={IMAGES.cozy1}
-          alt=""
-          className="absolute top-0 left-0 w-[110%] h-[58%] object-cover rounded-b-[48px] shadow-2xl"
-          style={{ rotate: '-1.5deg', marginLeft: '-5%' }}
-          {...kb1}
-        />
-      </motion.div>
-
-      {/* cozy2 — bottom half, overlaps slightly, opposite rotation */}
-      <motion.div
-        className="absolute inset-0"
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
-      >
-        <motion.img
-          src={IMAGES.cozy2}
-          alt=""
-          className="absolute bottom-0 right-0 w-[105%] h-[52%] object-cover rounded-t-[48px] shadow-2xl"
-          style={{ rotate: '1deg', marginRight: '-3%' }}
-          {...kb2}
-        />
-      </motion.div>
-
-      {/* Subtle center glow overlay */}
-      <div className="absolute inset-0 pointer-events-none bg-radial-[at_50%_50%] from-white/30 via-transparent to-transparent" />
-    </div>
-  );
-};
-
-// ── Scene 1: cozy3 full-screen scroll top→bottom ─────────────────────────────
-const Scene1: React.FC<{ idx: number }> = ({ idx }) => {
-  const kb = kenBurnsVariants(idx + 1);
-  return (
-    <div className="absolute inset-0 bg-white overflow-hidden">
-      <motion.div
-        className="absolute inset-0"
-        initial={{ y: '-30%' }}
-        animate={{ y: '0%' }}
-        transition={{ duration: SCENE_DURATION / 1000, ease: [0.25, 0.1, 0.25, 1] }}
-      >
-        <motion.img
-          src={IMAGES.cozy3}
-          alt=""
-          className="w-full h-[130%] object-cover"
-          {...kb}
-        />
-      </motion.div>
-    </div>
-  );
 };
 
 // ── Dual-slide scene: two images slide in from opposite sides ────────────────
@@ -145,23 +79,43 @@ const DualSlideScene: React.FC<{
   );
 };
 
-// ── Scene 2: cozy4 + cozy5 ──────────────────────────────────────────────────
-const Scene2: React.FC<{ idx: number }> = ({ idx }) => (
-  <DualSlideScene leftImg={IMAGES.cozy4} rightImg={IMAGES.cozy5} idx={idx} />
-);
+// ── Single-image scroll scene: one large image slowly pans across ────────────
+const SingleScrollScene: React.FC<{ img: string; idx: number }> = ({ img, idx }) => {
+  const kb = kenBurnsVariants(idx + 3);
+  return (
+    <div className="absolute inset-0 bg-white overflow-hidden">
+      <motion.div
+        className="absolute inset-[-10%] w-[120%] h-[120%]"
+        initial={{ x: '5%', y: '5%' }}
+        animate={{ x: '-5%', y: '-3%' }}
+        transition={{ duration: SCENE_DURATION / 1000, ease: 'linear' }}
+      >
+        <motion.img
+          src={img}
+          alt=""
+          className="w-full h-full object-cover"
+          {...kb}
+        />
+      </motion.div>
+    </div>
+  );
+};
 
-// ── Scene 3: cozy6 + cozy7 ──────────────────────────────────────────────────
-const Scene3: React.FC<{ idx: number }> = ({ idx }) => (
-  <DualSlideScene leftImg={IMAGES.cozy6} rightImg={IMAGES.cozy7} idx={idx} />
-);
-
-// ── Scene 4: cozy8 + cozy9 ──────────────────────────────────────────────────
-const Scene4: React.FC<{ idx: number }> = ({ idx }) => (
-  <DualSlideScene leftImg={IMAGES.cozy8} rightImg={IMAGES.cozy9} idx={idx} />
-);
+// ── Scene list: dual-slide pairs + single-scroll for cozy3 ──────────────────
+const SCENES: React.FC<{ idx: number }>[] = [
+  // Scene 0: cozy1 + cozy2 — dual slide (same style as scenes 2-4)
+  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy1} rightImg={IMAGES.cozy2} idx={idx} />,
+  // Scene 1: cozy3 — single image scroll
+  ({ idx }) => <SingleScrollScene img={IMAGES.cozy3} idx={idx} />,
+  // Scene 2: cozy5 + cozy6
+  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy5} rightImg={IMAGES.cozy6} idx={idx} />,
+  // Scene 3: cozy7 + cozy8
+  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy7} rightImg={IMAGES.cozy8} idx={idx} />,
+  // Scene 4: cozy9 + cozy4
+  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy9} rightImg={IMAGES.cozy4} idx={idx} />,
+];
 
 // ── Scene renderer ───────────────────────────────────────────────────────────
-const SCENES = [Scene0, Scene1, Scene2, Scene3, Scene4];
 
 const SceneRenderer: React.FC<{ sceneIndex: number; loopCount: number }> = ({ sceneIndex, loopCount }) => {
   const SceneComponent = SCENES[sceneIndex % TOTAL_SCENES];

@@ -12,10 +12,10 @@ const IMAGES = {
   cozy7: '/cozy7.png',
   cozy8: '/cozy8.png',
   cozy9: '/cozy9.png',
-  cozy10: '/cozy10.png',
-  cozy11: '/cozy11.png',
-  cozy12: '/cozy12.png',
-  cozy13: '/cozy13.png',
+  cozy10: '/cozy10.jpg',
+  cozy11: '/cozy11.jpg',
+  cozy12: '/cozy12.jpg',
+  cozy13: '/cozy13.jpg',
 };
 
 // ── Config ───────────────────────────────────────────────────────────────────

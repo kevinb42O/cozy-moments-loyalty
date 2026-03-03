@@ -13,12 +13,29 @@ interface ScanResult {
   claimedType?: CardType;
 }
 
+// Module-level AudioContext that gets unlocked on user tap and reused for chimes.
+// Mobile browsers (iOS/Android) block AudioContext unless created during a user gesture.
+let unlockedAudioCtx: AudioContext | null = null;
+
+function unlockAudio() {
+  try {
+    if (!unlockedAudioCtx || unlockedAudioCtx.state === 'closed') {
+      unlockedAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (unlockedAudioCtx.state === 'suspended') {
+      unlockedAudioCtx.resume();
+    }
+  } catch { /* ignore */ }
+}
+
 function playSuccessChime() {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = unlockedAudioCtx;
+    if (!ctx || ctx.state === 'closed') return;
+    if (ctx.state === 'suspended') { ctx.resume(); }
     const notes = [
-      { freq: 880, start: 0,    duration: 0.18 },
-      { freq: 1320, start: 0.16, duration: 0.28 },
+      { freq: 880,  start: 0,    duration: 0.18 },
+      { freq: 1320, start: 0.16, duration: 0.30 },
     ];
     notes.forEach(({ freq, start, duration }) => {
       const osc = ctx.createOscillator();
@@ -28,15 +45,12 @@ function playSuccessChime() {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
       gain.gain.setValueAtTime(0, ctx.currentTime + start);
-      gain.gain.linearRampToValueAtTime(0.28, ctx.currentTime + start + 0.02);
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + start + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
       osc.start(ctx.currentTime + start);
       osc.stop(ctx.currentTime + start + duration);
     });
-    setTimeout(() => ctx.close(), 800);
-  } catch {
-    // Audio not supported — silent fail
-  }
+  } catch { /* ignore */ }
 }
 
 function getDeviceInstructions(): { browser: string; steps: string[] } {
@@ -115,31 +129,50 @@ export const Scanner: React.FC = () => {
   const isRunningRef = useRef(false);
   const startingRef = useRef(false);
 
-  // Check if camera permission was already granted/denied before asking
+  // Unlock AudioContext on the very first interaction with this page
+  // (needed for returning users who auto-start camera via sessionStorage)
   useEffect(() => {
-    if (!window.isSecureContext) {
-      setPermission('unavailable');
+    const handler = () => { unlockAudio(); };
+    window.addEventListener('touchstart', handler, { once: true, passive: true });
+    window.addEventListener('click', handler, { once: true, passive: true });
+    return () => {
+      window.removeEventListener('touchstart', handler);
+      window.removeEventListener('click', handler);
+    };
+  }, []);
+
+  // Check if camera permission was already granted/denied before asking.
+  // We use sessionStorage as primary fallback because navigator.permissions
+  // is unreliable on iOS Safari and throws on many Android browsers.
+  useEffect(() => {
+    if (!window.isSecureContext) { setPermission('unavailable'); return; }
+    if (!navigator.mediaDevices?.getUserMedia) { setPermission('unavailable'); return; }
+
+    // If we already granted in this session, skip the idle screen entirely
+    if (sessionStorage.getItem('camera-granted') === '1') {
+      setPermission('granted');
       return;
     }
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setPermission('unavailable');
-      return;
-    }
+
+    // Try the permissions API as a secondary check
     if ('permissions' in navigator) {
-      navigator.permissions.query({ name: 'camera' as PermissionName }).then(result => {
-        if (result.state === 'granted') {
-          setPermission('granted');
-        } else if (result.state === 'denied') {
-          setPermission('denied');
-        }
-        // 'prompt' → stay on idle, user needs to tap the button
-      }).catch(() => {
-        // permissions API not supported, stay idle
-      });
+      navigator.permissions
+        .query({ name: 'camera' as PermissionName })
+        .then(result => {
+          if (result.state === 'granted') {
+            sessionStorage.setItem('camera-granted', '1');
+            setPermission('granted');
+          } else if (result.state === 'denied') {
+            setPermission('denied');
+          }
+        })
+        .catch(() => { /* not supported — stay on idle */ });
     }
   }, []);
 
-  // Reliably stop + clear the scanner and wipe the #reader div
+  // Reliably stop + clear the scanner and fully recreate the #reader DOM node.
+  // Simply wiping innerHTML is not enough — Html5Qrcode keeps internal state
+  // tied to the element ID, so we replace the node entirely.
   const stopAndClear = useCallback(async () => {
     const instance = scannerRef.current;
     if (instance) {
@@ -149,30 +182,33 @@ export const Scanner: React.FC = () => {
           isRunningRef.current = false;
         }
         await instance.clear();
-      } catch {
-        // ignore cleanup errors
-      }
+      } catch { /* ignore */ }
       scannerRef.current = null;
     }
-    // Also wipe the DOM node so Html5Qrcode gets a clean slate next time
+    // Replace the #reader node entirely so Html5Qrcode starts completely fresh
     const el = document.getElementById('reader');
-    if (el) el.innerHTML = '';
+    if (el && el.parentNode) {
+      const fresh = document.createElement('div');
+      fresh.id = 'reader';
+      fresh.className = el.className;
+      el.parentNode.replaceChild(fresh, el);
+    }
   }, []);
 
   const startCamera = useCallback(async () => {
+    // Unlock AudioContext NOW — this is the user gesture, so iOS/Android will allow it
+    unlockAudio();
     setPermission('requesting');
     let stream: MediaStream | null = null;
     try {
-      // First explicitly request permission so browser shows the native dialog
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     } catch {
       setPermission('denied');
       return;
     }
-    // Stop the probe stream immediately — the QR scanner will open its own
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-    }
+    // Stop the probe stream — the QR scanner will open its own
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    sessionStorage.setItem('camera-granted', '1');
     setPermission('granted');
   }, []);
 

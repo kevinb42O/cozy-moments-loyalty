@@ -151,7 +151,7 @@ export const BusinessPage: React.FC = () => {
                   className={cn(
                     "w-full mt-8 rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 transition-all",
                     totalConsumptions > 0 
-                      ? "bg-[#1a1a1a] text-white hover:bg-[#333] active:scale-[0.98]" 
+                      ? "bg-white/60 backdrop-blur-md border border-white/80 text-[var(--color-cozy-text)] active:scale-[0.98]" 
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   )}
                 >

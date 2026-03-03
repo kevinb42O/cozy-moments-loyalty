@@ -74,7 +74,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
                 <Check className={cn("w-5 h-5", config.activeText)} strokeWidth={3} />
               ) : isFree ? (
                 <span className={cn("font-serif font-bold text-lg", config.color)}>
-                  Free
+                  Gratis
                 </span>
               ) : (
                 <Icon className={cn("w-5 h-5 opacity-30", config.color)} />

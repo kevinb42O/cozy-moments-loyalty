@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -20,8 +20,11 @@ export const BusinessPage: React.FC = () => {
     beer: 0,
   });
   const [qrPayload, setQrPayload] = useState<string | null>(null);
+  const [qrScanned, setQrScanned] = useState(false);
   const [view, setView] = useState<'create' | 'customers' | 'redeem'>('create');
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
+  // Snapshot of customers when a QR is generated — used to detect when it gets scanned
+  const customersSnapshotRef = useRef<string>('');
 
   // Always fetch fresh data when the customers tab is opened
   useEffect(() => {
@@ -38,7 +41,7 @@ export const BusinessPage: React.FC = () => {
 
   const generateQR = () => {
     if (consumptions.coffee === 0 && consumptions.wine === 0 && consumptions.beer === 0) return;
-    
+    customersSnapshotRef.current = JSON.stringify(customers);
     const payload = {
       ...consumptions,
       txId: Math.random().toString(36).substring(7),
@@ -50,6 +53,8 @@ export const BusinessPage: React.FC = () => {
   const reset = () => {
     setConsumptions({ coffee: 0, wine: 0, beer: 0 });
     setQrPayload(null);
+    setQrScanned(false);
+    customersSnapshotRef.current = '';
   };
 
   // Auto-reset QR after 60 seconds so it can't be reused
@@ -58,6 +63,24 @@ export const BusinessPage: React.FC = () => {
     const t = setTimeout(() => reset(), 60_000);
     return () => clearTimeout(t);
   }, [qrPayload]);
+
+  // Detect when a QR has been scanned: customers data changes while QR is displayed.
+  // This is triggered by the Supabase Realtime subscription (or direct setState for localStorage).
+  useEffect(() => {
+    if (!qrPayload || qrScanned || !customersSnapshotRef.current) return;
+    const current = JSON.stringify(customers);
+    if (current !== customersSnapshotRef.current) {
+      // QR was scanned — show confirmation then auto-close
+      setQrScanned(true);
+      const t = setTimeout(() => {
+        setConsumptions({ coffee: 0, wine: 0, beer: 0 });
+        setQrPayload(null);
+        setQrScanned(false);
+        customersSnapshotRef.current = '';
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [customers]);
 
   const totalConsumptions = consumptions.coffee + consumptions.wine + consumptions.beer;
 
@@ -177,6 +200,19 @@ export const BusinessPage: React.FC = () => {
                   </AnimatePresence>
                 </motion.button>
               </div>
+            ) : qrScanned ? (
+              <motion.div
+                key="scanned-create"
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex flex-col items-center justify-center py-12 text-center"
+              >
+                <div className="w-24 h-24 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center mb-6">
+                  <CheckCircle size={48} className="text-green-500" />
+                </div>
+                <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">QR gescand!</h3>
+                <p className="text-gray-500">Transactie verwerkt — scherm sluit automatisch</p>
+              </motion.div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8">
                 <div className="bg-white p-8 rounded-[40px] shadow-xl mb-8">
@@ -314,6 +350,7 @@ export const BusinessPage: React.FC = () => {
                       <button
                         key={type}
                         onClick={() => {
+                          customersSnapshotRef.current = JSON.stringify(customers);
                           const payload = {
                             type: 'redeem',
                             cardType: type,
@@ -335,6 +372,19 @@ export const BusinessPage: React.FC = () => {
                   })}
                 </div>
               </div>
+            ) : qrScanned ? (
+              <motion.div
+                key="scanned-redeem"
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex flex-col items-center justify-center py-12 text-center"
+              >
+                <div className="w-24 h-24 bg-green-50 border-2 border-green-200 rounded-full flex items-center justify-center mb-6">
+                  <CheckCircle size={48} className="text-green-500" />
+                </div>
+                <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">QR gescand!</h3>
+                <p className="text-gray-500">Beloning ingewisseld — scherm sluit automatisch</p>
+              </motion.div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8">
                 <div className="bg-white p-8 rounded-[40px] shadow-xl mb-8">

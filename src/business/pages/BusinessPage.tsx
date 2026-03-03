@@ -334,10 +334,10 @@ export const BusinessPage: React.FC = () => {
                   customers.forEach((c, i) => {
                     lines.push('────────────────────────────────────────');
                     lines.push(`${i + 1}. ${c.name}`);
-                    lines.push(`   E-mail:  ${c.email || '—'}`);
-                    lines.push(`   Stempels:  ☕ ${c.cards.coffee}/10  |  🍷 ${c.cards.wine}/10  |  🍺 ${c.cards.beer}/10`);
-                    lines.push(`   Beloningen: ☕ ${c.rewards.coffee || 0}  |  🍷 ${c.rewards.wine || 0}  |  🍺 ${c.rewards.beer || 0}`);
-                    lines.push(`   Ingewisseld: ☕ ${c.claimedRewards?.coffee || 0}  |  🍷 ${c.claimedRewards?.wine || 0}  |  🍺 ${c.claimedRewards?.beer || 0}`);
+                    lines.push(`   E-mail:      ${c.email || '—'}`);
+                    lines.push(`   Stempels:    Koffie: ${c.cards.coffee}/10  |  Wijn: ${c.cards.wine}/10  |  Bier: ${c.cards.beer}/10`);
+                    lines.push(`   Beloningen:  Koffie: ${c.rewards.coffee || 0}  |  Wijn: ${c.rewards.wine || 0}  |  Bier: ${c.rewards.beer || 0}`);
+                    lines.push(`   Ingewisseld: Koffie: ${c.claimedRewards?.coffee || 0}  |  Wijn: ${c.claimedRewards?.wine || 0}  |  Bier: ${c.claimedRewards?.beer || 0}`);
                     lines.push('');
                   });
                   lines.push('────────────────────────────────────────');
@@ -368,24 +368,34 @@ export const BusinessPage: React.FC = () => {
                   {/* Header row — always visible, tap to expand */}
                   <button
                     onClick={() => setExpandedCustomer(isExpanded ? null : customer.id)}
-                    className="w-full flex items-center gap-4 p-5 text-left active:bg-gray-50 transition-colors"
+                    className="w-full flex items-center gap-5 p-5 text-left active:bg-gray-50 transition-colors"
                   >
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-serif font-bold text-xl flex-shrink-0">
+                    <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-serif font-bold text-2xl flex-shrink-0">
                       {customer.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-serif font-semibold text-lg">{customer.name}</h3>
-                      <p className="text-xs text-gray-400 truncate">{customer.email}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-xs text-gray-400">☕ {customer.cards.coffee}/10</span>
-                        <span className="text-xs text-gray-400">🍷 {customer.cards.wine}/10</span>
-                        <span className="text-xs text-gray-400">🍺 {customer.cards.beer}/10</span>
+                      <h3 className="font-serif font-semibold text-lg leading-tight">{customer.name}</h3>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{customer.email}</p>
+                    </div>
+                    {/* Large stamp counters — fill the whitespace */}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="flex flex-col items-center bg-[#e8dcc8]/30 rounded-2xl px-4 py-2 min-w-[72px]">
+                        <Coffee size={18} className="text-[var(--color-cozy-coffee)] mb-0.5" />
+                        <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.coffee}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                      </div>
+                      <div className="flex flex-col items-center bg-[#f0d8dc]/30 rounded-2xl px-4 py-2 min-w-[72px]">
+                        <Wine size={18} className="text-[var(--color-cozy-wine)] mb-0.5" />
+                        <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.wine}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                      </div>
+                      <div className="flex flex-col items-center bg-[#fcf4d9]/30 rounded-2xl px-4 py-2 min-w-[72px]">
+                        <Beer size={18} className="text-[var(--color-cozy-beer)] mb-0.5" />
+                        <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.beer}<span className="text-xs font-normal text-gray-400">/10</span></span>
                       </div>
                     </div>
                     <motion.div
                       animate={{ rotate: isExpanded ? 180 : 0 }}
                       transition={{ duration: 0.25 }}
-                      className="flex-shrink-0 text-gray-400"
+                      className="flex-shrink-0 text-gray-400 ml-1"
                     >
                       <ChevronDown size={18} />
                     </motion.div>

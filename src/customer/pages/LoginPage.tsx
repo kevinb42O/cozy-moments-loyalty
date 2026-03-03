@@ -1,30 +1,35 @@
 import React, { useState } from 'react';
-import { Coffee } from 'lucide-react';
+import { Coffee, Mail } from 'lucide-react';
 import { useAuth } from '../../shared/store/AuthContext';
 import { motion } from 'framer-motion';
 
 export const LoginPage: React.FC = () => {
-  const { loginWithGoogle, loginWithFacebook, loginWithEmail } = useAuth();
+  const { loginWithGoogle, loginWithEmail } = useAuth();
   const [showEmail, setShowEmail] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
+  const [error, setError] = useState('');
 
   const handleGoogle = async () => {
     setLoading('google');
     await loginWithGoogle();
   };
 
-  const handleFacebook = async () => {
-    setLoading('facebook');
-    await loginWithFacebook();
-  };
-
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !name.trim()) return;
     setLoading('email');
-    await loginWithEmail(email.trim(), name.trim());
+    setError('');
+    try {
+      await loginWithEmail(email.trim(), name.trim());
+      setEmailSent(true);
+    } catch (err: any) {
+      setError('Er ging iets mis. Probeer opnieuw.');
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
@@ -65,19 +70,6 @@ export const LoginPage: React.FC = () => {
               {loading === 'google' ? 'Bezig...' : 'Doorgaan met Google'}
             </span>
           </button>
-
-          <button
-            onClick={handleFacebook}
-            disabled={loading !== null}
-            className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-2xl py-4 px-5 shadow-sm flex items-center gap-4 transition-all disabled:opacity-60"
-          >
-            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="white">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-            <span className="font-medium text-sm">
-              {loading === 'facebook' ? 'Bezig...' : 'Doorgaan met Facebook'}
-            </span>
-          </button>
         </div>
 
         {/* Divider */}
@@ -88,7 +80,27 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Email option */}
-        {!showEmail ? (
+        {emailSent ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center"
+          >
+            <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Mail size={24} className="text-green-600" />
+            </div>
+            <p className="font-medium text-[var(--color-cozy-text)] mb-1">Check je inbox!</p>
+            <p className="text-sm text-gray-500">
+              We stuurden een inloglink naar <strong>{email}</strong>. Klik op de link in de e-mail om in te loggen.
+            </p>
+            <button
+              onClick={() => { setEmailSent(false); setEmail(''); setName(''); }}
+              className="mt-4 text-xs text-gray-400 underline"
+            >
+              Ander e-mailadres gebruiken
+            </button>
+          </motion.div>
+        ) : !showEmail ? (
           <button
             onClick={() => setShowEmail(true)}
             className="w-full bg-white hover:bg-gray-50 text-[var(--color-cozy-text)] rounded-2xl py-4 px-5 shadow-sm text-sm font-medium transition-all border border-gray-100"
@@ -118,12 +130,13 @@ export const LoginPage: React.FC = () => {
               required
               className="w-full bg-white rounded-2xl py-4 px-5 border border-gray-200 focus:border-[var(--color-cozy-coffee)] focus:outline-none text-sm transition-colors"
             />
+            {error && <p className="text-red-500 text-xs px-1">{error}</p>}
             <button
               type="submit"
               disabled={loading !== null || !email.trim() || !name.trim()}
               className="w-full bg-[var(--color-cozy-coffee)] text-white rounded-2xl py-4 px-5 font-medium text-sm hover:opacity-90 transition-all disabled:opacity-50"
             >
-              {loading === 'email' ? 'Bezig...' : 'Account aanmaken & inloggen'}
+              {loading === 'email' ? 'Bezig...' : 'Stuur inloglink'}
             </button>
           </motion.form>
         )}

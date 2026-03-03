@@ -103,17 +103,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [persistUser]);
 
-  // ── Email / password (signup or login) ───────────────────────────────────
+  // ── Email magic link ─────────────────────────────────────────────────────
   const loginWithEmail = useCallback(async (email: string, name: string) => {
     if (SUPABASE_READY && supabase) {
-      // Try login first; if no account exists, sign up
-      const { error: signInErr } = await supabase!.auth.signInWithPassword({ email, password: email });
-      if (signInErr) {
-        await supabase!.auth.signUp({
-          email, password: email,
-          options: { data: { display_name: name } },
-        });
-      }
+      // Store name so CustomerSync can use it after the magic link redirect
+      localStorage.setItem('cozy-pending-name', name);
+      const { error } = await supabase!.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+          data: { display_name: name, full_name: name },
+          emailRedirectTo: window.location.origin + '/dashboard',
+        },
+      });
+      if (error) throw error;
     } else {
       persistUser({ id: "e_" + Math.random().toString(36).slice(2, 9), name, email, provider: "email" });
     }
@@ -141,9 +144,13 @@ export const useAuth = () => {
 // ── helpers ──────────────────────────────────────────────────────────────────
 function sessionToUser(u: any): AuthUser {
   const meta = u.user_metadata ?? {};
+  // For magic link users, fall back to the name stored before redirect
+  const pendingName = localStorage.getItem('cozy-pending-name');
+  const resolvedName = meta.full_name ?? meta.name ?? meta.display_name ?? pendingName ?? u.email?.split("@")[0] ?? "Gebruiker";
+  if (pendingName) localStorage.removeItem('cozy-pending-name');
   return {
     id: u.id,
-    name: meta.full_name ?? meta.name ?? meta.display_name ?? u.email?.split("@")[0] ?? "Gebruiker",
+    name: resolvedName,
     email: u.email ?? "",
     avatar: meta.avatar_url,
     provider: (u.app_metadata?.provider ?? "email") as AuthUser["provider"],

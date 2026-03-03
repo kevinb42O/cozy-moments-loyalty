@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Coffee, Wine, Beer, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
@@ -9,6 +9,46 @@ import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
+}
+
+// ── Admin audio chime (same Web Audio approach as Scanner) ────────────────────
+let adminAudioCtx: AudioContext | null = null;
+
+function unlockAdminAudio() {
+  try {
+    if (!adminAudioCtx || adminAudioCtx.state === 'closed') {
+      adminAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (adminAudioCtx.state === 'suspended') adminAudioCtx.resume();
+  } catch { /* ignore */ }
+}
+
+async function playAdminChime() {
+  try {
+    if (!adminAudioCtx || adminAudioCtx.state === 'closed') {
+      adminAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (adminAudioCtx.state === 'suspended') await adminAudioCtx.resume();
+    const ctx = adminAudioCtx;
+    const notes = [
+      { freq: 660,  start: 0,    duration: 0.18 },
+      { freq: 880,  start: 0.15, duration: 0.18 },
+      { freq: 1100, start: 0.30, duration: 0.30 },
+    ];
+    notes.forEach(({ freq, start, duration }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      gain.gain.setValueAtTime(0, ctx.currentTime + start);
+      gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    });
+  } catch { /* ignore */ }
 }
 
 export const BusinessPage: React.FC = () => {
@@ -25,6 +65,17 @@ export const BusinessPage: React.FC = () => {
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
   // Snapshot of customers when a QR is generated — used to detect when it gets scanned
   const customersSnapshotRef = useRef<string>('');
+
+  // Unlock AudioContext on first tap (needed on iOS/Android)
+  useEffect(() => {
+    const handler = () => unlockAdminAudio();
+    window.addEventListener('touchstart', handler, { once: true, passive: true });
+    window.addEventListener('click', handler, { once: true, passive: true });
+    return () => {
+      window.removeEventListener('touchstart', handler);
+      window.removeEventListener('click', handler);
+    };
+  }, []);
 
   // Always fetch fresh data when the customers tab is opened
   useEffect(() => {
@@ -57,30 +108,49 @@ export const BusinessPage: React.FC = () => {
     customersSnapshotRef.current = '';
   };
 
-  // Auto-reset QR after 60 seconds so it can't be reused
+  // ── QR scan detection ──────────────────────────────────────────────────────
+  // Strategy 1: React to customers state change (Supabase Realtime fires → fetchFromSupabase → new customers)
+  // Strategy 2: Poll every 3 seconds while QR is shown (fallback if Realtime not enabled in Supabase dashboard)
+  const checkScanned = useCallback(() => {
+    if (!qrPayload || qrScanned || !customersSnapshotRef.current) return;
+    const current = JSON.stringify(customers);
+    if (current !== customersSnapshotRef.current) {
+      setQrScanned(true);
+      playAdminChime();
+    }
+  }, [qrPayload, qrScanned, customers]);
+
+  // Fires whenever customers state changes (Realtime path)
+  useEffect(() => { checkScanned(); }, [customers]);
+
+  // Poll every 3s as fallback
+  useEffect(() => {
+    if (!qrPayload || qrScanned) return;
+    const interval = setInterval(async () => {
+      await refreshCustomers();
+      // checkScanned will run via the [customers] effect after state updates
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [qrPayload, qrScanned]);
+
+  // Once scanned — auto-close after 2 seconds
+  useEffect(() => {
+    if (!qrScanned) return;
+    const t = setTimeout(() => {
+      setConsumptions({ coffee: 0, wine: 0, beer: 0 });
+      setQrPayload(null);
+      setQrScanned(false);
+      customersSnapshotRef.current = '';
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [qrScanned]);
+
+  // Auto-reset QR after 60 seconds (hard safety net)
   useEffect(() => {
     if (!qrPayload) return;
     const t = setTimeout(() => reset(), 60_000);
     return () => clearTimeout(t);
   }, [qrPayload]);
-
-  // Detect when a QR has been scanned: customers data changes while QR is displayed.
-  // This is triggered by the Supabase Realtime subscription (or direct setState for localStorage).
-  useEffect(() => {
-    if (!qrPayload || qrScanned || !customersSnapshotRef.current) return;
-    const current = JSON.stringify(customers);
-    if (current !== customersSnapshotRef.current) {
-      // QR was scanned — show confirmation then auto-close
-      setQrScanned(true);
-      const t = setTimeout(() => {
-        setConsumptions({ coffee: 0, wine: 0, beer: 0 });
-        setQrPayload(null);
-        setQrScanned(false);
-        customersSnapshotRef.current = '';
-      }, 2000);
-      return () => clearTimeout(t);
-    }
-  }, [customers]);
 
   const totalConsumptions = consumptions.coffee + consumptions.wine + consumptions.beer;
 

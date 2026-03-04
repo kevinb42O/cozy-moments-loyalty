@@ -33,11 +33,11 @@ export const CustomerPage: React.FC = () => {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="sticky top-0 z-10 mb-5 px-5 py-4"
         style={{
-          background: 'rgba(245,245,240,0.68)',
-          backdropFilter: 'blur(32px) saturate(190%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(190%)',
-          borderBottom: '1px solid rgba(255,255,255,0.5)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.85)',
+          background: 'rgba(245,245,240,0.42)',
+          backdropFilter: 'blur(48px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(48px) saturate(200%)',
+          borderBottom: '1px solid rgba(255,255,255,0.45)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)',
           borderRadius: '0 0 32px 32px',
         }}
       >

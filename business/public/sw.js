@@ -1,5 +1,5 @@
 // Cozy Moments — Business/Admin Service Worker
-const CACHE_NAME = 'cozy-moments-admin-v2';
+const CACHE_NAME = 'cozy-moments-admin-v3';
 const OFFLINE_URL = '/';
 
 // Assets to pre-cache

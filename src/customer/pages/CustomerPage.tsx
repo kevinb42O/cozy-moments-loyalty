@@ -31,7 +31,7 @@ export const CustomerPage: React.FC = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="sticky top-0 z-10 mb-5 px-5 py-4"
+        className="sticky top-0 z-50 mb-5 px-5 py-4"
         style={{
           background: 'rgba(245,245,240,0.42)',
           backdropFilter: 'blur(48px) saturate(200%)',

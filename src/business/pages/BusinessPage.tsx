@@ -450,37 +450,55 @@ export const BusinessPage: React.FC = () => {
                   {/* Header row — always visible, tap to expand */}
                   <button
                     onClick={() => setExpandedCustomer(isExpanded ? null : customer.id)}
-                    className="w-full flex items-center gap-5 p-5 text-left active:bg-gray-50 transition-colors"
+                    className="w-full p-4 md:p-5 text-left active:bg-gray-50 transition-colors"
                   >
-                    <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-serif font-bold text-2xl flex-shrink-0">
-                      {customer.name.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-serif font-semibold text-lg leading-tight">{customer.name}</h3>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{customer.email}</p>
-                    </div>
-                    {/* Large stamp counters — fill the whitespace */}
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <div className="flex flex-col items-center bg-[#e8dcc8]/30 rounded-2xl px-4 py-2 min-w-[72px]">
-                        <Coffee size={18} className="text-[var(--color-cozy-coffee)] mb-0.5" />
-                        <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.coffee}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                    {/* Top: avatar + name + chevron (always one row) */}
+                    <div className="flex items-center gap-3 md:gap-5">
+                      <div className="w-11 h-11 md:w-14 md:h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-serif font-bold text-xl md:text-2xl flex-shrink-0">
+                        {customer.name.charAt(0)}
                       </div>
-                      <div className="flex flex-col items-center bg-[#f0d8dc]/30 rounded-2xl px-4 py-2 min-w-[72px]">
-                        <Wine size={18} className="text-[var(--color-cozy-wine)] mb-0.5" />
-                        <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.wine}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-serif font-semibold text-base md:text-lg leading-tight truncate">{customer.name}</h3>
+                        <p className="text-xs text-gray-400 truncate mt-0.5">{customer.email}</p>
                       </div>
-                      <div className="flex flex-col items-center bg-[#fcf4d9]/30 rounded-2xl px-4 py-2 min-w-[72px]">
-                        <Beer size={18} className="text-[var(--color-cozy-beer)] mb-0.5" />
-                        <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.beer}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                      {/* Desktop: stamp counters inline */}
+                      <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+                        <div className="flex flex-col items-center bg-[#e8dcc8]/30 rounded-2xl px-4 py-2 min-w-[72px]">
+                          <Coffee size={18} className="text-[var(--color-cozy-coffee)] mb-0.5" />
+                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.coffee}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                        </div>
+                        <div className="flex flex-col items-center bg-[#f0d8dc]/30 rounded-2xl px-4 py-2 min-w-[72px]">
+                          <Wine size={18} className="text-[var(--color-cozy-wine)] mb-0.5" />
+                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.wine}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                        </div>
+                        <div className="flex flex-col items-center bg-[#fcf4d9]/30 rounded-2xl px-4 py-2 min-w-[72px]">
+                          <Beer size={18} className="text-[var(--color-cozy-beer)] mb-0.5" />
+                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.beer}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                        </div>
+                      </div>
+                      <motion.div
+                        animate={{ rotate: isExpanded ? 180 : 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="flex-shrink-0 text-gray-400 ml-1"
+                      >
+                        <ChevronDown size={18} />
+                      </motion.div>
+                    </div>
+                    {/* Mobile: stamp counters below name */}
+                    <div className="flex md:hidden items-center gap-2 mt-3 ml-14">
+                      <div className="flex-1 flex flex-col items-center bg-[#e8dcc8]/30 rounded-xl py-1.5">
+                        <Coffee size={14} className="text-[var(--color-cozy-coffee)] mb-0.5" />
+                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.coffee}<span className="text-[10px] font-normal text-gray-400">/10</span></span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center bg-[#f0d8dc]/30 rounded-xl py-1.5">
+                        <Wine size={14} className="text-[var(--color-cozy-wine)] mb-0.5" />
+                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.wine}<span className="text-[10px] font-normal text-gray-400">/10</span></span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center bg-[#fcf4d9]/30 rounded-xl py-1.5">
+                        <Beer size={14} className="text-[var(--color-cozy-beer)] mb-0.5" />
+                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.beer}<span className="text-[10px] font-normal text-gray-400">/10</span></span>
                       </div>
                     </div>
-                    <motion.div
-                      animate={{ rotate: isExpanded ? 180 : 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="flex-shrink-0 text-gray-400 ml-1"
-                    >
-                      <ChevronDown size={18} />
-                    </motion.div>
                   </button>
 
                   {/* Collapsible detail */}

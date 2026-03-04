@@ -5,6 +5,7 @@ import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { Screensaver } from '../components/Screensaver';
+import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -111,7 +112,7 @@ export const BusinessPage: React.FC = () => {
     setConsumptions(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }));
   };
 
-  const generateQR = () => {
+  const generateQR = async () => {
     if (consumptions.coffee === 0 && consumptions.wine === 0 && consumptions.beer === 0) return;
     customersSnapshotRef.current = JSON.stringify(customers);
     const payload = {
@@ -119,7 +120,7 @@ export const BusinessPage: React.FC = () => {
       txId: Math.random().toString(36).substring(7),
       timestamp: Date.now()
     };
-    setQrPayload(JSON.stringify(payload));
+    setQrPayload(await signQrPayload(payload));
   };
 
   const reset = () => {
@@ -684,7 +685,7 @@ export const BusinessPage: React.FC = () => {
                     return (
                       <button
                         key={type}
-                        onClick={() => {
+                        onClick={async () => {
                           customersSnapshotRef.current = JSON.stringify(customers);
                           const payload = {
                             type: 'redeem',
@@ -692,7 +693,7 @@ export const BusinessPage: React.FC = () => {
                             txId: Math.random().toString(36).substring(7),
                             timestamp: Date.now(),
                           };
-                          setQrPayload(JSON.stringify(payload));
+                          setQrPayload(await signQrPayload(payload));
                         }}
                         className="w-full bg-white rounded-[24px] p-5 shadow-sm flex items-center gap-4 hover:bg-gray-50 active:scale-[0.98] transition-all overflow-hidden"
                       >

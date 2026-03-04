@@ -40,15 +40,15 @@ export const AdminLoginPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm p-8 space-y-5">
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Login
+              E-mail
             </label>
             <input
-              type="text"
-              autoComplete="username"
+              type="email"
+              autoComplete="email"
               required
               value={values.login}
               onChange={e => setValues(v => ({ ...v, login: e.target.value }))}
-              placeholder="Gebruikersnaam"
+              placeholder="admin@cozy-moments.be"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)] transition"
             />
           </div>

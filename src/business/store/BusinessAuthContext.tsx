@@ -1,9 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase, SUPABASE_READY } from '../../shared/lib/supabase';
 
-// Admin credentials — in production these will come from Supabase Auth.
-// For now they are hardcoded so the app works offline / before Supabase is wired.
-const ADMIN_LOGIN = 'sixtine2026';
-const ADMIN_PASSWORD = 'sixtine2026';
+// Admin email(s) — set VITE_ADMIN_EMAILS in .env.local (comma-separated)
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS as string || '')
+  .split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+
+// Local dev fallback password — set VITE_ADMIN_PASSWORD in .env.local
+const DEV_ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD as string || '';
+
 const STORAGE_KEY = 'cozy-admin-session';
 
 interface BusinessAuthContextType {
@@ -22,31 +26,77 @@ export const BusinessAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(STORAGE_KEY);
-    if (saved === 'true') setIsAdmin(true);
-    setIsLoading(false);
+    if (SUPABASE_READY && supabase) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session?.user) {
+          const email = data.session.user.email?.toLowerCase() || '';
+          if (ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(email)) {
+            setIsAdmin(true);
+          }
+        }
+        setIsLoading(false);
+      });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_OUT') {
+          setIsAdmin(false);
+        }
+      });
+
+      return () => { subscription.unsubscribe(); };
+    } else {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved === 'true') setIsAdmin(true);
+      setIsLoading(false);
+    }
   }, []);
 
-  const login = useCallback(async (login: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setLoginError(null);
-    // Simulate a tiny async check (replace with Supabase signInWithPassword later)
-    await new Promise(r => setTimeout(r, 400));
-    if (login === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
-      sessionStorage.setItem(STORAGE_KEY, 'true');
+
+    if (SUPABASE_READY && supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setLoginError('Ongeldige inloggegevens.');
+        return false;
+      }
+      const userEmail = data.user?.email?.toLowerCase() || '';
+      if (ADMIN_EMAILS.length > 0 && !ADMIN_EMAILS.includes(userEmail)) {
+        await supabase.auth.signOut();
+        setLoginError('Dit account heeft geen admin-rechten.');
+        return false;
+      }
       setIsAdmin(true);
       return true;
+    } else {
+      // Local dev fallback
+      if (!DEV_ADMIN_PASSWORD) {
+        setLoginError('Configureer VITE_ADMIN_PASSWORD in .env.local');
+        return false;
+      }
+      await new Promise(r => setTimeout(r, 400));
+      if (password === DEV_ADMIN_PASSWORD) {
+        sessionStorage.setItem(STORAGE_KEY, 'true');
+        setIsAdmin(true);
+        return true;
+      }
+      setLoginError('Ongeldige inloggegevens.');
+      return false;
     }
-    setLoginError('Ongeldige inloggegevens.');
-    return false;
   }, []);
 
   const logout = useCallback(() => {
+    if (SUPABASE_READY && supabase) supabase.auth.signOut();
     sessionStorage.removeItem(STORAGE_KEY);
     setIsAdmin(false);
   }, []);
 
+  const value = useMemo(() => ({
+    isAdmin, isLoading, loginError, login, logout,
+  }), [isAdmin, isLoading, loginError, login, logout]);
+
   return (
-    <BusinessAuthContext.Provider value={{ isAdmin, isLoading, loginError, login, logout }}>
+    <BusinessAuthContext.Provider value={value}>
       {children}
     </BusinessAuthContext.Provider>
   );

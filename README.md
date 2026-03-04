@@ -14,7 +14,7 @@ npm run dev:customer   # https://localhost:3000
 npm run dev:business   # https://localhost:3001
 ```
 
-**Admin login:** `sixtine2026` / `sixtine2026`
+**Admin login:** Configure via `.env.local` — see "Admin setup" section below
 
 > Without Supabase keys in `.env.local`, the app uses localStorage automatically.
 
@@ -66,13 +66,30 @@ Redirect URLs: https://your-customer-app.vercel.app/**
 
 ---
 
-## Admin credentials
+## Admin setup
 
-| Login | Password |
-|---|---|
-| `sixtine2026` | `sixtine2026` |
+### With Supabase (production)
+1. Create a user in Supabase: **Authentication → Users → Add User** (email + password)
+2. Add the email to your `.env.local`:
+   ```env
+   VITE_ADMIN_EMAILS=admin@cozy-moments.be
+   ```
+3. Add the email to the `admin_users` table (SQL Editor):
+   ```sql
+   INSERT INTO admin_users (email) VALUES ('admin@cozy-moments.be');
+   ```
 
-Change in: `src/business/store/BusinessAuthContext.tsx` lines 7–8
+### Without Supabase (local development)
+Add to `.env.local`:
+```env
+VITE_ADMIN_PASSWORD=your-dev-password
+```
+
+### QR code security
+Generate a secret and add to `.env.local` (same key in both Vercel projects):
+```env
+VITE_QR_SECRET=$(openssl rand -hex 32)
+```
 
 ---
 

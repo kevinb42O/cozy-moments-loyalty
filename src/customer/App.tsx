@@ -1,11 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../shared/store/AuthContext';
 import { LoyaltyProvider, useLoyalty } from '../shared/store/LoyaltyContext';
-import { LoginPage } from './pages/LoginPage';
-import { CustomerPage } from './pages/CustomerPage';
-import { Scanner } from './pages/Scanner';
-import { RewardsPage } from './pages/RewardsPage';
+
+// Code-split: each page is loaded only when visited
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const CustomerPage = lazy(() => import('./pages/CustomerPage').then(m => ({ default: m.CustomerPage })));
+const Scanner = lazy(() => import('./pages/Scanner').then(m => ({ default: m.Scanner })));
+const RewardsPage = lazy(() => import('./pages/RewardsPage').then(m => ({ default: m.RewardsPage })));
+
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-[var(--color-cozy-bg)]">
+    <div className="animate-pulse text-[var(--color-cozy-coffee)] font-serif text-xl">Laden...</div>
+  </div>
+);
 
 // Auto-create/select customer row when user signs in
 const CustomerSync: React.FC = () => {
@@ -53,13 +61,15 @@ export default function App() {
       <LoyaltyProvider>
         <BrowserRouter>
           <CustomerSync />
-          <Routes>
-            <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
-            <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
-            <Route path="/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
+              <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
+              <Route path="/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </LoyaltyProvider>
     </AuthProvider>

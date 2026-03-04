@@ -43,14 +43,41 @@ CREATE POLICY "Customers: insert own row"
   ON public.customers FOR INSERT
   WITH CHECK (auth.uid()::text = id);
 
--- 3. Business panel: anon key can read AND update all customers
+-- 3. Admin access — only authenticated admin users can read/modify all customers
+
+-- Step 1: Admin users table (add admin emails via SQL Editor)
+CREATE TABLE IF NOT EXISTS public.admin_users (
+  email TEXT PRIMARY KEY
+);
+
+ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
+-- No public RLS policies = table locked from client API.
+-- Only the SECURITY DEFINER function below can read it.
+
+-- Step 2: Helper function that checks if the current user is an admin
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.admin_users
+    WHERE email = (auth.jwt() ->> 'email')
+  );
+$$;
+
+-- Step 3: Admin policies (replace the old USING(true) policies)
 CREATE POLICY "Admin: read all customers"
   ON public.customers FOR SELECT
-  USING (true);
+  USING (is_admin());
 
 CREATE POLICY "Admin: update all customers"
   ON public.customers FOR UPDATE
-  USING (true);
+  USING (is_admin());
+
+-- ⚠️  IMPORTANT: After running this schema, add your admin email:
+--    INSERT INTO admin_users (email) VALUES ('your-admin@email.com');
 
 -- 4. Indexes
 CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);

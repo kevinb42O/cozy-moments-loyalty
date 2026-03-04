@@ -32,7 +32,7 @@ const kenBurnsVariants = (seed: number) => {
     animate: {
       scale: [1, 1.15],
       transformOrigin: origin,
-      transition: { duration: SCENE_DURATION / 1000, ease: 'linear' },
+      transition: { duration: SCENE_DURATION / 1000, ease: 'linear' as const },
     },
   };
 };

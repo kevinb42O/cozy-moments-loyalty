@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ArrowLeft, CheckCircle, Camera, RefreshCw, Gift } from 'lucide-react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
+import { verifyQrPayload } from '../../shared/lib/qr-crypto';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type PermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'unavailable';
@@ -268,8 +269,12 @@ export const Scanner: React.FC = () => {
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 240, height: 240 }, disableFlip: false },
           (decodedText) => {
-            try {
-              const payload = JSON.parse(decodedText);
+            verifyQrPayload(decodedText).then(({ valid, payload, error: verifyError }) => {
+              if (!valid) {
+                setScanError(verifyError || 'Ongeldige QR code');
+                setTimeout(() => setScanError(null), 3000);
+                return;
+              }
 
               if (!currentCustomer) {
                 setScanError('Geen klant geselecteerd');
@@ -311,9 +316,9 @@ export const Scanner: React.FC = () => {
               ) {
                 stopAndClear().then(() => {
                   addConsumptions(currentCustomer.id, {
-                    coffee: payload.coffee,
-                    wine: payload.wine,
-                    beer: payload.beer,
+                    coffee: payload.coffee as number,
+                    wine: payload.wine as number,
+                    beer: payload.beer as number,
                   }).then(result => {
                     playSuccessChime();
                     setScanResult({ type: 'add', earned: result.earned });
@@ -325,10 +330,10 @@ export const Scanner: React.FC = () => {
                 setScanError('Ongeldige QR code — probeer opnieuw');
                 setTimeout(() => setScanError(null), 3000);
               }
-            } catch {
+            }).catch(() => {
               setScanError('Ongeldige QR code — probeer opnieuw');
               setTimeout(() => setScanError(null), 3000);
-            }
+            });
           },
           () => { /* ignore per-frame errors */ }
         );

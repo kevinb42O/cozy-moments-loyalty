@@ -26,12 +26,20 @@ export const CustomerPage: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">
-      {/* Header */}
+      {/* Header — premium glassmorphism */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="bg-white/70 backdrop-blur-xl px-5 py-4 rounded-b-[32px] shadow-[0_4px_30px_rgba(0,0,0,0.06)] mb-5 sticky top-0 z-10 border-b border-white/50"
+        className="sticky top-0 z-10 mb-5 px-5 py-4"
+        style={{
+          background: 'rgba(245,245,240,0.68)',
+          backdropFilter: 'blur(32px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+          borderBottom: '1px solid rgba(255,255,255,0.5)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.85)',
+          borderRadius: '0 0 32px 32px',
+        }}
       >
         <div className="flex items-center justify-between">
           <button onClick={logout} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 transition-colors" title="Uitloggen">

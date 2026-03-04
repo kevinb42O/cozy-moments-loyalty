@@ -164,7 +164,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
                   </motion.div>
                 ) : isFree ? (
                   <span style={{ color: config.emptyBorder }} className="font-display font-bold text-[8px] leading-none text-center px-0.5">
-                    FREE
+                    Gratis
                   </span>
                 ) : (
                   <Icon className="w-3 h-3" style={{ color: config.emptyBorder }} />

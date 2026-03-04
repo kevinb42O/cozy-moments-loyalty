@@ -109,12 +109,11 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, isActive 
 
   return (
     <div
-      className="relative w-full h-full rounded-[28px] overflow-hidden select-none"
+      className="relative w-full rounded-[28px] overflow-hidden select-none"
       style={{
         background: `linear-gradient(135deg, ${config.gradientFrom} 0%, ${config.gradientTo} 100%)`,
-        boxShadow: isActive
-          ? '0 20px 60px -12px rgba(0,0,0,0.3), 0 8px 20px -6px rgba(0,0,0,0.15)'
-          : '0 8px 30px -8px rgba(0,0,0,0.12)',
+        aspectRatio: '1.58 / 1',
+        boxShadow: '0 20px 60px -12px rgba(0,0,0,0.25), 0 8px 20px -6px rgba(0,0,0,0.12)',
       }}
     >
       {/* Glass overlay */}
@@ -135,68 +134,66 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, isActive 
       />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col justify-between h-full p-6">
+      <div className="relative z-10 flex flex-col justify-between h-full p-5">
         {/* Header */}
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div
-              className="w-12 h-12 rounded-full flex items-center justify-center"
+              className="w-10 h-10 rounded-full flex items-center justify-center"
               style={{ background: 'rgba(255,255,255,0.2)' }}
             >
-              <Icon className="w-6 h-6 text-white/90" />
+              <Icon className="w-5 h-5 text-white/90" />
             </div>
             <div>
-              <h3 className="text-xl font-display font-bold text-white leading-tight">
+              <h3 className="text-lg font-display font-bold text-white leading-tight">
                 {config.title} Kaart
               </h3>
-              <p className="text-xs text-white/50 font-medium uppercase tracking-widest mt-0.5">
+              <p className="text-[11px] text-white/50 font-medium uppercase tracking-widest mt-0.5">
                 Cozy Moments
               </p>
             </div>
           </div>
           <div
-            className="px-4 py-1.5 rounded-full text-base font-bold text-white"
+            className="px-3 py-1 rounded-full text-sm font-bold text-white"
             style={{ background: 'rgba(255,255,255,0.18)' }}
           >
             {count}/10
           </div>
         </div>
 
-        {/* Stamps grid — grows to fill space */}
-        <div className="flex-1 flex items-center py-4">
-          <div className="grid grid-cols-5 gap-3 w-full">
-            {Array.from({ length: 10 }).map((_, i) => {
-              const isFilled = i < count;
-              const isFree = i === 9;
+        {/* Stamps grid */}
+        <div className="grid grid-cols-5 gap-2.5 my-2">
+          {Array.from({ length: 10 }).map((_, i) => {
+            const isFilled = i < count;
+            const isFree = i === 9;
 
-              return (
-                <motion.div
-                  key={i}
-                  custom={i}
-                  initial="hidden"
-                  animate="visible"
-                  variants={stampVariants}
-                  className="aspect-square rounded-full flex items-center justify-center"
-                  style={{
-                    background: isFilled ? config.stampActiveBg : 'rgba(255,255,255,0.12)',
-                    border: isFilled ? '2.5px solid rgba(255,255,255,0.4)' : '2px solid rgba(255,255,255,0.12)',
-                  }}
-                >
-                  {isFilled ? (
-                    <motion.div custom={i} initial="hidden" animate="visible" variants={checkVariants}>
-                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
-                    </motion.div>
-                  ) : isFree ? (
-                    <span className="font-display font-bold text-[10px] text-white/60 leading-none">
-                      Gratis
-                    </span>
-                  ) : (
-                    <Icon className="w-4 h-4 text-white/20" />
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
+            return (
+              <motion.div
+                key={i}
+                custom={i}
+                initial="hidden"
+                animate="visible"
+                variants={stampVariants}
+                className="aspect-square rounded-full flex items-center justify-center"
+                style={{
+                  background: isFilled ? config.stampActiveBg : 'rgba(255,255,255,0.12)',
+                  border: isFilled ? '2px solid rgba(255,255,255,0.4)' : '1.5px solid rgba(255,255,255,0.12)',
+                }}
+              >
+                {isFilled ? (
+                  <motion.div custom={i} initial="hidden" animate="visible" variants={checkVariants}>
+                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                  </motion.div>
+                ) : isFree ? (
+                  <span className="font-display font-bold text-[9px] text-white/60 leading-none">
+                    Gratis
+                  </span>
+                ) : (
+                  <Icon className="w-3.5 h-3.5 text-white/20" />
+                )}
+              </motion.div>
+            );
+          })}
         </div>
 
         {/* Motivation text */}
@@ -205,7 +202,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, isActive 
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
-          className="text-base text-white/65 font-serif text-center italic leading-tight"
+          className="text-[13px] text-white/65 font-serif text-center italic leading-tight"
         >
           {getMotivationText(count, type)}
         </motion.p>

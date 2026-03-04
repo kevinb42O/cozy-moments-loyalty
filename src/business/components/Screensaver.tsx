@@ -108,22 +108,56 @@ const DualSlideScene: React.FC<{
   );
 };
 
-// ── Single-image scroll scene: one large image slowly pans across ────────────
+// ── Single-image scene: blurred background fill + contained hero with Ken Burns
+// Dynamically handles any aspect ratio — portrait, landscape, square — perfectly.
 const SingleScrollScene: React.FC<{ img: string; idx: number }> = ({ img, idx }) => {
-  const kb = kenBurnsVariants(idx + 3);
+  // Vary pan direction per slide so all 5 single-image slides feel different
+  const panVariants = [
+    { x: ['3%', '-3%'],   y: ['2%', '-2%']  },  // idx 0: right→left, down→up
+    { x: ['-3%', '3%'],  y: ['-2%', '2%']  },  // idx 1: left→right, up→down
+    { x: ['0%', '0%'],   y: ['3%', '-3%']  },  // idx 2: straight up
+    { x: ['3%', '-3%'],  y: ['-2%', '2%']  },  // idx 3: diagonal
+    { x: ['-3%', '3%'],  y: ['2%', '-2%']  },  // idx 4: diagonal opposite
+  ];
+  const pan = panVariants[idx % panVariants.length];
+
   return (
-    <div className="absolute inset-0 bg-white overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden bg-black">
+      {/* ── Blurred background: always fills the screen, handles any aspect ratio ── */}
+      <img
+        src={img}
+        aria-hidden
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: 'scale(1.12)', filter: 'blur(28px) brightness(0.38) saturate(1.5)' }}
+      />
+
+      {/* ── Warm dark gradient overlay for depth ── */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 80% 80% at 50% 50%, transparent 30%, rgba(10,6,4,0.55) 100%)' }}
+      />
+
+      {/* ── Hero image: perfectly contained, dynamic Ken Burns pan ── */}
       <motion.div
-        className="absolute inset-[-10%] w-[120%] h-[120%]"
-        initial={{ x: '5%', y: '5%' }}
-        animate={{ x: '-5%', y: '-3%' }}
+        className="absolute inset-0 flex items-center justify-center"
+        style={{ padding: '4vh 4vw' }}
+        initial={{ scale: 1, x: pan.x[0], y: pan.y[0] }}
+        animate={{ scale: 1.07, x: pan.x[1], y: pan.y[1] }}
         transition={{ duration: SCENE_DURATION / 1000, ease: 'linear' }}
       >
-        <motion.img
+        <img
           src={img}
           alt=""
-          className="w-full h-full object-cover"
-          {...kb}
+          style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'contain',
+            borderRadius: '24px',
+            boxShadow: '0 32px 80px rgba(0,0,0,0.65), 0 8px 24px rgba(0,0,0,0.4)',
+          }}
         />
       </motion.div>
     </div>

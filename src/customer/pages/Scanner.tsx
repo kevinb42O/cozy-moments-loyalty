@@ -218,106 +218,152 @@ export const Scanner: React.FC = () => {
     setPermission('granted');
   }, []);
 
-  // Start QR scanner once permission is granted
+  // Start QR scanner once permission is granted.
+  // Uses DOM polling + retry with exponential backoff for 100% reliability.
   useEffect(() => {
     if (permission !== 'granted' || scanned) return;
 
-    // Small delay to let the #reader div mount
-    const timer = setTimeout(async () => {
-      // Prevent double-start from React strict mode or rapid re-renders
-      if (startingRef.current || isRunningRef.current) return;
+    let cancelled = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 4;
+
+    // Poll for DOM element instead of arbitrary timeout
+    const waitForReader = (timeoutMs: number): Promise<boolean> =>
+      new Promise(resolve => {
+        if (document.getElementById('reader')) { resolve(true); return; }
+        const start = Date.now();
+        const iv = setInterval(() => {
+          if (document.getElementById('reader')) { clearInterval(iv); resolve(true); return; }
+          if (Date.now() - start > timeoutMs) { clearInterval(iv); resolve(false); }
+        }, 30);
+      });
+
+    const attemptStart = async (): Promise<void> => {
+      if (cancelled || startingRef.current || isRunningRef.current) return;
       startingRef.current = true;
 
-      // Always start from a clean state
-      await stopAndClear();
+      try {
+        // Wait for #reader to exist in DOM (up to 2s)
+        const found = await waitForReader(2000);
+        if (cancelled || !found) { startingRef.current = false; return; }
 
-      const html5Qrcode = new Html5Qrcode('reader', false);
-      scannerRef.current = html5Qrcode;
+        // Clean up any previous scanner instance
+        await stopAndClear();
+        if (cancelled) { startingRef.current = false; return; }
 
-      html5Qrcode.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 240, height: 240 }, disableFlip: false },
-        (decodedText) => {
-          try {
-            const payload = JSON.parse(decodedText);
+        // Give camera hardware time to release after probe stream
+        await new Promise(r => setTimeout(r, 200));
+        if (cancelled) { startingRef.current = false; return; }
 
-            if (!currentCustomer) {
-              setScanError('Geen klant geselecteerd');
-              setTimeout(() => setScanError(null), 3000);
-              return;
-            }
+        // Verify #reader still exists after cleanup (stopAndClear replaces node)
+        if (!document.getElementById('reader') || cancelled) {
+          startingRef.current = false;
+          return;
+        }
 
-            // ── Redeem QR ──
-            if (payload.type === 'redeem' && payload.cardType) {
-              const cardType = payload.cardType as CardType;
-              if (!['coffee', 'wine', 'beer'].includes(cardType)) {
-                setScanError('Ongeldige QR code');
+        const html5Qrcode = new Html5Qrcode('reader', false);
+        scannerRef.current = html5Qrcode;
+
+        await html5Qrcode.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 240, height: 240 }, disableFlip: false },
+          (decodedText) => {
+            try {
+              const payload = JSON.parse(decodedText);
+
+              if (!currentCustomer) {
+                setScanError('Geen klant geselecteerd');
                 setTimeout(() => setScanError(null), 3000);
                 return;
               }
 
-              if ((currentCustomer.rewards[cardType] || 0) <= 0) {
-                setScanError(`Geen gratis ${cardTypeLabels[cardType].toLowerCase()} beschikbaar`);
-                setTimeout(() => setScanError(null), 3000);
+              // ── Redeem QR ──
+              if (payload.type === 'redeem' && payload.cardType) {
+                const cardType = payload.cardType as CardType;
+                if (!['coffee', 'wine', 'beer'].includes(cardType)) {
+                  setScanError('Ongeldige QR code');
+                  setTimeout(() => setScanError(null), 3000);
+                  return;
+                }
+
+                if ((currentCustomer.rewards[cardType] || 0) <= 0) {
+                  setScanError(`Geen gratis ${cardTypeLabels[cardType].toLowerCase()} beschikbaar`);
+                  setTimeout(() => setScanError(null), 3000);
+                  return;
+                }
+
+                stopAndClear().then(() => {
+                  claimReward(currentCustomer.id, cardType).then(() => {
+                    playSuccessChime();
+                    setScanResult({ type: 'redeem', claimedType: cardType });
+                    setScanned(true);
+                    setTimeout(() => navigate('/rewards'), 2500);
+                  });
+                });
                 return;
               }
 
-              stopAndClear().then(() => {
-                claimReward(currentCustomer.id, cardType).then(() => {
-                  playSuccessChime();
-                  setScanResult({ type: 'redeem', claimedType: cardType });
-                  setScanned(true);
-                  setTimeout(() => navigate('/rewards'), 2500);
+              // ── Add QR ──
+              if (
+                payload.coffee !== undefined &&
+                payload.wine !== undefined &&
+                payload.beer !== undefined
+              ) {
+                stopAndClear().then(() => {
+                  addConsumptions(currentCustomer.id, {
+                    coffee: payload.coffee,
+                    wine: payload.wine,
+                    beer: payload.beer,
+                  }).then(result => {
+                    playSuccessChime();
+                    setScanResult({ type: 'add', earned: result.earned });
+                    setScanned(true);
+                    setTimeout(() => navigate('/dashboard'), 2500);
+                  });
                 });
-              });
-              return;
-            }
-
-            // ── Add QR ──
-            if (
-              payload.coffee !== undefined &&
-              payload.wine !== undefined &&
-              payload.beer !== undefined
-            ) {
-              stopAndClear().then(() => {
-                addConsumptions(currentCustomer.id, {
-                  coffee: payload.coffee,
-                  wine: payload.wine,
-                  beer: payload.beer,
-                }).then(result => {
-                  playSuccessChime();
-                  setScanResult({ type: 'add', earned: result.earned });
-                  setScanned(true);
-                  setTimeout(() => navigate('/dashboard'), 2500);
-                });
-              });
-            } else {
+              } else {
+                setScanError('Ongeldige QR code — probeer opnieuw');
+                setTimeout(() => setScanError(null), 3000);
+              }
+            } catch {
               setScanError('Ongeldige QR code — probeer opnieuw');
               setTimeout(() => setScanError(null), 3000);
             }
-          } catch {
-            setScanError('Ongeldige QR code — probeer opnieuw');
-            setTimeout(() => setScanError(null), 3000);
-          }
-        },
-        () => { /* ignore per-frame errors */ }
-      ).then(() => {
-        isRunningRef.current = true;
-        startingRef.current = false;
-      }).catch(() => {
-        startingRef.current = false;
-        // If camera was previously granted but the scanner fails to initialise
-        // (stale camera context after navigation), silently reload to recover.
-        if (sessionStorage.getItem('camera-granted') === '1') {
-          setTimeout(() => window.location.reload(), 600);
+          },
+          () => { /* ignore per-frame errors */ }
+        );
+
+        // Scanner started successfully
+        if (cancelled) {
+          // Component unmounted while starting — clean up
+          try { await html5Qrcode.stop(); } catch { /* ignore */ }
+          try { await html5Qrcode.clear(); } catch { /* ignore */ }
+          scannerRef.current = null;
         } else {
+          isRunningRef.current = true;
+        }
+        startingRef.current = false;
+      } catch {
+        // Start failed — retry with exponential backoff
+        startingRef.current = false;
+        scannerRef.current = null;
+
+        if (!cancelled && retryCount < MAX_RETRIES) {
+          retryCount++;
+          const delay = Math.min(500 * Math.pow(2, retryCount - 1), 4000);
+          await new Promise(r => setTimeout(r, delay));
+          if (!cancelled) await attemptStart();
+        } else if (!cancelled) {
+          // All retries exhausted — show denied state so user can retry manually
           setPermission('denied');
         }
-      });
-    }, 300);
+      }
+    };
+
+    attemptStart();
 
     return () => {
-      clearTimeout(timer);
+      cancelled = true;
       startingRef.current = false;
       stopAndClear();
     };

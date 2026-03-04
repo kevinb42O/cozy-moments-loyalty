@@ -83,6 +83,7 @@ export const BusinessPage: React.FC = () => {
   const [qrScanned, setQrScanned] = useState(false);
   const [view, setView] = useState<'create' | 'customers' | 'redeem'>('create');
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   // Snapshot of customers when a QR is generated — used to detect when it gets scanned
   const customersSnapshotRef = useRef<string>('');
 
@@ -442,7 +443,47 @@ export const BusinessPage: React.FC = () => {
               </button>
             </div>
             
-            {customers.map(customer => {
+            {/* Search bar */}
+            <div className="relative mb-2">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Zoek op naam of e-mailadres..."
+                className="w-full bg-white border border-gray-200 rounded-2xl pl-11 pr-10 py-3 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)] shadow-sm transition"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-3 flex items-center px-1 text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Customer list */}
+            {(() => {
+              const q = searchQuery.trim().toLowerCase();
+              const filtered = q
+                ? customers.filter(c =>
+                    c.name.toLowerCase().includes(q) ||
+                    (c.email || '').toLowerCase().includes(q)
+                  )
+                : customers;
+              if (filtered.length === 0) return (
+                <p className="text-center text-gray-400 text-sm py-10">
+                  Geen klanten gevonden voor &ldquo;{searchQuery}&rdquo;
+                </p>
+              );
+              return filtered.map(customer => {
               const isExpanded = expandedCustomer === customer.id;
               const stats = calcCustomerStats(customer, Date.now());
               return (
@@ -617,7 +658,8 @@ export const BusinessPage: React.FC = () => {
                   </AnimatePresence>
                 </div>
               );
-            })}
+              }); // end filtered.map
+            })()} 
           </motion.div>
         )}
 

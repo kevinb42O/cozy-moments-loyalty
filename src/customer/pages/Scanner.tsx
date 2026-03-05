@@ -285,7 +285,7 @@ export const Scanner: React.FC = () => {
               // ── Redeem QR ──
               if (payload.type === 'redeem' && payload.cardType) {
                 const cardType = payload.cardType as CardType;
-                if (!['coffee', 'wine', 'beer'].includes(cardType)) {
+                if (!['coffee', 'wine', 'beer', 'soda'].includes(cardType)) {
                   setScanError('Ongeldige QR code');
                   setTimeout(() => setScanError(null), 3000);
                   return;
@@ -319,6 +319,7 @@ export const Scanner: React.FC = () => {
                     coffee: payload.coffee as number,
                     wine: payload.wine as number,
                     beer: payload.beer as number,
+                    soda: (payload.soda as number) || 0,
                   }).then(result => {
                     playSuccessChime();
                     setScanResult({ type: 'add', earned: result.earned });

@@ -22,12 +22,15 @@ export type Database = {
           coffee_stamps: number;
           wine_stamps: number;
           beer_stamps: number;
+          soda_stamps: number;
           coffee_rewards: number;
           wine_rewards: number;
           beer_rewards: number;
+          soda_rewards: number;
           coffee_claimed: number;
           wine_claimed: number;
           beer_claimed: number;
+          soda_claimed: number;
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['customers']['Row'], 'id' | 'created_at'>;

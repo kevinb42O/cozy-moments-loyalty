@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
-export type CardType = 'coffee' | 'wine' | 'beer';
+export type CardType = 'coffee' | 'wine' | 'beer' | 'soda';
 
 export const cardTypeLabels: Record<CardType, string> = {
   coffee: 'Koffie',
   wine: 'Wijn',
   beer: 'Bier',
+  soda: 'Frisdrank',
 };
 
 export interface Customer {
@@ -35,7 +36,7 @@ interface LoyaltyContextType {
   refreshCustomers: () => Promise<void>;
 }
 
-const emptyCards = (): Record<CardType, number> => ({ coffee: 0, wine: 0, beer: 0 });
+const emptyCards = (): Record<CardType, number> => ({ coffee: 0, wine: 0, beer: 0, soda: 0 });
 
 function rowToCustomer(row: any): Customer {
   return {
@@ -43,9 +44,9 @@ function rowToCustomer(row: any): Customer {
     name: row.name,
     email: row.email ?? '',
     createdAt: row.created_at ?? new Date().toISOString(),
-    cards: { coffee: row.coffee_stamps ?? 0, wine: row.wine_stamps ?? 0, beer: row.beer_stamps ?? 0 },
-    rewards: { coffee: row.coffee_rewards ?? 0, wine: row.wine_rewards ?? 0, beer: row.beer_rewards ?? 0 },
-    claimedRewards: { coffee: row.coffee_claimed ?? 0, wine: row.wine_claimed ?? 0, beer: row.beer_claimed ?? 0 },
+    cards: { coffee: row.coffee_stamps ?? 0, wine: row.wine_stamps ?? 0, beer: row.beer_stamps ?? 0, soda: row.soda_stamps ?? 0 },
+    rewards: { coffee: row.coffee_rewards ?? 0, wine: row.wine_rewards ?? 0, beer: row.beer_rewards ?? 0, soda: row.soda_rewards ?? 0 },
+    claimedRewards: { coffee: row.coffee_claimed ?? 0, wine: row.wine_claimed ?? 0, beer: row.beer_claimed ?? 0, soda: row.soda_claimed ?? 0 },
   };
 }
 
@@ -95,9 +96,9 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const upsertCustomer = useCallback(async (id: string, name: string, email: string) => {
     if (!supabase) return;
     await supabase.from('customers').upsert(
-      { id, name, email, coffee_stamps: 0, wine_stamps: 0, beer_stamps: 0,
-        coffee_rewards: 0, wine_rewards: 0, beer_rewards: 0,
-        coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0 },
+      { id, name, email, coffee_stamps: 0, wine_stamps: 0, beer_stamps: 0, soda_stamps: 0,
+        coffee_rewards: 0, wine_rewards: 0, beer_rewards: 0, soda_rewards: 0,
+        coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0 },
       { onConflict: 'id', ignoreDuplicates: true }
     );
     await fetchFromSupabase();
@@ -127,8 +128,8 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     const { error } = await supabase.from('customers').update({
-      coffee_stamps: newCards.coffee, wine_stamps: newCards.wine, beer_stamps: newCards.beer,
-      coffee_rewards: newRewards.coffee, wine_rewards: newRewards.wine, beer_rewards: newRewards.beer,
+      coffee_stamps: newCards.coffee, wine_stamps: newCards.wine, beer_stamps: newCards.beer, soda_stamps: newCards.soda,
+      coffee_rewards: newRewards.coffee, wine_rewards: newRewards.wine, beer_rewards: newRewards.beer, soda_rewards: newRewards.soda,
     }).eq('id', customerId);
 
     if (error) {

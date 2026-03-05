@@ -6,7 +6,7 @@ import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer'];
+const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
 
 export const CustomerPage: React.FC = () => {
   const { currentCustomer } = useLoyalty();
@@ -22,7 +22,7 @@ export const CustomerPage: React.FC = () => {
   if (!currentCustomer) return <div>Laden...</div>;
 
   const displayName = user?.name || currentCustomer.name;
-  const totalRewards = (currentCustomer.rewards?.coffee || 0) + (currentCustomer.rewards?.wine || 0) + (currentCustomer.rewards?.beer || 0);
+  const totalRewards = (currentCustomer.rewards?.coffee || 0) + (currentCustomer.rewards?.wine || 0) + (currentCustomer.rewards?.beer || 0) + (currentCustomer.rewards?.soda || 0);
 
   return (
     <div className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">

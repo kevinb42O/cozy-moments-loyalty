@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Coffee, Wine, Beer, Check } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Check } from 'lucide-react';
 import { CardType } from '../store/LoyaltyContext';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -25,6 +25,7 @@ const cardConfig = {
     emptyBorder: 'rgba(92,64,51,0.22)',
     emptyBg: 'rgba(92,64,51,0.05)',
     shadowColor: 'rgba(92,64,51,0.18)',
+    rewardRule: 'Gratis warme drank (max €5). Premium drank? Kaart = €5 korting!',
   },
   wine: {
     title: 'Wijn Kaart',
@@ -35,6 +36,7 @@ const cardConfig = {
     emptyBorder: 'rgba(114,47,55,0.20)',
     emptyBg: 'rgba(114,47,55,0.04)',
     shadowColor: 'rgba(114,47,55,0.16)',
+    rewardRule: 'Gratis glas wijn (max €5). Duurdere wijn? Kaart = €5 korting!',
   },
   beer: {
     title: 'Bier Kaart',
@@ -45,12 +47,24 @@ const cardConfig = {
     emptyBorder: 'rgba(160,124,16,0.22)',
     emptyBg: 'rgba(160,124,16,0.04)',
     shadowColor: 'rgba(160,124,16,0.18)',
+    rewardRule: 'Gratis vat-/flesbier (max €5). Speciaalbier? Kaart = €5 korting!',
+  },
+  soda: {
+    title: 'Frisdrank Kaart',
+    icon: GlassWater,
+    cardGradient: 'linear-gradient(150deg, #fffeff 0%, #fce4f0 100%)',
+    accent: '#c0407a',
+    accentLight: '#f8d0e4',
+    emptyBorder: 'rgba(192,64,122,0.22)',
+    emptyBg: 'rgba(192,64,122,0.05)',
+    shadowColor: 'rgba(192,64,122,0.18)',
+    rewardRule: 'Gratis frisdrank (max €5). Duurdere drank? Kaart = €5 korting!',
   },
 };
 
 function getMotivationText(count: number, type: string): string {
-  const drinkMap: Record<string, string> = { coffee: 'koffietje', wine: 'wijntje', beer: 'biertje' };
-  const emojiMap: Record<string, string> = { coffee: '☕', wine: '🍷', beer: '🍻' };
+  const drinkMap: Record<string, string> = { coffee: 'koffietje', wine: 'wijntje', beer: 'biertje', soda: 'frisje' };
+  const emojiMap: Record<string, string> = { coffee: '☕', wine: '🍷', beer: '🍻', soda: '🧃' };
   const drink = drinkMap[type] || 'consumptie';
   const emoji = emojiMap[type] || '🎉';
   if (count === 0) return `Spaar 10 stempels voor een gratis ${drink}!`;
@@ -184,6 +198,14 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
         >
           {getMotivationText(count, type)}
         </motion.p>
+
+        {/* €5 Regel */}
+        <p
+          className="text-[9px] text-gray-300 text-center leading-tight mt-0.5 px-2"
+          style={{ letterSpacing: '0.01em' }}
+        >
+          {config.rewardRule}
+        </p>
 
       </div>
     </div>

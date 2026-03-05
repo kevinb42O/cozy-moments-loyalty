@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Coffee, Wine, Beer, Gift, Trophy, QrCode } from 'lucide-react';
+import { ArrowLeft, Coffee, Wine, Beer, GlassWater, Gift, Trophy, QrCode } from 'lucide-react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { motion } from 'framer-motion';
 
@@ -8,6 +8,7 @@ const rewardConfig: Record<CardType, { icon: React.ElementType; bg: string; colo
   coffee: { icon: Coffee, bg: 'bg-[#e8dcc8]', color: 'text-[var(--color-cozy-coffee)]', activeBg: 'bg-[var(--color-cozy-coffee)]' },
   wine: { icon: Wine, bg: 'bg-[#f0d8dc]', color: 'text-[var(--color-cozy-wine)]', activeBg: 'bg-[var(--color-cozy-wine)]' },
   beer: { icon: Beer, bg: 'bg-[#fcf4d9]', color: 'text-[var(--color-cozy-beer)]', activeBg: 'bg-[var(--color-cozy-beer)]' },
+  soda: { icon: GlassWater, bg: 'bg-[#fce4f0]', color: 'text-[var(--color-cozy-soda)]', activeBg: 'bg-[var(--color-cozy-soda)]' },
 };
 
 export const RewardsPage: React.FC = () => {
@@ -18,7 +19,7 @@ export const RewardsPage: React.FC = () => {
 
   const rewards = currentCustomer.rewards;
   const claimed = currentCustomer.claimedRewards;
-  const totalRewards = rewards.coffee + rewards.wine + rewards.beer;
+  const totalRewards = rewards.coffee + rewards.wine + rewards.beer + rewards.soda;
 
   return (
     <div className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">

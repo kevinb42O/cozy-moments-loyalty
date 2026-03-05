@@ -11,12 +11,15 @@ CREATE TABLE IF NOT EXISTS public.customers (
   coffee_stamps    INTEGER     NOT NULL DEFAULT 0,
   wine_stamps      INTEGER     NOT NULL DEFAULT 0,
   beer_stamps      INTEGER     NOT NULL DEFAULT 0,
+  soda_stamps      INTEGER     NOT NULL DEFAULT 0,
   coffee_rewards   INTEGER     NOT NULL DEFAULT 0,
   wine_rewards     INTEGER     NOT NULL DEFAULT 0,
   beer_rewards     INTEGER     NOT NULL DEFAULT 0,
+  soda_rewards     INTEGER     NOT NULL DEFAULT 0,
   coffee_claimed   INTEGER     NOT NULL DEFAULT 0,
   wine_claimed     INTEGER     NOT NULL DEFAULT 0,
   beer_claimed     INTEGER     NOT NULL DEFAULT 0,
+  soda_claimed     INTEGER     NOT NULL DEFAULT 0,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

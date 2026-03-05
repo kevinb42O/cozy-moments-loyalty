@@ -114,11 +114,21 @@ Het admin paneel is bedoeld om op een **tablet** aan de kassa te draaien. Zet de
 ## 3.1 Inloggen
 
 1. Open de browser op de tablet
-2. Ga naar het admin-adres (dit krijgt u van WebAanZee)
-3. Vul uw **admin e-mailadres** en **wachtwoord** in
+2. Ga naar: **https://cozy-moments-admin.vercel.app/**
+3. Vul uw inloggegevens in:
+
+| | |
+|---|---|
+| **E-mail** | sixtine@cozy.com |
+| **Wachtwoord** | sixtine2026! |
+
 4. Tik op **"Inloggen"**
 
 > Het wachtwoord is persoonlijk. Deel het niet met klanten.
+
+#### Of scan direct:
+
+<!-- QR_ADMIN -->
 
 ---
 
@@ -242,13 +252,19 @@ De klanten-app is een **website** die klanten openen op hun smartphone. Geen dow
 
 ## 4.1 Account aanmaken
 
-Klanten kunnen op drie manieren een account aanmaken:
+Klanten kunnen op twee manieren een account aanmaken:
 
 1. **Google** — 1 tik om in te loggen met hun Google-account (snelst)
-2. **E-mail + wachtwoord** — zelf een account aanmaken met naam, e-mail en wachtwoord
-3. **Facebook** — inloggen met hun Facebook-account
+2. **E-mail + wachtwoord** — zelf een account aanmaken met naam, e-mailadres en wachtwoord
 
-> **Eerste keer?** De klant kiest "Account aanmaken" en vult naam + e-mail + wachtwoord in. Daarna worden ze automatisch herkend.
+#### E-mail registratie stap voor stap
+
+1. Klant tikt op **"Account aanmaken"**
+2. Klant vult in: volledige naam, e-mailadres en een zelfgekozen wachtwoord
+3. Het account is **direct actief** — er is géén bevestigingsmail nodig
+4. Klant is meteen ingelogd en kan beginnen sparen
+
+> **Wachtwoord vergeten?** Op de inlogpagina staat een **"Wachtwoord vergeten"**-knop. De klant vult zijn/haar e-mailadres in en ontvangt een link om een nieuw wachtwoord in te stellen.
 
 ## 4.2 Dashboard
 
@@ -405,7 +421,7 @@ Totaal aantal klanten: 42
 **A:** Nee. Elke QR code is digitaal ondertekend met een geheime sleutel en verloopt na 5 minuten. Alleen QR codes van uw admin paneel werken.
 
 **V: Wat als ik per ongeluk de verkeerde consumpties selecteer?**
-**A:** Als de klant de QR code nog niet heeft gescand, tik op "Nieuwe Transactie" om te resetten. Is het al gescand? Neem contact op met WebAanZee.
+**A:** Als de klant de QR code nog niet heeft gescand, tik op **"Nieuwe Transactie"** om te resetten en opnieuw te beginnen. Is de QR code al gescand? Geen zorgen — u kunt dit bij een volgend bezoek gewoon compenseren (bv. één stempel minder geven), of het corrigeren via het admin-paneel (correctiefunctie binnenkort beschikbaar).
 
 **V: Kan ik meerdere tablets gebruiken?**
 **A:** Ja, u kunt op meerdere apparaten tegelijk inloggen met hetzelfde admin-account.
@@ -464,8 +480,14 @@ Totaal aantal klanten: 42
 
 | Functie | Adres |
 |---------|-------|
-| Klanten-app | *(wordt door WebAanZee ingesteld)* |
-| Admin paneel | *(wordt door WebAanZee ingesteld)* |
+| Klanten-app | https://cozy-moments-loyalty.vercel.app/dashboard |
+| Admin paneel | https://cozy-moments-admin.vercel.app/ |
+
+### QR codes — direct scannen
+
+Scan de QR codes hieronder om de apps te openen op uw smartphone of iPad:
+
+<!-- QR_BOTH -->
 
 ### Contact & Support
 
@@ -473,7 +495,8 @@ Bij vragen, problemen of aanpassingen:
 
 **WebAanZee**
 - Website: www.webaanzee.be
-- E-mail: *(contactgegevens van WebAanZee)*
+- E-mail: kevin@webaanzee.be
+- Gsm: 0494 81 67 14
 
 ---
 

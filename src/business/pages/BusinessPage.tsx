@@ -396,6 +396,9 @@ export const BusinessPage: React.FC = () => {
                 >
                   Nieuwe Transactie
                 </button>
+                <div className="flex justify-center pt-16 pb-4 pointer-events-none select-none">
+                  <img src="/cozylogo.png" alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
+                </div>
               </div>
             )}
           </motion.div>
@@ -927,6 +930,9 @@ export const BusinessPage: React.FC = () => {
                 >
                   Nieuwe Transactie
                 </button>
+                <div className="flex justify-center pt-16 pb-4 pointer-events-none select-none">
+                  <img src="/cozylogo.png" alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
+                </div>
               </div>
             )}
           </motion.div>

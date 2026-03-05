@@ -351,6 +351,11 @@ export const BusinessPage: React.FC = () => {
                     </motion.span>
                   </AnimatePresence>
                 </motion.button>
+
+                {/* Watermark in whitespace */}
+                <div className="flex justify-center pt-16 pb-4 pointer-events-none select-none">
+                  <img src="/cozylogo.png" alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
+                </div>
               </div>
             ) : qrScanned ? (
               <motion.div
@@ -879,6 +884,11 @@ export const BusinessPage: React.FC = () => {
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Watermark in whitespace */}
+                <div className="flex justify-center pt-16 pb-4 pointer-events-none select-none">
+                  <img src="/cozylogo.png" alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
                 </div>
               </div>
             ) : qrScanned ? (

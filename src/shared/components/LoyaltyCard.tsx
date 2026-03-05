@@ -201,7 +201,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
 
         {/* €5 Regel */}
         <p
-          className="text-[10px] text-white/70 text-center leading-tight mt-1 px-2"
+          className="text-[10px] text-black/80 text-center leading-tight mt-1 px-2"
           style={{ letterSpacing: '0.02em' }}
         >
           {config.rewardRule}

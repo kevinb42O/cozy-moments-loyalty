@@ -34,8 +34,8 @@ export const CustomerPage: React.FC = () => {
         className="sticky top-0 z-50 mb-5 px-5 py-4"
         style={{
           background: 'rgba(245,245,240,0.42)',
-          backdropFilter: 'blur(48px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(48px) saturate(200%)',
+          backdropFilter: 'blur(12px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(12px) saturate(140%)',
           borderBottom: '1px solid rgba(255,255,255,0.45)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)',
           borderRadius: '0 0 32px 32px',
@@ -79,13 +79,9 @@ export const CustomerPage: React.FC = () => {
             onClick={() => navigate('/rewards')}
             className="w-full bg-white/50 backdrop-blur-md border border-white/60 rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
           >
-            <motion.div
-              animate={{ scale: [1, 1.18, 1] }}
-              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-10 h-10 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center flex-shrink-0"
-            >
+            <div className="w-10 h-10 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center flex-shrink-0">
               <Gift size={20} className="text-white" />
-            </motion.div>
+            </div>
             <div className="flex-1 text-left">
               <p className="font-display font-bold text-[var(--color-cozy-text)]">
                 {totalRewards} gratis {totalRewards === 1 ? 'consumptie' : 'consumpties'}!

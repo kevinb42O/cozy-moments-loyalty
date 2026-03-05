@@ -77,21 +77,7 @@ function getMotivationText(count: number, type: string): string {
   return `Gefeliciteerd! Je ${drink} is gratis! 🎉`;
 }
 
-const stampVariants = {
-  hidden: { scale: 0, opacity: 0 },
-  visible: (i: number) => ({
-    scale: 1, opacity: 1,
-    transition: { type: 'spring' as const, stiffness: 400, damping: 15, delay: 0.04 * i },
-  }),
-};
 
-const checkVariants = {
-  hidden: { scale: 0, rotate: -45 },
-  visible: (i: number) => ({
-    scale: 1, rotate: 0,
-    transition: { type: 'spring' as const, stiffness: 500, damping: 12, delay: 0.04 * i + 0.08 },
-  }),
-};
 
 export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
   const config = cardConfig[type];
@@ -107,14 +93,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
         border: '1px solid rgba(255,255,255,0.9)',
       }}
     >
-      {/* Subtle paper/noise texture */}
-      <div
-        className="absolute inset-0 opacity-[0.028] pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
-          backgroundSize: '200px 200px',
-        }}
-      />
+
       {/* Top-right light sheen */}
       <div
         className="absolute -top-8 -right-8 w-36 h-36 rounded-full opacity-50 pointer-events-none"
@@ -156,12 +135,8 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
             const isFilled = i < count;
             const isFree = i === 9;
             return (
-              <motion.div
+              <div
                 key={i}
-                custom={i}
-                initial="hidden"
-                animate="visible"
-                variants={stampVariants}
                 className="aspect-square rounded-full flex items-center justify-center"
                 style={isFilled ? {
                   background: config.accent,
@@ -173,9 +148,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
                 }}
               >
                 {isFilled ? (
-                  <motion.div custom={i} initial="hidden" animate="visible" variants={checkVariants}>
-                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
-                  </motion.div>
+                  <Check className="w-4 h-4 text-white" strokeWidth={3} />
                 ) : isFree ? (
                   <span style={{ color: config.emptyBorder }} className="font-display font-bold text-[8px] leading-none text-center px-0.5">
                     Gratis
@@ -183,7 +156,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
                 ) : (
                   <Icon className="w-3 h-3" style={{ color: config.emptyBorder }} />
                 )}
-              </motion.div>
+              </div>
             );
           })}
         </div>
@@ -191,9 +164,9 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
         {/* Motivation */}
         <motion.p
           key={`${type}-${count}`}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
           className="text-[11.5px] text-gray-400 font-serif text-center italic leading-tight"
         >
           {getMotivationText(count, type)}

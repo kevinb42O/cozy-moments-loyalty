@@ -366,8 +366,14 @@ export const BusinessPage: React.FC = () => {
                 <p className="text-gray-500">Transactie verwerkt — scherm sluit automatisch</p>
               </motion.div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8">
-                <div className="bg-white p-8 rounded-[40px] shadow-xl mb-8">
+              <div className="relative flex flex-col items-center justify-center py-8">
+                <img
+                  src="/cozylogo.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="pointer-events-none select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 object-contain opacity-10"
+                />
+                <div className="relative bg-white p-8 rounded-[40px] shadow-xl mb-8">
                   <QRCodeSVG value={qrPayload} size={240} level="H" />
                 </div>
                 <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">
@@ -889,8 +895,14 @@ export const BusinessPage: React.FC = () => {
                 <p className="text-gray-500">Beloning ingewisseld — scherm sluit automatisch</p>
               </motion.div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8">
-                <div className="bg-white p-8 rounded-[40px] shadow-xl mb-8">
+              <div className="relative flex flex-col items-center justify-center py-8">
+                <img
+                  src="/cozylogo.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="pointer-events-none select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 object-contain opacity-10"
+                />
+                <div className="relative bg-white p-8 rounded-[40px] shadow-xl mb-8">
                   <QRCodeSVG value={qrPayload} size={240} level="H" />
                 </div>
                 <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">

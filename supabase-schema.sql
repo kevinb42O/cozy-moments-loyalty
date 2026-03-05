@@ -76,8 +76,16 @@ CREATE POLICY "Admin: update all customers"
   ON public.customers FOR UPDATE
   USING (is_admin());
 
--- ⚠️  IMPORTANT: After running this schema, add your admin email:
+-- ⚠️  IMPORTANT: After running this schema, run these two extra queries:
+--
+-- 1. Add your admin email to the whitelist:
 --    INSERT INTO admin_users (email) VALUES ('your-admin@email.com');
+--
+-- 2. Create the admin user in Supabase Auth:
+--    Go to: Authentication → Users → Add User
+--    Email: your-admin@email.com
+--    Password: (choose a strong password)
+--    That same password is used to log in to the admin panel.
 
 -- 4. Indexes
 CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);

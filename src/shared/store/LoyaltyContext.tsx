@@ -18,6 +18,8 @@ export interface Customer {
   cards: Record<CardType, number>;
   rewards: Record<CardType, number>;
   claimedRewards: Record<CardType, number>;
+  totalVisits: number;
+  lastVisitAt: string | null;
 }
 
 export interface AddResult {
@@ -47,6 +49,8 @@ function rowToCustomer(row: any): Customer {
     cards: { coffee: row.coffee_stamps ?? 0, wine: row.wine_stamps ?? 0, beer: row.beer_stamps ?? 0, soda: row.soda_stamps ?? 0 },
     rewards: { coffee: row.coffee_rewards ?? 0, wine: row.wine_rewards ?? 0, beer: row.beer_rewards ?? 0, soda: row.soda_rewards ?? 0 },
     claimedRewards: { coffee: row.coffee_claimed ?? 0, wine: row.wine_claimed ?? 0, beer: row.beer_claimed ?? 0, soda: row.soda_claimed ?? 0 },
+    totalVisits: row.total_visits ?? 0,
+    lastVisitAt: row.last_visit_at ?? null,
   };
 }
 
@@ -98,7 +102,8 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await supabase.from('customers').upsert(
       { id, name, email, coffee_stamps: 0, wine_stamps: 0, beer_stamps: 0, soda_stamps: 0,
         coffee_rewards: 0, wine_rewards: 0, beer_rewards: 0, soda_rewards: 0,
-        coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0 },
+        coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0,
+        total_visits: 0, last_visit_at: null },
       { onConflict: 'id', ignoreDuplicates: true }
     );
     await fetchFromSupabase();
@@ -130,6 +135,8 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const { error } = await supabase.from('customers').update({
       coffee_stamps: newCards.coffee, wine_stamps: newCards.wine, beer_stamps: newCards.beer, soda_stamps: newCards.soda,
       coffee_rewards: newRewards.coffee, wine_rewards: newRewards.wine, beer_rewards: newRewards.beer, soda_rewards: newRewards.soda,
+      total_visits: (customer.totalVisits || 0) + 1,
+      last_visit_at: new Date().toISOString(),
     }).eq('id', customerId);
 
     if (error) {
@@ -137,7 +144,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else {
       // Optimistic update so UI responds instantly, then sync from DB
       setCustomers(prev => prev.map(c =>
-        c.id === customerId ? { ...c, cards: newCards, rewards: newRewards } : c
+        c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString() } : c
       ));
       await fetchFromSupabase();
     }

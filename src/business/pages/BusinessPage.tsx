@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -56,6 +56,14 @@ async function playAdminChime() {
 // ── Consumption stats helper ─────────────────────────────────────────────────
 const MS_PER_MONTH = 30.4375 * 24 * 60 * 60 * 1000;
 
+// Estimated average price per drink type (for revenue estimation)
+const PRICE_ESTIMATE: Record<CardType, number> = {
+  coffee: 3.00,
+  wine: 5.00,
+  beer: 4.00,
+  soda: 3.00,
+};
+
 function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext').Customer, nowMs: number) {
   const createdMs = new Date(customer.createdAt).getTime();
   const monthsActive = Math.max(1, (nowMs - createdMs) / MS_PER_MONTH);
@@ -71,7 +79,24 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
     beer:   total.beer   / monthsActive,
     soda:   total.soda   / monthsActive,
   };
-  return { total, avgPerMonth, monthsActive };
+  const grandTotal = total.coffee + total.wine + total.beer + total.soda;
+
+  // Favorite drink
+  const types: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
+  const favorite = types.reduce((a, b) => total[a] >= total[b] ? a : b);
+  const hasFavorite = total[favorite] > 0;
+
+  // Estimated revenue
+  const estimatedRevenue = types.reduce((sum, t) => sum + total[t] * PRICE_ESTIMATE[t], 0);
+
+  // Average per visit
+  const avgPerVisit = customer.totalVisits > 0 ? grandTotal / customer.totalVisits : 0;
+
+  // Days since last visit
+  const lastVisitMs = customer.lastVisitAt ? new Date(customer.lastVisitAt).getTime() : null;
+  const daysSinceLastVisit = lastVisitMs ? Math.floor((nowMs - lastVisitMs) / (24 * 60 * 60 * 1000)) : null;
+
+  return { total, avgPerMonth, monthsActive, grandTotal, favorite, hasFavorite, estimatedRevenue, avgPerVisit, daysSinceLastVisit };
 }
 
 export const BusinessPage: React.FC = () => {
@@ -405,13 +430,14 @@ export const BusinessPage: React.FC = () => {
                   // ── 1. CSV (Excel / nieuwsbrief import) ────────────
                   // Belgian/Dutch Excel uses semicolons as separator
                   const SEP = ';';
-                  const csvHeader = ['Naam','Email','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Klant_Sinds'].join(SEP);
+                  const csvHeader = ['Naam','Email','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Klant_Sinds'].join(SEP);
                   const csvRows = customers.map((c, idx) => {
                     const st = allStats[idx];
                     const name = `"${c.name.replace(/"/g, '""')}"`;
                     const email = `"${(c.email || '').replace(/"/g, '""')}"`;
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), since].join(SEP);
+                    const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, since].join(SEP);
                   });
                   const csvTotalsRow = ['"TOTAAL ALLE KLANTEN"', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotal.coffee, grandTotal.wine, grandTotal.beer, grandTotal.soda, '', '', '', '', ''].join(SEP);
                   download([csvHeader, ...csvRows, '', csvTotalsRow].join('\n'), `cozy-moments-klanten-${fileDate}.csv`, 'text/csv');
@@ -429,10 +455,15 @@ export const BusinessPage: React.FC = () => {
                   customers.forEach((c, i) => {
                     const st = allStats[i];
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
                     lines.push('────────────────────────────────────────');
                     lines.push(`${i + 1}. ${c.name}`);
                     lines.push(`   E-mail:        ${c.email || '—'}`);
                     lines.push(`   Klant sinds:   ${since}`);
+                    lines.push(`   Laatste bezoek: ${lastVisit}`);
+                    lines.push(`   Totaal bezoeken: ${c.totalVisits || 0}`);
+                    lines.push(`   Favoriet:      ${st.hasFavorite ? cardTypeLabels[st.favorite] : '—'}`);
+                    lines.push(`   Geschatte omzet: €${st.estimatedRevenue.toFixed(2)}`);
                     lines.push(`   Totaal:        Koffie: ${st.total.coffee}  |  Wijn: ${st.total.wine}  |  Bier: ${st.total.beer}  |  Frisdrank: ${st.total.soda}`);
                     lines.push(`   Gem/maand:     Koffie: ${st.avgPerMonth.coffee.toFixed(1)}  |  Wijn: ${st.avgPerMonth.wine.toFixed(1)}  |  Bier: ${st.avgPerMonth.beer.toFixed(1)}  |  Frisdrank: ${st.avgPerMonth.soda.toFixed(1)}`);
                     lines.push(`   Stempels:      Koffie: ${c.cards.coffee}/10  |  Wijn: ${c.cards.wine}/10  |  Bier: ${c.cards.beer}/10  |  Frisdrank: ${c.cards.soda}/10`);
@@ -461,6 +492,45 @@ export const BusinessPage: React.FC = () => {
                 Export
               </button>
             </div>
+            
+            {/* ── Dashboard Summary Cards ─────────────────────────── */}
+            {(() => {
+              const nowMs = Date.now();
+              const allStats = customers.map(c => calcCustomerStats(c, nowMs));
+              const totalConsAll = allStats.reduce((s, st) => s + st.grandTotal, 0);
+              const totalRevenueAll = allStats.reduce((s, st) => s + st.estimatedRevenue, 0);
+              const activeThisMonth = customers.filter(c => {
+                if (!c.lastVisitAt) return false;
+                const d = new Date(c.lastVisitAt);
+                const now = new Date();
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+              }).length;
+              const totalVisitsAll = customers.reduce((s, c) => s + (c.totalVisits || 0), 0);
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center">
+                    <Users size={20} className="text-[var(--color-cozy-olive)] mb-1" />
+                    <span className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{customers.length}</span>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Klanten</span>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center">
+                    <TrendingUp size={20} className="text-[var(--color-cozy-olive)] mb-1" />
+                    <span className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{totalConsAll}</span>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Consumpties</span>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center">
+                    <Calendar size={20} className="text-[var(--color-cozy-olive)] mb-1" />
+                    <span className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{activeThisMonth}</span>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Actief deze maand</span>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center">
+                    <Award size={20} className="text-[var(--color-cozy-olive)] mb-1" />
+                    <span className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">€{totalRevenueAll.toFixed(0)}</span>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Geschatte omzet</span>
+                  </div>
+                </div>
+              );
+            })()}
             
             {/* Search bar */}
             <div className="relative mb-2">
@@ -587,7 +657,44 @@ export const BusinessPage: React.FC = () => {
                             <span className="text-sm text-gray-600 break-all">{customer.email || 'Geen e-mail beschikbaar'}</span>
                           </div>
 
-                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Totale consumptions</p>
+                          {/* ── Klant Intelligence ──────────────────── */}
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Klant Inzichten</p>
+                          <div className="grid grid-cols-2 gap-2 mb-4">
+                            <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
+                              <Star size={16} className="text-[var(--color-cozy-olive)] mb-1" />
+                              <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{stats.hasFavorite ? cardTypeLabels[stats.favorite] : '—'}</span>
+                              <span className="text-[10px] text-gray-400">favoriet</span>
+                            </div>
+                            <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
+                              <TrendingUp size={16} className="text-[var(--color-cozy-olive)] mb-1" />
+                              <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">€{stats.estimatedRevenue.toFixed(0)}</span>
+                              <span className="text-[10px] text-gray-400">geschatte omzet</span>
+                            </div>
+                            <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
+                              <Calendar size={16} className="text-[var(--color-cozy-olive)] mb-1" />
+                              <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.totalVisits || 0}</span>
+                              <span className="text-[10px] text-gray-400">bezoeken</span>
+                            </div>
+                            <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
+                              <Calendar size={16} className="text-[var(--color-cozy-olive)] mb-1" />
+                              <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">
+                                {stats.daysSinceLastVisit !== null 
+                                  ? stats.daysSinceLastVisit === 0 ? 'Vandaag' : `${stats.daysSinceLastVisit}d geleden`
+                                  : '—'}
+                              </span>
+                              <span className="text-[10px] text-gray-400">laatste bezoek</span>
+                            </div>
+                          </div>
+
+                          {/* Gem. per bezoek */}
+                          {customer.totalVisits > 0 && (
+                            <div className="bg-gray-50 rounded-xl px-4 py-2 mb-4 flex items-center justify-between">
+                              <span className="text-xs text-gray-500">Gem. consumpties per bezoek</span>
+                              <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{stats.avgPerVisit.toFixed(1)}</span>
+                            </div>
+                          )}
+
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Totale consumpties ({stats.grandTotal})</p>
                           <div className="grid grid-cols-4 gap-2 mb-1">
                             <div className="bg-[#e8dcc8]/40 rounded-xl p-3 flex flex-col items-center">
                               <Coffee size={16} className="text-[var(--color-cozy-coffee)] mb-1" />

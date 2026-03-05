@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS public.customers (
   wine_claimed     INTEGER     NOT NULL DEFAULT 0,
   beer_claimed     INTEGER     NOT NULL DEFAULT 0,
   soda_claimed     INTEGER     NOT NULL DEFAULT 0,
+  total_visits     INTEGER     NOT NULL DEFAULT 0,
+  last_visit_at    TIMESTAMPTZ,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -92,3 +94,7 @@ CREATE POLICY "Admin: update all customers"
 
 -- 4. Indexes
 CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);
+
+-- 5. Migration: Add visit tracking columns (run if upgrading existing installation)
+-- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS total_visits INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS last_visit_at TIMESTAMPTZ;

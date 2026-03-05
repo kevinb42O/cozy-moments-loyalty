@@ -31,6 +31,8 @@ export type Database = {
           wine_claimed: number;
           beer_claimed: number;
           soda_claimed: number;
+          total_visits: number;
+          last_visit_at: string | null;
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['customers']['Row'], 'id' | 'created_at'>;

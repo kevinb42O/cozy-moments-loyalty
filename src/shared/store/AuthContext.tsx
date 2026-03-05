@@ -12,9 +12,13 @@ export interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
+  recoveryMode: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithFacebook: () => Promise<void>;
-  loginWithEmail: (email: string, name: string) => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, name: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -24,6 +28,7 @@ const STORAGE_KEY = "cozy-auth-user";
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   // ── Supabase session restore ──────────────────────────────────────────────
   useEffect(() => {
@@ -47,10 +52,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const { data: { subscription } } = supabase!.auth.onAuthStateChange((event, session) => {
         if (event === "SIGNED_OUT") {
-          settled = false; // allow future settle after sign-out
+          settled = false;
           clearTimeout(fallback);
           setUser(null);
+          setRecoveryMode(false);
           setIsLoading(false);
+          return;
+        }
+        if (event === "PASSWORD_RECOVERY") {
+          clearTimeout(fallback);
+          setRecoveryMode(true);
+          settle(session);
           return;
         }
         // INITIAL_SESSION with no session might fire before the OAuth code
@@ -103,24 +115,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [persistUser]);
 
-  // ── Email magic link ─────────────────────────────────────────────────────
-  const loginWithEmail = useCallback(async (email: string, name: string) => {
+  // ── Email + Password login ───────────────────────────────────────────────
+  const loginWithEmail = useCallback(async (email: string, password: string) => {
     if (SUPABASE_READY && supabase) {
-      // Store name so CustomerSync can use it after the magic link redirect
-      localStorage.setItem('cozy-pending-name', name);
-      const { error } = await supabase!.auth.signInWithOtp({
+      const { error } = await supabase!.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } else {
+      persistUser({ id: "e_" + Math.random().toString(36).slice(2, 9), name: email.split("@")[0], email, provider: "email" });
+    }
+  }, [persistUser]);
+
+  // ── Register new account ─────────────────────────────────────────────────
+  const signUpWithEmail = useCallback(async (email: string, password: string, name: string) => {
+    if (SUPABASE_READY && supabase) {
+      const { error } = await supabase!.auth.signUp({
         email,
-        options: {
-          shouldCreateUser: true,
-          data: { display_name: name, full_name: name },
-          emailRedirectTo: window.location.origin + '/dashboard',
-        },
+        password,
+        options: { data: { full_name: name, display_name: name } },
       });
       if (error) throw error;
     } else {
       persistUser({ id: "e_" + Math.random().toString(36).slice(2, 9), name, email, provider: "email" });
     }
   }, [persistUser]);
+
+  // ── Forgot password ──────────────────────────────────────────────────────
+  const resetPassword = useCallback(async (email: string) => {
+    if (SUPABASE_READY && supabase) {
+      const { error } = await supabase!.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + "/reset-password",
+      });
+      if (error) throw error;
+    }
+  }, []);
+
+  // ── Update password (after recovery link) ───────────────────────────────
+  const updatePassword = useCallback(async (password: string) => {
+    if (SUPABASE_READY && supabase) {
+      const { error } = await supabase!.auth.updateUser({ password });
+      if (error) throw error;
+      setRecoveryMode(false);
+    }
+  }, []);
 
   const logout = useCallback(() => {
     if (SUPABASE_READY && supabase) supabase!.auth.signOut();
@@ -129,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, loginWithGoogle, loginWithFacebook, loginWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, recoveryMode, loginWithGoogle, loginWithFacebook, loginWithEmail, signUpWithEmail, resetPassword, updatePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -144,10 +180,7 @@ export const useAuth = () => {
 // ── helpers ──────────────────────────────────────────────────────────────────
 function sessionToUser(u: any): AuthUser {
   const meta = u.user_metadata ?? {};
-  // For magic link users, fall back to the name stored before redirect
-  const pendingName = localStorage.getItem('cozy-pending-name');
-  const resolvedName = meta.full_name ?? meta.name ?? meta.display_name ?? pendingName ?? u.email?.split("@")[0] ?? "Gebruiker";
-  if (pendingName) localStorage.removeItem('cozy-pending-name');
+  const resolvedName = meta.full_name ?? meta.name ?? meta.display_name ?? u.email?.split("@")[0] ?? "Gebruiker";
   return {
     id: u.id,
     name: resolvedName,

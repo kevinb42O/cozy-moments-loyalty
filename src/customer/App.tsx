@@ -8,6 +8,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m
 const CustomerPage = lazy(() => import('./pages/CustomerPage').then(m => ({ default: m.CustomerPage })));
 const Scanner = lazy(() => import('./pages/Scanner').then(m => ({ default: m.Scanner })));
 const RewardsPage = lazy(() => import('./pages/RewardsPage').then(m => ({ default: m.RewardsPage })));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[var(--color-cozy-bg)]">
@@ -64,6 +65,7 @@ export default function App() {
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/dashboard" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
               <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
               <Route path="/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />

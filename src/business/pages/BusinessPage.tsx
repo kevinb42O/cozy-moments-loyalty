@@ -116,7 +116,7 @@ export const BusinessPage: React.FC = () => {
   };
 
   const generateQR = async () => {
-    if (consumptions.coffee === 0 && consumptions.wine === 0 && consumptions.beer === 0) return;
+    if (consumptions.coffee === 0 && consumptions.wine === 0 && consumptions.beer === 0 && consumptions.soda === 0) return;
     customersSnapshotRef.current = JSON.stringify(customers);
     const payload = {
       ...consumptions,

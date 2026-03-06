@@ -325,6 +325,9 @@ export const Scanner: React.FC = () => {
                     setScanResult({ type: 'add', earned: result.earned });
                     setScanned(true);
                     setTimeout(() => navigate('/dashboard'), 2500);
+                  }).catch(() => {
+                    setScanError('Er ging iets mis bij het opslaan — probeer opnieuw');
+                    setTimeout(() => setScanError(null), 4000);
                   });
                 });
               } else {

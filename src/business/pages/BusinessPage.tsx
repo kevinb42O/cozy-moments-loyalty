@@ -171,7 +171,7 @@ export const BusinessPage: React.FC = () => {
   }, [qrPayload, qrScanned, customers]);
 
   // Fires whenever customers state changes (Realtime path)
-  useEffect(() => { checkScanned(); }, [customers]);
+  useEffect(() => { checkScanned(); }, [customers, checkScanned]);
 
   // Poll every 3s as fallback
   useEffect(() => {
@@ -181,7 +181,7 @@ export const BusinessPage: React.FC = () => {
       // checkScanned will run via the [customers] effect after state updates
     }, 3000);
     return () => clearInterval(interval);
-  }, [qrPayload, qrScanned]);
+  }, [qrPayload, qrScanned, refreshCustomers]);
 
   // Once scanned — auto-close after 2 seconds
   useEffect(() => {

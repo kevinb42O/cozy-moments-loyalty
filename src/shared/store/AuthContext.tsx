@@ -128,12 +128,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Register new account ─────────────────────────────────────────────────
   const signUpWithEmail = useCallback(async (email: string, password: string, name: string) => {
     if (SUPABASE_READY && supabase) {
-      const { error } = await supabase!.auth.signUp({
+      const { data, error } = await supabase!.auth.signUp({
         email,
         password,
         options: { data: { full_name: name, display_name: name } },
       });
       if (error) throw error;
+      // If signup didn't return a session (e.g. email confirmation enabled),
+      // auto-login immediately so the user isn't stuck
+      if (!data.session) {
+        const { error: loginErr } = await supabase!.auth.signInWithPassword({ email, password });
+        if (loginErr) throw loginErr;
+      }
     } else {
       persistUser({ id: "e_" + Math.random().toString(36).slice(2, 9), name, email, provider: "email" });
     }

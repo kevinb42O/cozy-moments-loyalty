@@ -4,6 +4,7 @@ import { QrCode, LogOut, Gift, ChevronRight } from 'lucide-react';
 import { useLoyalty, CardType } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
+import { LoadingScreen } from '../../shared/components/LoadingScreen';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
@@ -13,13 +14,43 @@ export const CustomerPage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(true);
+  const [loadTimeout, setLoadTimeout] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
     return () => clearTimeout(t);
   }, []);
 
-  if (!currentCustomer) return <div>Laden...</div>;
+  // If currentCustomer doesn't load within 8s, show escape hatch
+  useEffect(() => {
+    if (currentCustomer) return;
+    const t = setTimeout(() => setLoadTimeout(true), 8000);
+    return () => clearTimeout(t);
+  }, [currentCustomer]);
+
+  if (!currentCustomer) {
+    if (!loadTimeout) return <LoadingScreen variant="customer" />;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-cozy-bg)] p-6 text-center">
+        <img src="/cozylogo.png" alt="Cozy Moments" className="w-20 h-20 object-contain mb-6 opacity-60" />
+        <p className="text-[var(--color-cozy-text)] font-serif text-lg mb-4">
+          Er ging iets mis bij het laden van je profiel.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-white border border-gray-200 rounded-full py-3 px-8 font-medium text-[var(--color-cozy-text)] shadow-sm mb-3"
+        >
+          Opnieuw proberen
+        </button>
+        <button
+          onClick={logout}
+          className="text-gray-400 text-sm underline"
+        >
+          Uitloggen
+        </button>
+      </div>
+    );
+  }
 
   const displayName = user?.name || currentCustomer.name;
   const totalRewards = (currentCustomer.rewards?.coffee || 0) + (currentCustomer.rewards?.wine || 0) + (currentCustomer.rewards?.beer || 0) + (currentCustomer.rewards?.soda || 0);

@@ -2,6 +2,7 @@ import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../shared/store/AuthContext';
 import { LoyaltyProvider, useLoyalty } from '../shared/store/LoyaltyContext';
+import { LoadingScreen } from '../shared/components/LoadingScreen';
 
 // Code-split: each page is loaded only when visited
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -10,11 +11,7 @@ const Scanner = lazy(() => import('./pages/Scanner').then(m => ({ default: m.Sca
 const RewardsPage = lazy(() => import('./pages/RewardsPage').then(m => ({ default: m.RewardsPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
-const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-[var(--color-cozy-bg)]">
-    <div className="animate-pulse text-[var(--color-cozy-coffee)] font-serif text-xl">Laden...</div>
-  </div>
-);
+const LoadingFallback = () => <LoadingScreen variant="customer" />;
 
 // Auto-create/select customer row when user signs in
 const CustomerSync: React.FC = () => {
@@ -28,30 +25,14 @@ const CustomerSync: React.FC = () => {
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-cozy-bg)]">
-        <div className="animate-pulse text-[var(--color-cozy-coffee)] font-serif text-xl">Laden...</div>
-      </div>
-    );
-  }
-
+  if (isLoading) return <LoadingScreen variant="customer" />;
   if (!user) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-cozy-bg)]">
-        <div className="animate-pulse text-[var(--color-cozy-coffee)] font-serif text-xl">Laden...</div>
-      </div>
-    );
-  }
-
+  if (isLoading) return <LoadingScreen variant="customer" />;
   if (user) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };

@@ -74,3 +74,69 @@ describe('QR Crypto — signQrPayload & verifyQrPayload', () => {
     expect(result.payload?.exp).toBeGreaterThan(Date.now());
   });
 });
+
+describe('QR Crypto — edge cases', () => {
+  it('should preserve soda field in payload', async () => {
+    const payload = { coffee: 0, wine: 0, beer: 0, soda: 3, txId: 'soda1', timestamp: Date.now() };
+    const signed = await signQrPayload(payload);
+    const result = await verifyQrPayload(signed);
+
+    expect(result.valid).toBe(true);
+    expect(result.payload?.soda).toBe(3);
+  });
+
+  it('should reject payload where signature is replaced with a random string', async () => {
+    const payload = { coffee: 1, wine: 0, beer: 0, txId: 'fakesig', timestamp: Date.now() };
+    const signed = await signQrPayload(payload);
+    const parsed = JSON.parse(signed);
+    parsed.sig = 'aaaaaabbbbbbcccccc1234567890abcdef1234567890abcdef1234567890abcdef';
+    const result = await verifyQrPayload(JSON.stringify(parsed));
+    expect(result.valid).toBe(false);
+  });
+
+  it('should produce different signatures for different payloads', async () => {
+    const a = await signQrPayload({ coffee: 1, wine: 0, beer: 0, txId: 'a', timestamp: 1 });
+    const b = await signQrPayload({ coffee: 2, wine: 0, beer: 0, txId: 'b', timestamp: 1 });
+    const sigA = JSON.parse(a).sig;
+    const sigB = JSON.parse(b).sig;
+    expect(sigA).not.toBe(sigB);
+  });
+
+  it('should reject payload with tampered expiry (extended)', async () => {
+    const payload = { coffee: 1, wine: 0, beer: 0, txId: 'expext', timestamp: Date.now() };
+    const signed = await signQrPayload(payload, -5000); // already expired
+    const parsed = JSON.parse(signed);
+    parsed.exp = Date.now() + 60_000; // attacker extends expiry
+    // But signature is now invalid because body changed
+    const result = await verifyQrPayload(JSON.stringify(parsed));
+    expect(result.valid).toBe(false);
+  });
+
+  it('should handle all four redeem card types', async () => {
+    for (const type of ['coffee', 'wine', 'beer', 'soda']) {
+      const payload = { type: 'redeem', cardType: type, txId: `r-${type}`, timestamp: Date.now() };
+      const signed = await signQrPayload(payload);
+      const result = await verifyQrPayload(signed);
+      expect(result.valid).toBe(true);
+      expect(result.payload?.cardType).toBe(type);
+    }
+  });
+
+  it('should handle large consumption numbers', async () => {
+    const payload = { coffee: 99, wine: 50, beer: 75, soda: 30, txId: 'big', timestamp: Date.now() };
+    const signed = await signQrPayload(payload);
+    const result = await verifyQrPayload(signed);
+    expect(result.valid).toBe(true);
+    expect(result.payload?.coffee).toBe(99);
+  });
+
+  it('should reject a completely fabricated object with sig field', async () => {
+    const fake = JSON.stringify({
+      coffee: 5, wine: 0, beer: 0, soda: 0,
+      exp: Date.now() + 300_000,
+      sig: '0000000000000000000000000000000000000000000000000000000000000000',
+    });
+    const result = await verifyQrPayload(fake);
+    expect(result.valid).toBe(false);
+  });
+});

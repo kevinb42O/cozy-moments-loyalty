@@ -99,13 +99,25 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const upsertCustomer = useCallback(async (id: string, name: string, email: string) => {
     if (!supabase) return;
-    await supabase.from('customers').upsert(
-      { id, name, email, coffee_stamps: 0, wine_stamps: 0, beer_stamps: 0, soda_stamps: 0,
-        coffee_rewards: 0, wine_rewards: 0, beer_rewards: 0, soda_rewards: 0,
-        coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0,
-        total_visits: 0, last_visit_at: null },
+    const payload = { id, name, email, coffee_stamps: 0, wine_stamps: 0, beer_stamps: 0, soda_stamps: 0,
+      coffee_rewards: 0, wine_rewards: 0, beer_rewards: 0, soda_rewards: 0,
+      coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0,
+      total_visits: 0, last_visit_at: null };
+
+    const { error } = await supabase.from('customers').upsert(
+      payload,
       { onConflict: 'id', ignoreDuplicates: true }
     );
+    if (error) {
+      console.error('upsertCustomer error (attempt 1):', error);
+      // Retry once after short delay
+      await new Promise(r => setTimeout(r, 800));
+      const { error: retryErr } = await supabase.from('customers').upsert(
+        payload,
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
+      if (retryErr) console.error('upsertCustomer error (attempt 2):', retryErr);
+    }
     await fetchFromSupabase();
     setCurrentCustomerId(id);
   }, [fetchFromSupabase]);
@@ -117,9 +129,19 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const earned: Record<CardType, number> = emptyCards();
     if (!supabase) return { earned };
 
-    const customer = customers.find(c => c.id === customerId);
-    if (!customer) return { earned };
+    // Always fetch fresh customer data from DB to avoid stale closure issues
+    const { data: row, error: fetchErr } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', customerId)
+      .single();
 
+    if (fetchErr || !row) {
+      console.error('addConsumptions: customer not found in DB', fetchErr);
+      return { earned };
+    }
+
+    const customer = rowToCustomer(row);
     const newCards = { ...customer.cards };
     const newRewards = { ...customer.rewards };
 
@@ -141,21 +163,31 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (error) {
       console.error('Supabase update error:', error);
-    } else {
-      // Optimistic update so UI responds instantly, then sync from DB
-      setCustomers(prev => prev.map(c =>
-        c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString() } : c
-      ));
-      await fetchFromSupabase();
+      throw new Error('Database update mislukt');
     }
 
+    // Optimistic update so UI responds instantly, then sync from DB
+    setCustomers(prev => prev.map(c =>
+      c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString() } : c
+    ));
+    await fetchFromSupabase();
+
     return { earned };
-  }, [customers, fetchFromSupabase]);
+  }, [fetchFromSupabase]);
 
   const claimReward = useCallback(async (customerId: string, type: CardType): Promise<boolean> => {
     if (!supabase) return false;
-    const customer = customers.find(c => c.id === customerId);
-    if (!customer || (customer.rewards[type] || 0) <= 0) return false;
+
+    // Fetch fresh data from DB to avoid stale closure
+    const { data: row, error: fetchErr } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', customerId)
+      .single();
+
+    if (fetchErr || !row) return false;
+    const customer = rowToCustomer(row);
+    if ((customer.rewards[type] || 0) <= 0) return false;
 
     const newRewards = { ...customer.rewards, [type]: customer.rewards[type] - 1 };
     const newClaimed = { ...customer.claimedRewards, [type]: (customer.claimedRewards[type] || 0) + 1 };
@@ -172,7 +204,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ));
     await fetchFromSupabase();
     return true;
-  }, [customers, fetchFromSupabase]);
+  }, [fetchFromSupabase]);
 
   const currentCustomer = customers.find(c => c.id === currentCustomerId) ?? null;
 

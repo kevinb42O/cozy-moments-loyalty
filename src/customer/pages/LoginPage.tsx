@@ -91,19 +91,7 @@ export const LoginPage: React.FC = () => {
   return (
     <>
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[var(--color-cozy-bg)]">
-      {/* WebaanZee credit — fixed bottom right */}
-      <a
-        href="https://www.webaanzee.be"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-4 right-5 flex items-center gap-1 opacity-50 hover:opacity-100 transition-opacity z-50"
-        style={{ fontSize: '10px', letterSpacing: '0.04em', textDecoration: 'none' }}
-      >
-        <span style={{ color: '#111', fontWeight: 500 }}>realisatie door </span>
-        <span style={{ fontWeight: 700 }}>
-          <span style={{ color: '#111' }}>Web</span><span style={{ color: '#f59e0b' }}>aan</span><span style={{ color: '#111' }}>Zee</span>
-        </span>
-      </a>
+
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

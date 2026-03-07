@@ -300,8 +300,8 @@ Op de pagina **"Mijn Beloningen"** ziet de klant:
 |-------|-------------|
 | **Sparen** | Elke consumptie = 1 stempel op de bijbehorende kaart |
 | **Beloning** | 10 stempels op één kaart = 1 gratis consumptie van dat type |
-| **Waarde** | De gratis consumptie is max. **€5** waard |
-| **Premium** | Duurdere drank? De volle kaart geeft **€5 korting** |
+| **Waarde** | De gratis consumptie is max. **€3,50 tot €5** waard (afhankelijk van het dranktype) |
+| **Premium** | Duurdere drank? De volle kaart geeft **€3,50 tot €5 korting** (afhankelijk van het type) |
 | **Meerdere kaarten** | Elke kaart spaart apart (koffie ≠ wijn) |
 | **Overdracht** | Stempels boven de 10 worden meegenomen naar de volgende kaart |
 | **Geen vervaldatum** | Stempels vervallen niet |

@@ -25,7 +25,7 @@ const cardConfig = {
     emptyBorder: 'rgba(92,64,51,0.22)',
     emptyBg: 'rgba(92,64,51,0.05)',
     shadowColor: 'rgba(92,64,51,0.18)',
-    rewardRule: 'Gratis warme drank (max €5). Premium drank? Volle kaart = €5 korting!',
+    rewardRule: 'Gratis warme drank (max €3,50). Premium drank? Volle kaart = €3,50 korting!',
   },
   wine: {
     title: 'Wijn Kaart',
@@ -36,7 +36,7 @@ const cardConfig = {
     emptyBorder: 'rgba(114,47,55,0.20)',
     emptyBg: 'rgba(114,47,55,0.04)',
     shadowColor: 'rgba(114,47,55,0.16)',
-    rewardRule: 'Gratis glas wijn (max €5). Duurdere wijn? Volle kaart = €5 korting!',
+    rewardRule: 'Gratis glas wijn (max €5,00). Duurdere wijn? Volle kaart = €5,00 korting!',
   },
   beer: {
     title: 'Bier Kaart',
@@ -47,7 +47,7 @@ const cardConfig = {
     emptyBorder: 'rgba(160,124,16,0.22)',
     emptyBg: 'rgba(160,124,16,0.04)',
     shadowColor: 'rgba(160,124,16,0.18)',
-    rewardRule: 'Gratis vat-/flesbier (max €5). Speciaalbier? Volle kaart = €5 korting!',
+    rewardRule: 'Gratis vat-/flesbier (max €3,50). Speciaalbier? Volle kaart = €3,50 korting!',
   },
   soda: {
     title: 'Frisdrank Kaart',
@@ -58,7 +58,7 @@ const cardConfig = {
     emptyBorder: 'rgba(192,64,122,0.22)',
     emptyBg: 'rgba(192,64,122,0.05)',
     shadowColor: 'rgba(192,64,122,0.18)',
-    rewardRule: 'Gratis frisdrank (max €5). Duurdere drank? Volle kaart = €5 korting!',
+    rewardRule: 'Gratis frisdrank (max €3,50). Duurdere drank? Volle kaart = €3,50 korting!',
   },
 };
 

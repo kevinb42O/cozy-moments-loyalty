@@ -121,6 +121,50 @@ CREATE POLICY "Settings: admin can update"
 -- 5. Indexes
 CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);
 
+-- 6. Merge duplicate customers (same email, different auth provider)
+-- Called from the app after each login to auto-fix Google vs email duplicates.
+CREATE OR REPLACE FUNCTION public.merge_customer_by_email(new_id TEXT, new_email TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  old RECORD;
+BEGIN
+  -- Find existing customer with same email but different auth id
+  SELECT * INTO old FROM public.customers
+    WHERE email = new_email AND id <> new_id
+    LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  -- Merge: add old stamps/rewards/claimed/visits into the new row
+  UPDATE public.customers SET
+    coffee_stamps   = coffee_stamps   + old.coffee_stamps,
+    wine_stamps     = wine_stamps     + old.wine_stamps,
+    beer_stamps     = beer_stamps     + old.beer_stamps,
+    soda_stamps     = soda_stamps     + old.soda_stamps,
+    coffee_rewards  = coffee_rewards  + old.coffee_rewards,
+    wine_rewards    = wine_rewards    + old.wine_rewards,
+    beer_rewards    = beer_rewards    + old.beer_rewards,
+    soda_rewards    = soda_rewards    + old.soda_rewards,
+    coffee_claimed  = coffee_claimed  + old.coffee_claimed,
+    wine_claimed    = wine_claimed    + old.wine_claimed,
+    beer_claimed    = beer_claimed    + old.beer_claimed,
+    soda_claimed    = soda_claimed    + old.soda_claimed,
+    total_visits    = total_visits    + old.total_visits,
+    last_visit_at   = GREATEST(last_visit_at, old.last_visit_at),
+    welcome_bonus_claimed = welcome_bonus_claimed OR old.welcome_bonus_claimed,
+    created_at      = LEAST(created_at, old.created_at)
+  WHERE id = new_id;
+
+  -- Delete the old duplicate row
+  DELETE FROM public.customers WHERE id = old.id;
+END;
+$$;
+
 -- 5. Migration: Add visit tracking columns (run if upgrading existing installation)
 -- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS total_visits INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS last_visit_at TIMESTAMPTZ;

@@ -125,6 +125,10 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       );
       if (retryErr) console.error('upsertCustomer error (attempt 2):', retryErr);
     }
+
+    // Merge duplicate rows (same email, different auth provider e.g. Google vs email)
+    await supabase.rpc('merge_customer_by_email', { new_id: id, new_email: email });
+
     await fetchFromSupabase();
     setCurrentCustomerId(id);
   }, [fetchFromSupabase]);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X, Gift } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -90,6 +90,9 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
   // Estimated revenue
   const estimatedRevenue = types.reduce((sum, t) => sum + total[t] * PRICE_ESTIMATE[t], 0);
 
+  // Estimated value given away via loyalty card (claimed free rewards)
+  const estimatedGivenAway = types.reduce((sum, t) => sum + (customer.claimedRewards?.[t] || 0) * PRICE_ESTIMATE[t], 0);
+
   // Average per visit
   const avgPerVisit = customer.totalVisits > 0 ? grandTotal / customer.totalVisits : 0;
 
@@ -112,7 +115,7 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
     loyaltyStatus = 'active';
   }
 
-  return { total, avgPerMonth, monthsActive, grandTotal, favorite, hasFavorite, estimatedRevenue, avgPerVisit, daysSinceLastVisit, loyaltyStatus };
+  return { total, avgPerMonth, monthsActive, grandTotal, favorite, hasFavorite, estimatedRevenue, estimatedGivenAway, avgPerVisit, daysSinceLastVisit, loyaltyStatus };
 }
 
 export const BusinessPage: React.FC = () => {
@@ -505,14 +508,14 @@ export const BusinessPage: React.FC = () => {
                   // ── 1. CSV (Excel / nieuwsbrief import) ────────────
                   // Belgian/Dutch Excel uses semicolons as separator
                   const SEP = ';';
-                  const csvHeader = ['Naam','Email','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Klant_Sinds'].join(SEP);
+                  const csvHeader = ['Naam','Email','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Loyaliteitskorting','Klant_Sinds'].join(SEP);
                   const csvRows = customers.map((c, idx) => {
                     const st = allStats[idx];
                     const name = `"${c.name.replace(/"/g, '""')}"`;
                     const email = `"${(c.email || '').replace(/"/g, '""')}"`;
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, since].join(SEP);
+                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, `€${st.estimatedGivenAway.toFixed(2)}`, since].join(SEP);
                   });
                   const csvTotalsRow = ['"TOTAAL ALLE KLANTEN"', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotal.coffee, grandTotal.wine, grandTotal.beer, grandTotal.soda, '', '', '', '', ''].join(SEP);
                   download([csvHeader, ...csvRows, '', csvTotalsRow].join('\n'), `cozy-moments-klanten-${fileDate}.csv`, 'text/csv');
@@ -539,6 +542,7 @@ export const BusinessPage: React.FC = () => {
                     lines.push(`   Totaal bezoeken: ${c.totalVisits || 0}`);
                     lines.push(`   Favoriet:      ${st.hasFavorite ? cardTypeLabels[st.favorite] : '—'}`);
                     lines.push(`   Geschatte omzet: €${st.estimatedRevenue.toFixed(2)}`);
+                    lines.push(`   Loyaliteitskorting: €${st.estimatedGivenAway.toFixed(2)}`);
                     lines.push(`   Totaal:        Koffie: ${st.total.coffee}  |  Wijn: ${st.total.wine}  |  Bier: ${st.total.beer}  |  Frisdrank: ${st.total.soda}`);
                     lines.push(`   Gem/maand:     Koffie: ${st.avgPerMonth.coffee.toFixed(1)}  |  Wijn: ${st.avgPerMonth.wine.toFixed(1)}  |  Bier: ${st.avgPerMonth.beer.toFixed(1)}  |  Frisdrank: ${st.avgPerMonth.soda.toFixed(1)}`);
                     lines.push(`   Stempels:      Koffie: ${c.cards.coffee}/10  |  Wijn: ${c.cards.wine}/10  |  Bier: ${c.cards.beer}/10  |  Frisdrank: ${c.cards.soda}/10`);
@@ -628,6 +632,7 @@ export const BusinessPage: React.FC = () => {
               const allStats = customers.map(c => calcCustomerStats(c, nowMs));
               const totalConsAll = allStats.reduce((s, st) => s + st.grandTotal, 0);
               const totalRevenueAll = allStats.reduce((s, st) => s + st.estimatedRevenue, 0);
+              const totalGivenAwayAll = allStats.reduce((s, st) => s + st.estimatedGivenAway, 0);
               const activeThisMonth = customers.filter(c => {
                 if (!c.lastVisitAt) return false;
                 const d = new Date(c.lastVisitAt);
@@ -636,7 +641,7 @@ export const BusinessPage: React.FC = () => {
               }).length;
               const totalVisitsAll = customers.reduce((s, c) => s + (c.totalVisits || 0), 0);
               return (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
                   <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center">
                     <Users size={20} className="text-[var(--color-cozy-olive)] mb-1" />
                     <span className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{customers.length}</span>
@@ -656,6 +661,11 @@ export const BusinessPage: React.FC = () => {
                     <Award size={20} className="text-[var(--color-cozy-olive)] mb-1" />
                     <span className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">€{totalRevenueAll.toFixed(0)}</span>
                     <span className="text-[10px] text-gray-400 uppercase tracking-wider">Geschatte omzet</span>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col items-center">
+                    <Gift size={20} className="text-[var(--color-cozy-olive)] mb-1" />
+                    <span className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">€{totalGivenAwayAll.toFixed(0)}</span>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Loyaliteitskorting</span>
                   </div>
                 </div>
               );
@@ -806,6 +816,11 @@ export const BusinessPage: React.FC = () => {
                               <TrendingUp size={16} className="text-[var(--color-cozy-olive)] mb-1" />
                               <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">€{stats.estimatedRevenue.toFixed(0)}</span>
                               <span className="text-[10px] text-gray-400">geschatte omzet</span>
+                            </div>
+                            <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
+                              <Gift size={16} className="text-[var(--color-cozy-olive)] mb-1" />
+                              <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">€{stats.estimatedGivenAway.toFixed(0)}</span>
+                              <span className="text-[10px] text-gray-400">loyaliteitskorting</span>
                             </div>
                             <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
                               <Calendar size={16} className="text-[var(--color-cozy-olive)] mb-1" />

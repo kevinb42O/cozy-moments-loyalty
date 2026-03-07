@@ -20,10 +20,12 @@ export interface Customer {
   claimedRewards: Record<CardType, number>;
   totalVisits: number;
   lastVisitAt: string | null;
+  welcomeBonusClaimed: boolean;
 }
 
 export interface AddResult {
   earned: Record<CardType, number>;
+  bonusApplied: boolean;
 }
 
 interface LoyaltyContextType {
@@ -34,6 +36,7 @@ interface LoyaltyContextType {
   setCurrentCustomer: (id: string) => void;
   addConsumptions: (customerId: string, consumptions: Record<CardType, number>) => Promise<AddResult>;
   claimReward: (customerId: string, type: CardType) => Promise<boolean>;
+  deleteCustomer: (customerId: string) => Promise<boolean>;
   upsertCustomer: (id: string, name: string, email: string) => Promise<void>;
   refreshCustomers: () => Promise<void>;
 }
@@ -51,6 +54,7 @@ function rowToCustomer(row: any): Customer {
     claimedRewards: { coffee: row.coffee_claimed ?? 0, wine: row.wine_claimed ?? 0, beer: row.beer_claimed ?? 0, soda: row.soda_claimed ?? 0 },
     totalVisits: row.total_visits ?? 0,
     lastVisitAt: row.last_visit_at ?? null,
+    welcomeBonusClaimed: row.welcome_bonus_claimed ?? false,
   };
 }
 
@@ -102,7 +106,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const payload = { id, name, email, coffee_stamps: 0, wine_stamps: 0, beer_stamps: 0, soda_stamps: 0,
       coffee_rewards: 0, wine_rewards: 0, beer_rewards: 0, soda_rewards: 0,
       coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0,
-      total_visits: 0, last_visit_at: null };
+      total_visits: 0, last_visit_at: null, welcome_bonus_claimed: false };
 
     const { error } = await supabase.from('customers').upsert(
       payload,
@@ -127,7 +131,8 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     consumptions: Record<CardType, number>
   ): Promise<AddResult> => {
     const earned: Record<CardType, number> = emptyCards();
-    if (!supabase) return { earned };
+    let bonusApplied = false;
+    if (!supabase) return { earned, bonusApplied };
 
     // Always fetch fresh customer data from DB to avoid stale closure issues
     const { data: row, error: fetchErr } = await supabase
@@ -138,28 +143,47 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (fetchErr || !row) {
       console.error('addConsumptions: customer not found in DB', fetchErr);
-      return { earned };
+      return { earned, bonusApplied };
     }
 
     const customer = rowToCustomer(row);
     const newCards = { ...customer.cards };
     const newRewards = { ...customer.rewards };
 
-    (Object.keys(consumptions) as CardType[]).forEach(type => {
-      if (consumptions[type] <= 0) return;
-      const total = newCards[type] + consumptions[type];
+    // Welcome bonus: +2 extra stamps on first-ever transaction
+    const applyBonus = !customer.welcomeBonusClaimed;
+    const actualConsumptions = { ...consumptions };
+    if (applyBonus) {
+      // Find the first category with stamps to apply the bonus to
+      const bonusType = (Object.keys(actualConsumptions) as CardType[]).find(
+        type => actualConsumptions[type] > 0
+      );
+      if (bonusType) {
+        actualConsumptions[bonusType] += 2;
+        bonusApplied = true;
+      }
+    }
+
+    (Object.keys(actualConsumptions) as CardType[]).forEach(type => {
+      if (actualConsumptions[type] <= 0) return;
+      const total = newCards[type] + actualConsumptions[type];
       const rewardsEarned = Math.floor(total / 10);
       earned[type] = rewardsEarned;
       newCards[type] = total % 10;
       if (rewardsEarned > 0) newRewards[type] = (newRewards[type] || 0) + rewardsEarned;
     });
 
-    const { error } = await supabase.from('customers').update({
+    const updatePayload: Record<string, unknown> = {
       coffee_stamps: newCards.coffee, wine_stamps: newCards.wine, beer_stamps: newCards.beer, soda_stamps: newCards.soda,
       coffee_rewards: newRewards.coffee, wine_rewards: newRewards.wine, beer_rewards: newRewards.beer, soda_rewards: newRewards.soda,
       total_visits: (customer.totalVisits || 0) + 1,
       last_visit_at: new Date().toISOString(),
-    }).eq('id', customerId);
+    };
+    if (bonusApplied) {
+      updatePayload.welcome_bonus_claimed = true;
+    }
+
+    const { error } = await supabase.from('customers').update(updatePayload).eq('id', customerId);
 
     if (error) {
       console.error('Supabase update error:', error);
@@ -168,11 +192,11 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Optimistic update so UI responds instantly, then sync from DB
     setCustomers(prev => prev.map(c =>
-      c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString() } : c
+      c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString(), welcomeBonusClaimed: bonusApplied ? true : c.welcomeBonusClaimed } : c
     ));
     await fetchFromSupabase();
 
-    return { earned };
+    return { earned, bonusApplied };
   }, [fetchFromSupabase]);
 
   const claimReward = useCallback(async (customerId: string, type: CardType): Promise<boolean> => {
@@ -206,6 +230,20 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [fetchFromSupabase]);
 
+  const deleteCustomer = useCallback(async (customerId: string): Promise<boolean> => {
+    if (!supabase) return false;
+
+    const { error } = await supabase.rpc('delete_customer_account', { customer_id: customerId });
+    if (error) {
+      console.error('deleteCustomer error:', error);
+      return false;
+    }
+
+    setCustomers(prev => prev.filter(c => c.id !== customerId));
+    await fetchFromSupabase();
+    return true;
+  }, [fetchFromSupabase]);
+
   const currentCustomer = customers.find(c => c.id === currentCustomerId) ?? null;
 
   const refreshCustomers = useCallback(async () => {
@@ -216,7 +254,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <LoyaltyContext.Provider value={{
       customers, currentCustomer, loading, dbError,
       setCurrentCustomer: setCurrentCustomerWithPin,
-      addConsumptions, claimReward, upsertCustomer, refreshCustomers,
+      addConsumptions, claimReward, deleteCustomer, upsertCustomer, refreshCustomers,
     }}>
       {children}
     </LoyaltyContext.Provider>

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
-import { ArrowLeft, CheckCircle, Camera, RefreshCw, Gift } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Camera, RefreshCw, Gift, Sparkles } from 'lucide-react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { verifyQrPayload } from '../../shared/lib/qr-crypto';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ interface ScanResult {
   type: 'add' | 'redeem';
   earned?: Record<CardType, number>;
   claimedType?: CardType;
+  bonusApplied?: boolean;
 }
 
 // Module-level AudioContext that gets unlocked on user tap and reused for chimes.
@@ -322,9 +323,9 @@ export const Scanner: React.FC = () => {
                     soda: (payload.soda as number) || 0,
                   }).then(result => {
                     playSuccessChime();
-                    setScanResult({ type: 'add', earned: result.earned });
+                    setScanResult({ type: 'add', earned: result.earned, bonusApplied: result.bonusApplied });
                     setScanned(true);
-                    setTimeout(() => navigate('/dashboard'), 2500);
+                    setTimeout(() => navigate('/dashboard'), result.bonusApplied ? 4500 : 2500);
                   }).catch(() => {
                     setScanError('Er ging iets mis bij het opslaan — probeer opnieuw');
                     setTimeout(() => setScanError(null), 4000);
@@ -419,11 +420,37 @@ export const Scanner: React.FC = () => {
                 animate={{ scale: 1, opacity: 1 }}
                 className="flex flex-col items-center text-center"
               >
-                <div className="w-24 h-24 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center mb-6">
-                  <CheckCircle size={48} />
-                </div>
-                <h2 className="text-3xl font-serif font-semibold mb-2">Succesvol!</h2>
-                <p className="text-white/70">Consumpties zijn toegevoegd aan je kaart.</p>
+                {scanResult.bonusApplied ? (
+                  <>
+                    <motion.div
+                      initial={{ scale: 0, rotate: -20 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 12 }}
+                      className="w-24 h-24 bg-linear-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-amber-500/30"
+                    >
+                      <Sparkles size={48} className="text-white" />
+                    </motion.div>
+                    <h2 className="text-3xl font-serif font-semibold mb-3">Welkom bij Cozy Moments!</h2>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="bg-linear-to-br from-amber-500/20 to-orange-500/10 rounded-2xl p-5 border border-amber-400/30 max-w-xs"
+                    >
+                      <p className="text-white/90 leading-relaxed">
+                        Omdat dit je eerste scan is, krijg je van ons <span className="font-bold text-amber-300">2 extra stempels</span> cadeau op je kaart! 🎁
+                      </p>
+                    </motion.div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-24 h-24 bg-[var(--color-cozy-olive)] rounded-full flex items-center justify-center mb-6">
+                      <CheckCircle size={48} />
+                    </div>
+                    <h2 className="text-3xl font-serif font-semibold mb-2">Succesvol!</h2>
+                    <p className="text-white/70">Consumpties zijn toegevoegd aan je kaart.</p>
+                  </>
+                )}
 
                 {scanResult.earned && Object.values(scanResult.earned).some(v => v > 0) && (
                   <motion.div

@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
   soda_claimed     INTEGER     NOT NULL DEFAULT 0,
   total_visits     INTEGER     NOT NULL DEFAULT 0,
   last_visit_at    TIMESTAMPTZ,
+  welcome_bonus_claimed BOOLEAN NOT NULL DEFAULT FALSE,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -98,3 +99,27 @@ CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);
 -- 5. Migration: Add visit tracking columns (run if upgrading existing installation)
 -- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS total_visits INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS last_visit_at TIMESTAMPTZ;
+
+-- 6. Migration: Add welcome bonus column (run if upgrading existing installation)
+-- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS welcome_bonus_claimed BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 7. Admin function: Delete a customer completely (customers row + auth user)
+--    Only callable by admin users (checked inside the function).
+CREATE OR REPLACE FUNCTION public.delete_customer_account(customer_id TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Verify the caller is an admin
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Niet geautoriseerd';
+  END IF;
+
+  -- Delete from public.customers
+  DELETE FROM public.customers WHERE id = customer_id;
+
+  -- Delete from auth.users (requires SECURITY DEFINER to access auth schema)
+  DELETE FROM auth.users WHERE id = customer_id::uuid;
+END;
+$$;

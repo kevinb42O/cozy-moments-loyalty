@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -100,7 +100,7 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
 }
 
 export const BusinessPage: React.FC = () => {
-  const { customers, refreshCustomers } = useLoyalty();
+  const { customers, refreshCustomers, deleteCustomer } = useLoyalty();
   const { logout } = useBusinessAuth();
   const [consumptions, setConsumptions] = useState<Record<CardType, number>>({
     coffee: 0,
@@ -113,6 +113,8 @@ export const BusinessPage: React.FC = () => {
   const [view, setView] = useState<'create' | 'customers' | 'redeem'>('create');
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   // Snapshot of customers when a QR is generated — used to detect when it gets scanned
   const customersSnapshotRef = useRef<string>('');
 
@@ -824,6 +826,17 @@ export const BusinessPage: React.FC = () => {
                               <span className="text-[10px] text-gray-400">gratis</span>
                             </div>
                           </div>
+
+                          {/* Delete button */}
+                          <div className="mt-6 pt-4 border-t border-gray-100">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: customer.id, name: customer.name }); }}
+                              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-red-500 bg-red-50 hover:bg-red-100 active:scale-[0.98] transition-all text-sm font-medium"
+                            >
+                              <Trash2 size={16} />
+                              Account verwijderen
+                            </button>
+                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -938,6 +951,69 @@ export const BusinessPage: React.FC = () => {
           </motion.div>
         )}
       </main>
+
+      {/* Delete confirmation modal */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+            onClick={() => !deleting && setDeleteConfirm(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-center w-14 h-14 bg-red-50 rounded-full mx-auto mb-4">
+                <AlertTriangle size={28} className="text-red-500" />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center text-[var(--color-cozy-text)] mb-2">
+                Account verwijderen?
+              </h3>
+              <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">
+                <span className="font-semibold text-gray-700">{deleteConfirm.name}</span> wordt volledig verwijderd.
+                Alle stempels, beloningen en het login-account gaan verloren. Dit kan niet ongedaan worden!
+              </p>
+              <div className="flex gap-3">
+                <button
+                  disabled={deleting}
+                  onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 py-3 px-4 rounded-2xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Annuleren
+                </button>
+                <button
+                  disabled={deleting}
+                  onClick={async () => {
+                    setDeleting(true);
+                    const ok = await deleteCustomer(deleteConfirm.id);
+                    setDeleting(false);
+                    if (ok) {
+                      setDeleteConfirm(null);
+                      setExpandedCustomer(null);
+                    }
+                  }}
+                  className="flex-1 py-3 px-4 rounded-2xl bg-red-500 text-white font-medium text-sm hover:bg-red-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {deleting ? (
+                    <span className="animate-pulse">Verwijderen...</span>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      Verwijderen
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

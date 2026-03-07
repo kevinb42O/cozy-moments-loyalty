@@ -15,7 +15,6 @@ interface ScanResult {
   claimedType?: CardType;
   bonusApplied?: boolean;
   bonusType?: CardType;
-  bonusStartPosition?: number;
 }
 
 // Module-level AudioContext that gets unlocked on user tap and reused for chimes.
@@ -326,7 +325,7 @@ export const Scanner: React.FC = () => {
                     soda: (payload.soda as number) || 0,
                   }).then(result => {
                     playSuccessChime();
-                    setScanResult({ type: 'add', earned: result.earned, bonusApplied: result.bonusApplied, bonusType: result.bonusType, bonusStartPosition: result.bonusStartPosition });
+                    setScanResult({ type: 'add', earned: result.earned, bonusApplied: result.bonusApplied, bonusType: result.bonusType });
                     setScanned(true);
                     setTimeout(() => navigate('/dashboard'), result.bonusApplied ? 4500 : 2500);
                   }).catch(() => {
@@ -454,7 +453,7 @@ export const Scanner: React.FC = () => {
                         <LoyaltyCard
                           type={scanResult.bonusType}
                           count={currentCustomer.cards[scanResult.bonusType]}
-                          bonusStampPositions={[scanResult.bonusStartPosition, scanResult.bonusStartPosition + 1]}
+                          bonusStampPositions={[0, 1]}
                         />
                         <p className="text-center text-amber-300 text-xs mt-2 font-medium">
                           🎁 De gouden stempels zijn jouw cadeau!

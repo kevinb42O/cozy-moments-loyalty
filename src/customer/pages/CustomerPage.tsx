@@ -126,20 +126,32 @@ export const CustomerPage: React.FC = () => {
 
       {/* Cards stacked vertically */}
       <main className="px-6 space-y-5">
-        {CARD_TYPES.map((type, i) => (
-          <motion.div
-            key={type}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.5,
-              delay: 0.1 + i * 0.12,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-          >
-            <LoyaltyCard type={type} count={currentCustomer.cards[type]} />
-          </motion.div>
-        ))}
+        {CARD_TYPES.map((type, i) => {
+          // Show gold bonus stamps at positions [0, 1] on the card that received the welcome bonus,
+          // but only until the customer completes their first full card cycle for that type.
+          const isBonusCard = currentCustomer.bonusCardType === type;
+          const bonusStillActive = isBonusCard &&
+            (currentCustomer.rewards[type] || 0) === 0 &&
+            (currentCustomer.claimedRewards[type] || 0) === 0;
+          return (
+            <motion.div
+              key={type}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.1 + i * 0.12,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <LoyaltyCard
+                type={type}
+                count={currentCustomer.cards[type]}
+                bonusStampPositions={bonusStillActive ? [0, 1] : undefined}
+              />
+            </motion.div>
+          );
+        })}
       </main>
 
       {/* Scan button */}

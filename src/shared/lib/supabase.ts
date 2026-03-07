@@ -34,6 +34,7 @@ export type Database = {
           total_visits: number;
           last_visit_at: string | null;
           welcome_bonus_claimed: boolean;
+          bonus_card_type: string | null;
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['customers']['Row'], 'id' | 'created_at'>;

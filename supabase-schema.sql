@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
   total_visits     INTEGER     NOT NULL DEFAULT 0,
   last_visit_at    TIMESTAMPTZ,
   welcome_bonus_claimed BOOLEAN NOT NULL DEFAULT FALSE,
+  bonus_card_type  TEXT,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -102,6 +103,7 @@ CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);
 
 -- 6. Migration: Add welcome bonus column (run if upgrading existing installation)
 -- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS welcome_bonus_claimed BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS bonus_card_type TEXT;
 
 -- 7. Admin function: Delete a customer completely (customers row + auth user)
 --    Only callable by admin users (checked inside the function).

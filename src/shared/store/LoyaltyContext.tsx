@@ -21,13 +21,13 @@ export interface Customer {
   totalVisits: number;
   lastVisitAt: string | null;
   welcomeBonusClaimed: boolean;
+  bonusCardType: CardType | null;
 }
 
 export interface AddResult {
   earned: Record<CardType, number>;
   bonusApplied: boolean;
   bonusType?: CardType;
-  bonusStartPosition?: number; // 0-indexed position of the first bonus stamp on the card
 }
 
 interface LoyaltyContextType {
@@ -57,6 +57,7 @@ function rowToCustomer(row: any): Customer {
     totalVisits: row.total_visits ?? 0,
     lastVisitAt: row.last_visit_at ?? null,
     welcomeBonusClaimed: row.welcome_bonus_claimed ?? false,
+    bonusCardType: (row.bonus_card_type as CardType | null) ?? null,
   };
 }
 
@@ -156,21 +157,13 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const applyBonus = !customer.welcomeBonusClaimed;
     const actualConsumptions = { ...consumptions };
     let bonusCardType: CardType | undefined;
-    let bonusStartPosition: number | undefined;
     if (applyBonus) {
       // Find the first category with stamps to apply the bonus to
       const foundType = (Object.keys(actualConsumptions) as CardType[]).find(
         type => actualConsumptions[type] > 0
       );
       if (foundType) {
-        const prevStamps = customer.cards[foundType];
-        const purchasedCount = consumptions[foundType];
-        const startPos = prevStamps + purchasedCount;
-        // Only mark positions when bonus fits on the current card (no wrap)
-        if (startPos + 2 <= 10) {
-          bonusCardType = foundType;
-          bonusStartPosition = startPos;
-        }
+        bonusCardType = foundType;
         actualConsumptions[foundType] += 2;
         bonusApplied = true;
       }
@@ -193,6 +186,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     if (bonusApplied) {
       updatePayload.welcome_bonus_claimed = true;
+      updatePayload.bonus_card_type = bonusCardType;
     }
 
     const { error } = await supabase.from('customers').update(updatePayload).eq('id', customerId);
@@ -204,11 +198,11 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Optimistic update so UI responds instantly, then sync from DB
     setCustomers(prev => prev.map(c =>
-      c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString(), welcomeBonusClaimed: bonusApplied ? true : c.welcomeBonusClaimed } : c
+      c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString(), welcomeBonusClaimed: bonusApplied ? true : c.welcomeBonusClaimed, bonusCardType: bonusApplied ? (bonusCardType ?? null) : c.bonusCardType } : c
     ));
     await fetchFromSupabase();
 
-    return { earned, bonusApplied, bonusType: bonusCardType, bonusStartPosition };
+    return { earned, bonusApplied, bonusType: bonusCardType };
   }, [fetchFromSupabase]);
 
   const claimReward = useCallback(async (customerId: string, type: CardType): Promise<boolean> => {

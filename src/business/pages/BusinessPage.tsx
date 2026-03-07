@@ -97,12 +97,44 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
   const lastVisitMs = customer.lastVisitAt ? new Date(customer.lastVisitAt).getTime() : null;
   const daysSinceLastVisit = lastVisitMs ? Math.floor((nowMs - lastVisitMs) / (24 * 60 * 60 * 1000)) : null;
 
-  return { total, avgPerMonth, monthsActive, grandTotal, favorite, hasFavorite, estimatedRevenue, avgPerVisit, daysSinceLastVisit };
+  // Loyalty status
+  const visitsPerMonth = monthsActive >= 1 ? (customer.totalVisits || 0) / monthsActive : (customer.totalVisits || 0);
+  let loyaltyStatus: 'vip' | 'loyal' | 'active' | 'sleeping' | 'new';
+  if ((customer.totalVisits || 0) <= 2 && monthsActive < 2) {
+    loyaltyStatus = 'new';
+  } else if (daysSinceLastVisit !== null && daysSinceLastVisit > 30) {
+    loyaltyStatus = 'sleeping';
+  } else if (visitsPerMonth >= 4 && daysSinceLastVisit !== null && daysSinceLastVisit <= 10) {
+    loyaltyStatus = 'vip';
+  } else if (visitsPerMonth >= 2 && daysSinceLastVisit !== null && daysSinceLastVisit <= 21) {
+    loyaltyStatus = 'loyal';
+  } else {
+    loyaltyStatus = 'active';
+  }
+
+  return { total, avgPerMonth, monthsActive, grandTotal, favorite, hasFavorite, estimatedRevenue, avgPerVisit, daysSinceLastVisit, loyaltyStatus };
 }
 
 export const BusinessPage: React.FC = () => {
   const { customers, refreshCustomers, deleteCustomer } = useLoyalty();
   const { logout } = useBusinessAuth();
+
+  const loyaltyBadge = (status: 'vip' | 'loyal' | 'active' | 'sleeping' | 'new') => {
+    const config = {
+      vip:      { label: 'VIP',          bg: 'bg-amber-100 text-amber-800 border-amber-200' },
+      loyal:    { label: 'Trouwe klant', bg: 'bg-green-100 text-green-800 border-green-200' },
+      active:   { label: 'Actief',       bg: 'bg-blue-100 text-blue-800 border-blue-200' },
+      sleeping: { label: 'Slapend',      bg: 'bg-red-100 text-red-700 border-red-200' },
+      new:      { label: 'Nieuw',        bg: 'bg-purple-100 text-purple-800 border-purple-200' },
+    };
+    const c = config[status];
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${c.bg}`}>
+        {c.label}
+      </span>
+    );
+  };
+
   const [consumptions, setConsumptions] = useState<Record<CardType, number>>({
     coffee: 0,
     wine: 0,
@@ -685,7 +717,10 @@ export const BusinessPage: React.FC = () => {
                         {customer.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-serif font-semibold text-base md:text-lg leading-tight truncate">{customer.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-serif font-semibold text-base md:text-lg leading-tight truncate">{customer.name}</h3>
+                          {loyaltyBadge(stats.loyaltyStatus)}
+                        </div>
                         <p className="text-xs text-gray-400 truncate mt-0.5">{customer.email}</p>
                       </div>
                       {/* Desktop: stamp counters inline */}
@@ -757,6 +792,11 @@ export const BusinessPage: React.FC = () => {
                           {/* ── Klant Intelligence ──────────────────── */}
                           <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Klant Inzichten</p>
                           <div className="grid grid-cols-2 gap-2 mb-4">
+                            <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
+                              <Award size={16} className="text-[var(--color-cozy-olive)] mb-1" />
+                              {loyaltyBadge(stats.loyaltyStatus)}
+                              <span className="text-[10px] text-gray-400 mt-1">status</span>
+                            </div>
                             <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
                               <Star size={16} className="text-[var(--color-cozy-olive)] mb-1" />
                               <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{stats.hasFavorite ? cardTypeLabels[stats.favorite] : '—'}</span>

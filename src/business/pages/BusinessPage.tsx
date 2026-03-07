@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { Screensaver } from '../components/Screensaver';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
+import { supabase } from '../../shared/lib/supabase';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -115,6 +116,11 @@ export const BusinessPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Promo message state
+  const [promoMessage, setPromoMessage] = useState('');
+  const [promoInput, setPromoInput] = useState('');
+  const [promoEditing, setPromoEditing] = useState(false);
+  const [promoSaving, setPromoSaving] = useState(false);
   // Snapshot of customers when a QR is generated — used to detect when it gets scanned
   const customersSnapshotRef = useRef<string>('');
 
@@ -133,6 +139,27 @@ export const BusinessPage: React.FC = () => {
   useEffect(() => {
     if (view === 'customers') refreshCustomers();
   }, [view]);
+
+  // Fetch promo message on mount
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from('site_settings').select('promo_message').eq('id', 'default').single()
+      .then(({ data }) => {
+        const msg = data?.promo_message ?? '';
+        setPromoMessage(msg);
+        setPromoInput(msg);
+      });
+  }, []);
+
+  const savePromo = async (msg: string) => {
+    if (!supabase) return;
+    setPromoSaving(true);
+    await supabase.from('site_settings').update({ promo_message: msg, updated_at: new Date().toISOString() }).eq('id', 'default');
+    setPromoMessage(msg);
+    setPromoInput(msg);
+    setPromoEditing(false);
+    setPromoSaving(false);
+  };
 
   const handleIncrement = (type: CardType) => {
     setConsumptions(prev => ({ ...prev, [type]: prev[type] + 1 }));
@@ -508,7 +535,61 @@ export const BusinessPage: React.FC = () => {
                 Export
               </button>
             </div>
-            
+
+            {/* ── Promo bericht ───────────────────────────────────── */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Megaphone size={16} className="text-[var(--color-cozy-olive)]" />
+                <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">Promo bericht voor klanten</span>
+              </div>
+              {promoEditing ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={e => setPromoInput(e.target.value)}
+                    maxLength={120}
+                    placeholder="bv. Vandaag 2e koffie gratis!"
+                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)] transition"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') savePromo(promoInput.trim()); else if (e.key === 'Escape') { setPromoInput(promoMessage); setPromoEditing(false); } }}
+                  />
+                  <button
+                    onClick={() => savePromo(promoInput.trim())}
+                    disabled={promoSaving}
+                    className="w-10 h-10 rounded-xl bg-[var(--color-cozy-olive)] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    <Check size={18} />
+                  </button>
+                  <button
+                    onClick={() => { setPromoInput(promoMessage); setPromoEditing(false); }}
+                    className="w-10 h-10 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setPromoEditing(true)}
+                  className="w-full text-left bg-gray-50 border border-dashed border-gray-200 rounded-xl px-3 py-2 text-sm hover:bg-gray-100 transition-colors"
+                >
+                  {promoMessage ? (
+                    <span className="text-[var(--color-cozy-text)]">{promoMessage}</span>
+                  ) : (
+                    <span className="text-gray-400 italic">Tik om een promo bericht in te stellen...</span>
+                  )}
+                </button>
+              )}
+              {promoMessage && !promoEditing && (
+                <button
+                  onClick={() => savePromo('')}
+                  className="mt-2 text-xs text-red-400 hover:text-red-500 transition-colors"
+                >
+                  Promo verwijderen
+                </button>
+              )}
+            </div>
+
             {/* ── Dashboard Summary Cards ─────────────────────────── */}
             {(() => {
               const nowMs = Date.now();

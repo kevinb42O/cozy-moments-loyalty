@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, LogOut, Gift, ChevronRight } from 'lucide-react';
+import { QrCode, LogOut, Gift, ChevronRight, Megaphone } from 'lucide-react';
 import { useLoyalty, CardType } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
 import { LoadingScreen } from '../../shared/components/LoadingScreen';
+import { supabase } from '../../shared/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
@@ -15,10 +16,18 @@ export const CustomerPage: React.FC = () => {
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(true);
   const [loadTimeout, setLoadTimeout] = useState(false);
+  const [promoMessage, setPromoMessage] = useState('');
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
     return () => clearTimeout(t);
+  }, []);
+
+  // Fetch promo message
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from('site_settings').select('promo_message').eq('id', 'default').single()
+      .then(({ data }) => { if (data?.promo_message) setPromoMessage(data.promo_message); });
   }, []);
 
   // If currentCustomer doesn't load within 8s, show escape hatch
@@ -99,6 +108,21 @@ export const CustomerPage: React.FC = () => {
           )}
         </AnimatePresence>
       </motion.header>
+
+      {/* Promo banner */}
+      {promoMessage && (
+        <div className="px-6 mb-4">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-[var(--color-cozy-olive)]/8 border border-[var(--color-cozy-olive)]/15 rounded-2xl px-4 py-3 flex items-start gap-2.5"
+          >
+            <Megaphone size={16} className="text-[var(--color-cozy-olive)] mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-[var(--color-cozy-text)]/80 leading-snug">{promoMessage}</p>
+          </motion.div>
+        </div>
+      )}
 
       {/* Rewards banner */}
       {totalRewards > 0 && (

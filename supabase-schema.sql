@@ -94,7 +94,31 @@ CREATE POLICY "Admin: update all customers"
 --    Password: (choose a strong password)
 --    That same password is used to log in to the admin panel.
 
--- 4. Indexes
+-- 4. Site settings (single-row table for promo message etc.)
+CREATE TABLE IF NOT EXISTS public.site_settings (
+  id             TEXT        PRIMARY KEY DEFAULT 'default',
+  promo_message  TEXT        NOT NULL DEFAULT '',
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Insert the single default row
+INSERT INTO public.site_settings (id) VALUES ('default') ON CONFLICT DO NOTHING;
+
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
+
+-- Everyone authenticated can read the settings (customers need the promo)
+DROP POLICY IF EXISTS "Settings: anyone can read" ON public.site_settings;
+CREATE POLICY "Settings: anyone can read"
+  ON public.site_settings FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- Only admins can update the settings
+DROP POLICY IF EXISTS "Settings: admin can update" ON public.site_settings;
+CREATE POLICY "Settings: admin can update"
+  ON public.site_settings FOR UPDATE
+  USING (is_admin());
+
+-- 5. Indexes
 CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);
 
 -- 5. Migration: Add visit tracking columns (run if upgrading existing installation)

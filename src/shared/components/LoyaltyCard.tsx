@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Coffee, Wine, Beer, GlassWater, Check } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Check, Gift } from 'lucide-react';
 import { CardType } from '../store/LoyaltyContext';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -13,6 +13,7 @@ interface LoyaltyCardProps {
   type: CardType;
   count: number;
   isActive?: boolean;
+  bonusStampPositions?: number[];
 }
 
 const cardConfig = {
@@ -79,7 +80,7 @@ function getMotivationText(count: number, type: string): string {
 
 
 
-export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
+export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStampPositions }) => {
   const config = cardConfig[type];
   const Icon = config.icon;
 
@@ -133,12 +134,17 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
         <div className="grid grid-cols-5 gap-2 my-1">
           {Array.from({ length: 10 }).map((_, i) => {
             const isFilled = i < count;
+            const isBonus = isFilled && (bonusStampPositions?.includes(i) ?? false);
             const isFree = i === 9;
             return (
               <div
                 key={i}
                 className="aspect-square rounded-full flex items-center justify-center"
-                style={isFilled ? {
+                style={isBonus ? {
+                  background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                  boxShadow: '0 2px 10px rgba(245,158,11,0.55)',
+                  border: '1.5px solid #FBBF24',
+                } : isFilled ? {
                   background: config.accent,
                   boxShadow: `0 2px 8px ${config.shadowColor}`,
                   border: `1.5px solid ${config.accent}`,
@@ -147,7 +153,9 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count }) => {
                   border: `1.5px solid ${config.emptyBorder}`,
                 }}
               >
-                {isFilled ? (
+                {isBonus ? (
+                  <Gift className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                ) : isFilled ? (
                   <Check className="w-4 h-4 text-white" strokeWidth={3} />
                 ) : isFree ? (
                   <span style={{ color: config.emptyBorder }} className="font-display font-bold text-[8px] leading-none text-center px-0.5">

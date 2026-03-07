@@ -26,6 +26,8 @@ export interface Customer {
 export interface AddResult {
   earned: Record<CardType, number>;
   bonusApplied: boolean;
+  bonusType?: CardType;
+  bonusStartPosition?: number; // 0-indexed position of the first bonus stamp on the card
 }
 
 interface LoyaltyContextType {
@@ -153,13 +155,23 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Welcome bonus: +2 extra stamps on first-ever transaction
     const applyBonus = !customer.welcomeBonusClaimed;
     const actualConsumptions = { ...consumptions };
+    let bonusCardType: CardType | undefined;
+    let bonusStartPosition: number | undefined;
     if (applyBonus) {
       // Find the first category with stamps to apply the bonus to
-      const bonusType = (Object.keys(actualConsumptions) as CardType[]).find(
+      const foundType = (Object.keys(actualConsumptions) as CardType[]).find(
         type => actualConsumptions[type] > 0
       );
-      if (bonusType) {
-        actualConsumptions[bonusType] += 2;
+      if (foundType) {
+        const prevStamps = customer.cards[foundType];
+        const purchasedCount = consumptions[foundType];
+        const startPos = prevStamps + purchasedCount;
+        // Only mark positions when bonus fits on the current card (no wrap)
+        if (startPos + 2 <= 10) {
+          bonusCardType = foundType;
+          bonusStartPosition = startPos;
+        }
+        actualConsumptions[foundType] += 2;
         bonusApplied = true;
       }
     }
@@ -196,7 +208,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ));
     await fetchFromSupabase();
 
-    return { earned, bonusApplied };
+    return { earned, bonusApplied, bonusType: bonusCardType, bonusStartPosition };
   }, [fetchFromSupabase]);
 
   const claimReward = useCallback(async (customerId: string, type: CardType): Promise<boolean> => {

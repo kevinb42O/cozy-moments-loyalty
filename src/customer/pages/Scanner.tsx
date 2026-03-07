@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ArrowLeft, CheckCircle, Camera, RefreshCw, Gift, Sparkles } from 'lucide-react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
+import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
 import { verifyQrPayload } from '../../shared/lib/qr-crypto';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -13,6 +14,8 @@ interface ScanResult {
   earned?: Record<CardType, number>;
   claimedType?: CardType;
   bonusApplied?: boolean;
+  bonusType?: CardType;
+  bonusStartPosition?: number;
 }
 
 // Module-level AudioContext that gets unlocked on user tap and reused for chimes.
@@ -323,7 +326,7 @@ export const Scanner: React.FC = () => {
                     soda: (payload.soda as number) || 0,
                   }).then(result => {
                     playSuccessChime();
-                    setScanResult({ type: 'add', earned: result.earned, bonusApplied: result.bonusApplied });
+                    setScanResult({ type: 'add', earned: result.earned, bonusApplied: result.bonusApplied, bonusType: result.bonusType, bonusStartPosition: result.bonusStartPosition });
                     setScanned(true);
                     setTimeout(() => navigate('/dashboard'), result.bonusApplied ? 4500 : 2500);
                   }).catch(() => {
@@ -441,6 +444,23 @@ export const Scanner: React.FC = () => {
                         Omdat dit je eerste scan is, krijg je van ons <span className="font-bold text-amber-300">2 extra stempels</span> cadeau op je kaart! 🎁
                       </p>
                     </motion.div>
+                    {scanResult.bonusType !== undefined && scanResult.bonusStartPosition !== undefined && currentCustomer && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="mt-5 w-full max-w-xs"
+                      >
+                        <LoyaltyCard
+                          type={scanResult.bonusType}
+                          count={currentCustomer.cards[scanResult.bonusType]}
+                          bonusStampPositions={[scanResult.bonusStartPosition, scanResult.bonusStartPosition + 1]}
+                        />
+                        <p className="text-center text-amber-300 text-xs mt-2 font-medium">
+                          🎁 De gouden stempels zijn jouw cadeau!
+                        </p>
+                      </motion.div>
+                    )}
                   </>
                 ) : (
                   <>

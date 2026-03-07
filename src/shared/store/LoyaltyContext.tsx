@@ -187,6 +187,9 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (bonusApplied) {
       updatePayload.welcome_bonus_claimed = true;
       updatePayload.bonus_card_type = bonusCardType;
+    } else if (customer.bonusCardType && earned[customer.bonusCardType] > 0) {
+      // The first full card cycle for the bonus type completed — retire the gold highlight
+      updatePayload.bonus_card_type = null;
     }
 
     const { error } = await supabase.from('customers').update(updatePayload).eq('id', customerId);
@@ -197,8 +200,9 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     // Optimistic update so UI responds instantly, then sync from DB
+    const shouldClearBonus = !bonusApplied && customer.bonusCardType !== null && earned[customer.bonusCardType as CardType] > 0;
     setCustomers(prev => prev.map(c =>
-      c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString(), welcomeBonusClaimed: bonusApplied ? true : c.welcomeBonusClaimed, bonusCardType: bonusApplied ? (bonusCardType ?? null) : c.bonusCardType } : c
+      c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString(), welcomeBonusClaimed: bonusApplied ? true : c.welcomeBonusClaimed, bonusCardType: bonusApplied ? (bonusCardType ?? null) : shouldClearBonus ? null : c.bonusCardType } : c
     ));
     await fetchFromSupabase();
 

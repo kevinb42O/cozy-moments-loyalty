@@ -66,7 +66,8 @@ export const RewardsPage: React.FC = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className="bg-white rounded-[24px] p-5 shadow-sm flex items-center justify-between"
+                    onClick={() => navigate('/scanner')}
+                    className="bg-white rounded-[24px] p-5 shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.97] transition-transform"
                   >
                     <div className="flex items-center gap-4">
                       <motion.div
@@ -80,7 +81,7 @@ export const RewardsPage: React.FC = () => {
                         <h3 className="font-display font-bold text-lg text-[var(--color-cozy-text)]">
                           Gratis {cardTypeLabels[type]}
                         </h3>
-                        <p className="text-sm text-gray-500">Scan aan de kassa om in te wisselen</p>
+                        <p className="text-sm text-gray-500">Tik hier om in te wisselen</p>
                       </div>
                     </div>
                     <div className="bg-[var(--color-cozy-olive)] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
@@ -123,13 +124,20 @@ export const RewardsPage: React.FC = () => {
       {/* Bottom CTA */}
       {totalRewards > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--color-cozy-bg)] via-[var(--color-cozy-bg)] to-transparent">
-          <button
+          <motion.button
             onClick={() => navigate('/scanner')}
+            animate={{ scale: [1, 1.04, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             className="w-full bg-white/60 backdrop-blur-md border border-white/80 text-[var(--color-cozy-text)] rounded-full py-4 px-6 shadow-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
           >
-            <QrCode size={22} className="opacity-70" />
+            <motion.div
+              animate={{ rotate: [0, -10, 10, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+            >
+              <QrCode size={22} />
+            </motion.div>
             <span className="font-serif font-semibold text-lg tracking-wide">Scan om in te wisselen</span>
-          </button>
+          </motion.button>
         </div>
       )}
     </div>

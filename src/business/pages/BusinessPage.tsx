@@ -70,6 +70,7 @@ type OpenBottleRisk = 'red' | 'orange';
 
 interface OpenBottleEntry {
   openedAt: string;
+  remainingCount: number;
 }
 
 interface OpenBottleProduct {
@@ -78,7 +79,9 @@ interface OpenBottleProduct {
   priceLabel: string;
   risk: OpenBottleRisk;
   reason: string;
-  remainingLabel: string;
+  maxRemainingCount: number;
+  unitSingular: string;
+  unitPlural: string;
   expiryHours: number;
   promoMessage: string;
 }
@@ -90,7 +93,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€12,50',
     risk: 'red',
     reason: 'Duurste glas op de kaart. De bubbels lopen snel terug, dus deze moet bijna meteen gepusht worden.',
-    remainingLabel: 'Nog 5 glazen over',
+    maxRemainingCount: 5,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 48,
     promoMessage: '🌟 Vandaag in de kijker: Champagne Charles Latour per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -100,7 +105,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€8,50',
     risk: 'red',
     reason: 'Zelfde tikkende klok als champagne: open fles, snel actie nodig.',
-    remainingLabel: 'Nog 5 glazen over',
+    maxRemainingCount: 5,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 48,
     promoMessage: '🌟 Vandaag in de kijker: Cava Brisa Nova per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -110,7 +117,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€8,50',
     risk: 'red',
     reason: 'Premium rosé per glas die trager loopt dan de huisrosé.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Altés L\'Espontania Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -120,7 +129,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€8,00',
     risk: 'red',
     reason: 'Premium witte wijn. Mooie marge, maar gevoelig als hij maar af en toe besteld wordt.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Les Silex Sauvignon per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -130,7 +141,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€7,00',
     risk: 'red',
     reason: 'Premium witte wijn die snel pijn doet als de fles traag draait.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: No Excuse Chardonnay per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -140,7 +153,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€7,00',
     risk: 'red',
     reason: 'Zoete witte wijn is een niche. Zonder extra push blijft die fles vaak staan.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: onze zachte Moelleux per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -150,7 +165,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€7,00',
     risk: 'red',
     reason: 'Alcoholvrije witte wijn met beperkte doelgroep. Groot risico op derving.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: onze heerlijke alcoholvrije Pinot Blanc! Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -160,7 +177,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€7,00',
     risk: 'red',
     reason: 'Alcoholvrije rode wijn is een trage loper. Deze moet meteen zichtbaar gemaakt worden.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: onze heerlijke alcoholvrije Pinot Noir! Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -170,7 +189,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€5,50',
     risk: 'orange',
     reason: 'Huiswijn die meestal goed draait, maar laat op de week wel opgevolgd moet worden.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Wit per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -180,7 +201,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€5,50',
     risk: 'orange',
     reason: 'Huisrode wijn. Minder risicovol, maar nog altijd jammer als de fles blijft hangen.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Rood per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -190,7 +213,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€5,50',
     risk: 'orange',
     reason: 'Huisrosé. Minder kritiek, maar opvolging blijft zinvol zodra een fles open is.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -200,7 +225,9 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€5,50',
     risk: 'orange',
     reason: 'Nog een rosé per glas die opgevolgd moet worden zodra een nieuwe fles open gaat.',
-    remainingLabel: 'Nog 4 glazen over',
+    maxRemainingCount: 4,
+    unitSingular: 'glas',
+    unitPlural: 'glazen',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Gris Blanc Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -210,26 +237,51 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: 'Koffie-special',
     risk: 'red',
     reason: 'Een open pak lactosevrije melk is een niche-product. Zodra het open is, wil je snel extra lattes, cappuccino\'s en koffie verkeerd verkopen.',
-    remainingLabel: 'Nog 6 koffies mogelijk',
+    maxRemainingCount: 6,
+    unitSingular: 'koffie',
+    unitPlural: 'koffies',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Latte, Cappuccino of Koffie Verkeerd met lactosevrije melk. Bestel dit vandaag en scoor een EXTRA stempel op je Koffie-kaart.',
   },
 ];
 
+const OPEN_BOTTLE_PRODUCT_MAP = OPEN_BOTTLE_PRODUCTS.reduce<Record<string, OpenBottleProduct>>((acc, product) => {
+  acc[product.id] = product;
+  return acc;
+}, {});
+
 function normalizeOpenBottleState(value: unknown): Record<string, OpenBottleEntry> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
 
   return Object.entries(value as Record<string, unknown>).reduce<Record<string, OpenBottleEntry>>((acc, [key, entry]) => {
+    const product = OPEN_BOTTLE_PRODUCT_MAP[key];
+    if (!product) return acc;
+
     if (
       entry
       && typeof entry === 'object'
       && !Array.isArray(entry)
       && typeof (entry as { openedAt?: unknown }).openedAt === 'string'
     ) {
-      acc[key] = { openedAt: (entry as { openedAt: string }).openedAt };
+      const remainingCountRaw = (entry as { remainingCount?: unknown }).remainingCount;
+      const remainingCount = typeof remainingCountRaw === 'number'
+        ? Math.max(0, Math.min(product.maxRemainingCount, Math.floor(remainingCountRaw)))
+        : product.maxRemainingCount;
+
+      acc[key] = {
+        openedAt: (entry as { openedAt: string }).openedAt,
+        remainingCount,
+      };
     }
     return acc;
   }, {});
+}
+
+function formatRemainingCount(product: OpenBottleProduct, count: number) {
+  const unit = count === 1 ? product.unitSingular : product.unitPlural;
+  const prefix = product.id === 'lactosevrije-melk' ? 'Nog' : 'Nog';
+  const suffix = product.id === 'lactosevrije-melk' ? 'mogelijk' : 'over';
+  return `${prefix} ${count} ${unit} ${suffix}`;
 }
 
 function formatDuration(ms: number) {
@@ -433,11 +485,41 @@ export const BusinessPage: React.FC = () => {
   };
 
   const handleOpenBottle = async (productId: string) => {
+    const product = OPEN_BOTTLE_PRODUCT_MAP[productId];
+    if (!product) return;
+
     const nextOpenBottles = {
       ...openBottles,
-      [productId]: { openedAt: new Date().toISOString() },
+      [productId]: {
+        openedAt: new Date().toISOString(),
+        remainingCount: product.maxRemainingCount,
+      },
     };
     await persistSiteSettings(promoMessage, nextOpenBottles);
+  };
+
+  const handleSoldUnit = async (productId: string) => {
+    const product = OPEN_BOTTLE_PRODUCT_MAP[productId];
+    const entry = openBottles[productId];
+    if (!product || !entry) return;
+
+    const nextRemainingCount = Math.max(0, entry.remainingCount - 1);
+    const nextOpenBottles = { ...openBottles };
+
+    if (nextRemainingCount === 0) {
+      delete nextOpenBottles[productId];
+    } else {
+      nextOpenBottles[productId] = {
+        ...entry,
+        remainingCount: nextRemainingCount,
+      };
+    }
+
+    const nextPromo = nextRemainingCount === 0 && promoMessage === product.promoMessage
+      ? ''
+      : promoMessage;
+
+    await persistSiteSettings(nextPromo, nextOpenBottles);
   };
 
   const handleClearBottle = async (productId: string) => {
@@ -838,6 +920,12 @@ export const BusinessPage: React.FC = () => {
                       const isExpired = remainingMs !== null && remainingMs <= 0;
                       const isActive = Boolean(entry);
                       const isPromoActive = promoMessage === product.promoMessage;
+                      const remainingLabel = entry
+                        ? formatRemainingCount(product, entry.remainingCount)
+                        : formatRemainingCount(product, product.maxRemainingCount);
+                      const soldButtonLabel = product.id === 'lactosevrije-melk'
+                        ? '1 koffie verkocht'
+                        : '1 glas verkocht';
 
                       return (
                         <div
@@ -866,7 +954,7 @@ export const BusinessPage: React.FC = () => {
                                   {product.priceLabel}
                                 </span>
                                 <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
-                                  {product.remainingLabel}
+                                  {remainingLabel}
                                 </span>
                               </div>
                               <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)] leading-tight">
@@ -936,6 +1024,15 @@ export const BusinessPage: React.FC = () => {
                             >
                               {isPromoActive ? 'Nu in promo' : 'Zet in promo'}
                             </button>
+                            {entry && (
+                              <button
+                                onClick={() => handleSoldUnit(product.id)}
+                                disabled={promoSaving}
+                                className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 active:scale-[0.98] transition-all disabled:opacity-50"
+                              >
+                                {soldButtonLabel}
+                              </button>
+                            )}
                             {entry && (
                               <button
                                 onClick={() => handleClearBottle(product.id)}

@@ -83,6 +83,54 @@ CREATE POLICY "Admin: update all customers"
   ON public.customers FOR UPDATE
   USING (is_admin());
 
+-- 3b. Transaction history for scans, redeems and manual corrections
+CREATE TABLE IF NOT EXISTS public.customer_transactions (
+  id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  customer_id          TEXT        NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
+  event_type           TEXT        NOT NULL CHECK (event_type IN ('scan', 'redeem', 'adjustment')),
+  staff_email          TEXT,
+  reason               TEXT,
+  tx_id                TEXT,
+  coffee_stamp_delta   INTEGER     NOT NULL DEFAULT 0,
+  wine_stamp_delta     INTEGER     NOT NULL DEFAULT 0,
+  beer_stamp_delta     INTEGER     NOT NULL DEFAULT 0,
+  soda_stamp_delta     INTEGER     NOT NULL DEFAULT 0,
+  coffee_reward_delta  INTEGER     NOT NULL DEFAULT 0,
+  wine_reward_delta    INTEGER     NOT NULL DEFAULT 0,
+  beer_reward_delta    INTEGER     NOT NULL DEFAULT 0,
+  soda_reward_delta    INTEGER     NOT NULL DEFAULT 0,
+  coffee_claimed_delta INTEGER     NOT NULL DEFAULT 0,
+  wine_claimed_delta   INTEGER     NOT NULL DEFAULT 0,
+  beer_claimed_delta   INTEGER     NOT NULL DEFAULT 0,
+  soda_claimed_delta   INTEGER     NOT NULL DEFAULT 0,
+  visit_delta          INTEGER     NOT NULL DEFAULT 0,
+  metadata             JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.customer_transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Transactions: customers read own" ON public.customer_transactions;
+DROP POLICY IF EXISTS "Transactions: customers insert own" ON public.customer_transactions;
+DROP POLICY IF EXISTS "Transactions: admin read all" ON public.customer_transactions;
+DROP POLICY IF EXISTS "Transactions: admin insert all" ON public.customer_transactions;
+
+CREATE POLICY "Transactions: customers read own"
+  ON public.customer_transactions FOR SELECT
+  USING (auth.uid()::text = customer_id);
+
+CREATE POLICY "Transactions: customers insert own"
+  ON public.customer_transactions FOR INSERT
+  WITH CHECK (auth.uid()::text = customer_id);
+
+CREATE POLICY "Transactions: admin read all"
+  ON public.customer_transactions FOR SELECT
+  USING (is_admin());
+
+CREATE POLICY "Transactions: admin insert all"
+  ON public.customer_transactions FOR INSERT
+  WITH CHECK (is_admin());
+
 -- ⚠️  IMPORTANT: After running this schema, run these two extra queries:
 --
 -- 1. Add your admin email to the whitelist:
@@ -123,6 +171,419 @@ CREATE POLICY "Settings: admin can update"
 
 -- 5. Indexes
 CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);
+CREATE INDEX IF NOT EXISTS customer_transactions_customer_created_idx ON public.customer_transactions (customer_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS customer_transactions_tx_id_uidx ON public.customer_transactions (tx_id) WHERE tx_id IS NOT NULL;
+
+-- 5b. RPC: apply a signed scan exactly once and log it in the history
+CREATE OR REPLACE FUNCTION public.apply_customer_scan(
+  p_customer_id TEXT,
+  p_tx_id TEXT,
+  p_staff_email TEXT,
+  p_coffee INTEGER DEFAULT 0,
+  p_wine INTEGER DEFAULT 0,
+  p_beer INTEGER DEFAULT 0,
+  p_soda INTEGER DEFAULT 0
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  customer_row public.customers%ROWTYPE;
+  requested_coffee INTEGER := GREATEST(COALESCE(p_coffee, 0), 0);
+  requested_wine   INTEGER := GREATEST(COALESCE(p_wine, 0), 0);
+  requested_beer   INTEGER := GREATEST(COALESCE(p_beer, 0), 0);
+  requested_soda   INTEGER := GREATEST(COALESCE(p_soda, 0), 0);
+  actual_coffee INTEGER := requested_coffee;
+  actual_wine   INTEGER := requested_wine;
+  actual_beer   INTEGER := requested_beer;
+  actual_soda   INTEGER := requested_soda;
+  coffee_rewards_earned INTEGER := 0;
+  wine_rewards_earned   INTEGER := 0;
+  beer_rewards_earned   INTEGER := 0;
+  soda_rewards_earned   INTEGER := 0;
+  bonus_applied BOOLEAN := FALSE;
+  bonus_type TEXT := NULL;
+  next_last_visit TIMESTAMPTZ := NOW();
+BEGIN
+  IF auth.uid()::text <> p_customer_id AND NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Niet geautoriseerd';
+  END IF;
+
+  IF COALESCE(NULLIF(TRIM(p_tx_id), ''), '') = '' THEN
+    RAISE EXCEPTION 'Ontbrekende transactie-ID';
+  END IF;
+
+  IF requested_coffee + requested_wine + requested_beer + requested_soda <= 0 THEN
+    RAISE EXCEPTION 'Geen consumpties opgegeven';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.customer_transactions WHERE tx_id = p_tx_id) THEN
+    RAISE EXCEPTION 'Deze QR code is al verwerkt';
+  END IF;
+
+  SELECT * INTO customer_row
+  FROM public.customers
+  WHERE id = p_customer_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Klant niet gevonden';
+  END IF;
+
+  IF NOT customer_row.welcome_bonus_claimed THEN
+    IF actual_coffee > 0 THEN
+      actual_coffee := actual_coffee + 2;
+      bonus_type := 'coffee';
+      bonus_applied := TRUE;
+    ELSIF actual_wine > 0 THEN
+      actual_wine := actual_wine + 2;
+      bonus_type := 'wine';
+      bonus_applied := TRUE;
+    ELSIF actual_beer > 0 THEN
+      actual_beer := actual_beer + 2;
+      bonus_type := 'beer';
+      bonus_applied := TRUE;
+    ELSIF actual_soda > 0 THEN
+      actual_soda := actual_soda + 2;
+      bonus_type := 'soda';
+      bonus_applied := TRUE;
+    END IF;
+  END IF;
+
+  coffee_rewards_earned := FLOOR((customer_row.coffee_stamps + actual_coffee) / 10.0);
+  wine_rewards_earned   := FLOOR((customer_row.wine_stamps + actual_wine) / 10.0);
+  beer_rewards_earned   := FLOOR((customer_row.beer_stamps + actual_beer) / 10.0);
+  soda_rewards_earned   := FLOOR((customer_row.soda_stamps + actual_soda) / 10.0);
+
+  UPDATE public.customers
+  SET
+    coffee_stamps = MOD(customer_row.coffee_stamps + actual_coffee, 10),
+    wine_stamps = MOD(customer_row.wine_stamps + actual_wine, 10),
+    beer_stamps = MOD(customer_row.beer_stamps + actual_beer, 10),
+    soda_stamps = MOD(customer_row.soda_stamps + actual_soda, 10),
+    coffee_rewards = customer_row.coffee_rewards + coffee_rewards_earned,
+    wine_rewards = customer_row.wine_rewards + wine_rewards_earned,
+    beer_rewards = customer_row.beer_rewards + beer_rewards_earned,
+    soda_rewards = customer_row.soda_rewards + soda_rewards_earned,
+    total_visits = customer_row.total_visits + 1,
+    last_visit_at = next_last_visit,
+    welcome_bonus_claimed = customer_row.welcome_bonus_claimed OR bonus_applied,
+    bonus_card_type = CASE
+      WHEN bonus_applied THEN bonus_type
+      WHEN customer_row.bonus_card_type = 'coffee' AND coffee_rewards_earned > 0 THEN NULL
+      WHEN customer_row.bonus_card_type = 'wine' AND wine_rewards_earned > 0 THEN NULL
+      WHEN customer_row.bonus_card_type = 'beer' AND beer_rewards_earned > 0 THEN NULL
+      WHEN customer_row.bonus_card_type = 'soda' AND soda_rewards_earned > 0 THEN NULL
+      ELSE customer_row.bonus_card_type
+    END
+  WHERE id = p_customer_id;
+
+  INSERT INTO public.customer_transactions (
+    customer_id,
+    event_type,
+    staff_email,
+    reason,
+    tx_id,
+    coffee_stamp_delta,
+    wine_stamp_delta,
+    beer_stamp_delta,
+    soda_stamp_delta,
+    coffee_reward_delta,
+    wine_reward_delta,
+    beer_reward_delta,
+    soda_reward_delta,
+    visit_delta,
+    metadata
+  )
+  VALUES (
+    p_customer_id,
+    'scan',
+    NULLIF(TRIM(p_staff_email), ''),
+    CASE WHEN bonus_applied THEN 'Welkomstbonus automatisch toegepast' ELSE NULL END,
+    p_tx_id,
+    actual_coffee,
+    actual_wine,
+    actual_beer,
+    actual_soda,
+    coffee_rewards_earned,
+    wine_rewards_earned,
+    beer_rewards_earned,
+    soda_rewards_earned,
+    1,
+    jsonb_build_object(
+      'requested', jsonb_build_object('coffee', requested_coffee, 'wine', requested_wine, 'beer', requested_beer, 'soda', requested_soda),
+      'applied', jsonb_build_object('coffee', actual_coffee, 'wine', actual_wine, 'beer', actual_beer, 'soda', actual_soda),
+      'earned', jsonb_build_object('coffee', coffee_rewards_earned, 'wine', wine_rewards_earned, 'beer', beer_rewards_earned, 'soda', soda_rewards_earned),
+      'bonusApplied', bonus_applied,
+      'bonusType', bonus_type
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'earned', jsonb_build_object('coffee', coffee_rewards_earned, 'wine', wine_rewards_earned, 'beer', beer_rewards_earned, 'soda', soda_rewards_earned),
+    'bonusApplied', bonus_applied,
+    'bonusType', bonus_type,
+    'lastVisitAt', next_last_visit
+  );
+END;
+$$;
+
+-- 5c. RPC: claim a reward exactly once and log it in the history
+CREATE OR REPLACE FUNCTION public.claim_customer_reward(
+  p_customer_id TEXT,
+  p_card_type TEXT,
+  p_tx_id TEXT,
+  p_staff_email TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  customer_row public.customers%ROWTYPE;
+  normalized_type TEXT := LOWER(COALESCE(p_card_type, ''));
+BEGIN
+  IF auth.uid()::text <> p_customer_id AND NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Niet geautoriseerd';
+  END IF;
+
+  IF normalized_type NOT IN ('coffee', 'wine', 'beer', 'soda') THEN
+    RAISE EXCEPTION 'Ongeldig kaarttype';
+  END IF;
+
+  IF COALESCE(NULLIF(TRIM(p_tx_id), ''), '') = '' THEN
+    RAISE EXCEPTION 'Ontbrekende transactie-ID';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.customer_transactions WHERE tx_id = p_tx_id) THEN
+    RAISE EXCEPTION 'Deze QR code is al verwerkt';
+  END IF;
+
+  SELECT * INTO customer_row
+  FROM public.customers
+  WHERE id = p_customer_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Klant niet gevonden';
+  END IF;
+
+  IF normalized_type = 'coffee' AND customer_row.coffee_rewards <= 0 THEN
+    RAISE EXCEPTION 'Geen gratis koffie beschikbaar';
+  ELSIF normalized_type = 'wine' AND customer_row.wine_rewards <= 0 THEN
+    RAISE EXCEPTION 'Geen gratis wijn beschikbaar';
+  ELSIF normalized_type = 'beer' AND customer_row.beer_rewards <= 0 THEN
+    RAISE EXCEPTION 'Geen gratis bier beschikbaar';
+  ELSIF normalized_type = 'soda' AND customer_row.soda_rewards <= 0 THEN
+    RAISE EXCEPTION 'Geen gratis frisdrank beschikbaar';
+  END IF;
+
+  UPDATE public.customers
+  SET
+    coffee_rewards = customer_row.coffee_rewards - CASE WHEN normalized_type = 'coffee' THEN 1 ELSE 0 END,
+    wine_rewards = customer_row.wine_rewards - CASE WHEN normalized_type = 'wine' THEN 1 ELSE 0 END,
+    beer_rewards = customer_row.beer_rewards - CASE WHEN normalized_type = 'beer' THEN 1 ELSE 0 END,
+    soda_rewards = customer_row.soda_rewards - CASE WHEN normalized_type = 'soda' THEN 1 ELSE 0 END,
+    coffee_claimed = customer_row.coffee_claimed + CASE WHEN normalized_type = 'coffee' THEN 1 ELSE 0 END,
+    wine_claimed = customer_row.wine_claimed + CASE WHEN normalized_type = 'wine' THEN 1 ELSE 0 END,
+    beer_claimed = customer_row.beer_claimed + CASE WHEN normalized_type = 'beer' THEN 1 ELSE 0 END,
+    soda_claimed = customer_row.soda_claimed + CASE WHEN normalized_type = 'soda' THEN 1 ELSE 0 END
+  WHERE id = p_customer_id;
+
+  INSERT INTO public.customer_transactions (
+    customer_id,
+    event_type,
+    staff_email,
+    tx_id,
+    coffee_reward_delta,
+    wine_reward_delta,
+    beer_reward_delta,
+    soda_reward_delta,
+    coffee_claimed_delta,
+    wine_claimed_delta,
+    beer_claimed_delta,
+    soda_claimed_delta,
+    metadata
+  )
+  VALUES (
+    p_customer_id,
+    'redeem',
+    NULLIF(TRIM(p_staff_email), ''),
+    p_tx_id,
+    CASE WHEN normalized_type = 'coffee' THEN -1 ELSE 0 END,
+    CASE WHEN normalized_type = 'wine' THEN -1 ELSE 0 END,
+    CASE WHEN normalized_type = 'beer' THEN -1 ELSE 0 END,
+    CASE WHEN normalized_type = 'soda' THEN -1 ELSE 0 END,
+    CASE WHEN normalized_type = 'coffee' THEN 1 ELSE 0 END,
+    CASE WHEN normalized_type = 'wine' THEN 1 ELSE 0 END,
+    CASE WHEN normalized_type = 'beer' THEN 1 ELSE 0 END,
+    CASE WHEN normalized_type = 'soda' THEN 1 ELSE 0 END,
+    jsonb_build_object('cardType', normalized_type)
+  );
+
+  RETURN jsonb_build_object('cardType', normalized_type);
+END;
+$$;
+
+-- 5d. RPC: apply a manual correction and log the reason + medewerker
+CREATE OR REPLACE FUNCTION public.apply_manual_adjustment(
+  p_customer_id TEXT,
+  p_staff_email TEXT,
+  p_reason TEXT,
+  p_coffee_stamps INTEGER DEFAULT 0,
+  p_wine_stamps INTEGER DEFAULT 0,
+  p_beer_stamps INTEGER DEFAULT 0,
+  p_soda_stamps INTEGER DEFAULT 0,
+  p_coffee_rewards INTEGER DEFAULT 0,
+  p_wine_rewards INTEGER DEFAULT 0,
+  p_beer_rewards INTEGER DEFAULT 0,
+  p_soda_rewards INTEGER DEFAULT 0,
+  p_coffee_claimed INTEGER DEFAULT 0,
+  p_wine_claimed INTEGER DEFAULT 0,
+  p_beer_claimed INTEGER DEFAULT 0,
+  p_soda_claimed INTEGER DEFAULT 0,
+  p_visit_delta INTEGER DEFAULT 0
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  customer_row public.customers%ROWTYPE;
+  next_coffee_stamps INTEGER;
+  next_wine_stamps INTEGER;
+  next_beer_stamps INTEGER;
+  next_soda_stamps INTEGER;
+  next_coffee_rewards INTEGER;
+  next_wine_rewards INTEGER;
+  next_beer_rewards INTEGER;
+  next_soda_rewards INTEGER;
+  next_coffee_claimed INTEGER;
+  next_wine_claimed INTEGER;
+  next_beer_claimed INTEGER;
+  next_soda_claimed INTEGER;
+  next_total_visits INTEGER;
+  next_last_visit TIMESTAMPTZ;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Niet geautoriseerd';
+  END IF;
+
+  IF COALESCE(NULLIF(TRIM(p_reason), ''), '') = '' THEN
+    RAISE EXCEPTION 'Een reden is verplicht';
+  END IF;
+
+  SELECT * INTO customer_row
+  FROM public.customers
+  WHERE id = p_customer_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Klant niet gevonden';
+  END IF;
+
+  next_coffee_stamps := customer_row.coffee_stamps + COALESCE(p_coffee_stamps, 0);
+  next_wine_stamps := customer_row.wine_stamps + COALESCE(p_wine_stamps, 0);
+  next_beer_stamps := customer_row.beer_stamps + COALESCE(p_beer_stamps, 0);
+  next_soda_stamps := customer_row.soda_stamps + COALESCE(p_soda_stamps, 0);
+  next_coffee_rewards := customer_row.coffee_rewards + COALESCE(p_coffee_rewards, 0);
+  next_wine_rewards := customer_row.wine_rewards + COALESCE(p_wine_rewards, 0);
+  next_beer_rewards := customer_row.beer_rewards + COALESCE(p_beer_rewards, 0);
+  next_soda_rewards := customer_row.soda_rewards + COALESCE(p_soda_rewards, 0);
+  next_coffee_claimed := customer_row.coffee_claimed + COALESCE(p_coffee_claimed, 0);
+  next_wine_claimed := customer_row.wine_claimed + COALESCE(p_wine_claimed, 0);
+  next_beer_claimed := customer_row.beer_claimed + COALESCE(p_beer_claimed, 0);
+  next_soda_claimed := customer_row.soda_claimed + COALESCE(p_soda_claimed, 0);
+  next_total_visits := customer_row.total_visits + COALESCE(p_visit_delta, 0);
+
+  IF next_coffee_stamps < 0 OR next_coffee_stamps > 9
+     OR next_wine_stamps < 0 OR next_wine_stamps > 9
+     OR next_beer_stamps < 0 OR next_beer_stamps > 9
+     OR next_soda_stamps < 0 OR next_soda_stamps > 9 THEN
+    RAISE EXCEPTION 'Stempels op de huidige kaart moeten tussen 0 en 9 blijven';
+  END IF;
+
+  IF next_coffee_rewards < 0 OR next_wine_rewards < 0 OR next_beer_rewards < 0 OR next_soda_rewards < 0 THEN
+    RAISE EXCEPTION 'Beloningen kunnen niet negatief worden';
+  END IF;
+
+  IF next_coffee_claimed < 0 OR next_wine_claimed < 0 OR next_beer_claimed < 0 OR next_soda_claimed < 0 THEN
+    RAISE EXCEPTION 'Ingewisselde beloningen kunnen niet negatief worden';
+  END IF;
+
+  IF next_total_visits < 0 THEN
+    RAISE EXCEPTION 'Bezoeken kunnen niet negatief worden';
+  END IF;
+
+  next_last_visit := CASE
+    WHEN next_total_visits = 0 THEN NULL
+    WHEN COALESCE(p_visit_delta, 0) > 0 THEN NOW()
+    ELSE customer_row.last_visit_at
+  END;
+
+  UPDATE public.customers
+  SET
+    coffee_stamps = next_coffee_stamps,
+    wine_stamps = next_wine_stamps,
+    beer_stamps = next_beer_stamps,
+    soda_stamps = next_soda_stamps,
+    coffee_rewards = next_coffee_rewards,
+    wine_rewards = next_wine_rewards,
+    beer_rewards = next_beer_rewards,
+    soda_rewards = next_soda_rewards,
+    coffee_claimed = next_coffee_claimed,
+    wine_claimed = next_wine_claimed,
+    beer_claimed = next_beer_claimed,
+    soda_claimed = next_soda_claimed,
+    total_visits = next_total_visits,
+    last_visit_at = next_last_visit
+  WHERE id = p_customer_id;
+
+  INSERT INTO public.customer_transactions (
+    customer_id,
+    event_type,
+    staff_email,
+    reason,
+    coffee_stamp_delta,
+    wine_stamp_delta,
+    beer_stamp_delta,
+    soda_stamp_delta,
+    coffee_reward_delta,
+    wine_reward_delta,
+    beer_reward_delta,
+    soda_reward_delta,
+    coffee_claimed_delta,
+    wine_claimed_delta,
+    beer_claimed_delta,
+    soda_claimed_delta,
+    visit_delta,
+    metadata
+  )
+  VALUES (
+    p_customer_id,
+    'adjustment',
+    NULLIF(TRIM(p_staff_email), ''),
+    TRIM(p_reason),
+    COALESCE(p_coffee_stamps, 0),
+    COALESCE(p_wine_stamps, 0),
+    COALESCE(p_beer_stamps, 0),
+    COALESCE(p_soda_stamps, 0),
+    COALESCE(p_coffee_rewards, 0),
+    COALESCE(p_wine_rewards, 0),
+    COALESCE(p_beer_rewards, 0),
+    COALESCE(p_soda_rewards, 0),
+    COALESCE(p_coffee_claimed, 0),
+    COALESCE(p_wine_claimed, 0),
+    COALESCE(p_beer_claimed, 0),
+    COALESCE(p_soda_claimed, 0),
+    COALESCE(p_visit_delta, 0),
+    jsonb_build_object('lastVisitAtUpdated', COALESCE(p_visit_delta, 0) > 0)
+  );
+
+  RETURN jsonb_build_object('success', TRUE);
+END;
+$$;
 
 -- 6. Merge duplicate customers (same email, different auth provider)
 -- Called from the app after each login to auto-fix Google vs email duplicates.

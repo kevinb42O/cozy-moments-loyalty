@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X, Gift, Clock3 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X, Gift, Clock3, History, Save } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -7,6 +7,15 @@ import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/Loyalty
 import { Screensaver } from '../components/Screensaver';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
+import {
+  buildTransactionSummaryParts,
+  emptyDeltaRecord,
+  getTransactionLabel,
+  rowToTransaction,
+  type CustomerTransaction,
+  type TransactionEventType,
+  validateManualAdjustmentDraft,
+} from '../lib/transaction-history';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -65,7 +74,7 @@ const PRICE_ESTIMATE: Record<CardType, number> = {
   soda: 3.00,
 };
 
-type BusinessView = 'create' | 'open-bottles' | 'customers' | 'redeem';
+type BusinessView = 'create' | 'open-bottles' | 'customers' | 'history' | 'redeem';
 type OpenBottleRisk = 'red' | 'orange';
 
 interface OpenBottleEntry {
@@ -348,8 +357,8 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
 }
 
 export const BusinessPage: React.FC = () => {
-  const { customers, refreshCustomers, deleteCustomer } = useLoyalty();
-  const { logout } = useBusinessAuth();
+  const { customers, refreshCustomers, deleteCustomer, applyManualAdjustment } = useLoyalty();
+  const { logout, adminEmail } = useBusinessAuth();
 
   const loyaltyBadge = (status: 'vip' | 'loyal' | 'active' | 'sleeping' | 'new') => {
     const config = {
@@ -387,6 +396,20 @@ export const BusinessPage: React.FC = () => {
   const [promoSaving, setPromoSaving] = useState(false);
   const [openBottles, setOpenBottles] = useState<Record<string, OpenBottleEntry>>({});
   const [clockNow, setClockNow] = useState(Date.now());
+  const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [historyFilter, setHistoryFilter] = useState<'all' | TransactionEventType>('all');
+  const [historySearch, setHistorySearch] = useState('');
+  const [selectedCorrectionCustomerId, setSelectedCorrectionCustomerId] = useState('');
+  const [correctionReason, setCorrectionReason] = useState('');
+  const [correctionStamps, setCorrectionStamps] = useState<Record<CardType, number>>(emptyDeltaRecord);
+  const [correctionRewards, setCorrectionRewards] = useState<Record<CardType, number>>(emptyDeltaRecord);
+  const [correctionClaimed, setCorrectionClaimed] = useState<Record<CardType, number>>(emptyDeltaRecord);
+  const [correctionVisitDelta, setCorrectionVisitDelta] = useState(0);
+  const [correctionSaving, setCorrectionSaving] = useState(false);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
+  const [correctionSuccess, setCorrectionSuccess] = useState<string | null>(null);
   // Snapshot of customers when a QR is generated — used to detect when it gets scanned
   const customersSnapshotRef = useRef<string>('');
 
@@ -403,7 +426,7 @@ export const BusinessPage: React.FC = () => {
 
   // Always fetch fresh data when the customers tab is opened
   useEffect(() => {
-    if (view === 'customers') refreshCustomers();
+    if (view === 'customers' || view === 'history') refreshCustomers();
   }, [view]);
 
   useEffect(() => {
@@ -542,6 +565,167 @@ export const BusinessPage: React.FC = () => {
 
   const activePromoProduct = OPEN_BOTTLE_PRODUCTS.find(product => product.promoMessage === promoMessage) ?? null;
 
+  const loadTransactions = useCallback(async () => {
+    if (!supabase) {
+      setTransactions([]);
+      setTransactionsError('Supabase niet geconfigureerd');
+      return;
+    }
+
+    setTransactionsLoading(true);
+    setTransactionsError(null);
+
+    const { data, error } = await supabase
+      .from('customer_transactions')
+      .select(`
+        id,
+        customer_id,
+        event_type,
+        staff_email,
+        reason,
+        tx_id,
+        coffee_stamp_delta,
+        wine_stamp_delta,
+        beer_stamp_delta,
+        soda_stamp_delta,
+        coffee_reward_delta,
+        wine_reward_delta,
+        beer_reward_delta,
+        soda_reward_delta,
+        coffee_claimed_delta,
+        wine_claimed_delta,
+        beer_claimed_delta,
+        soda_claimed_delta,
+        visit_delta,
+        metadata,
+        created_at,
+        customers(name, email)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(120);
+
+    if (error) {
+      console.error('Kon transactiehistoriek niet laden:', error);
+      setTransactionsError(error.message);
+      setTransactionsLoading(false);
+      return;
+    }
+
+    setTransactions((data ?? []).map(rowToTransaction));
+    setTransactionsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (view !== 'history' || !supabase) return;
+
+    loadTransactions();
+
+    const channel = supabase
+      .channel('customer-transactions-realtime-business')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_transactions' }, () => {
+        loadTransactions();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [view, loadTransactions]);
+
+  const resetCorrectionForm = useCallback(() => {
+    setSelectedCorrectionCustomerId('');
+    setCorrectionReason('');
+    setCorrectionStamps(emptyDeltaRecord());
+    setCorrectionRewards(emptyDeltaRecord());
+    setCorrectionClaimed(emptyDeltaRecord());
+    setCorrectionVisitDelta(0);
+  }, []);
+
+  const changeCorrectionRecord = useCallback(
+    (
+      section: 'stamps' | 'rewards' | 'claimed',
+      type: CardType,
+      nextValue: number,
+    ) => {
+      if (section === 'stamps') {
+        setCorrectionStamps(prev => ({ ...prev, [type]: nextValue }));
+      } else if (section === 'rewards') {
+        setCorrectionRewards(prev => ({ ...prev, [type]: nextValue }));
+      } else {
+        setCorrectionClaimed(prev => ({ ...prev, [type]: nextValue }));
+      }
+    },
+    [],
+  );
+
+  const submitManualCorrection = useCallback(async () => {
+    setCorrectionError(null);
+    setCorrectionSuccess(null);
+
+    const validationError = validateManualAdjustmentDraft({
+      customerId: selectedCorrectionCustomerId,
+      reason: correctionReason,
+      stamps: correctionStamps,
+      rewards: correctionRewards,
+      claimedRewards: correctionClaimed,
+      visitDelta: correctionVisitDelta,
+    });
+
+    if (validationError) {
+      setCorrectionError(validationError);
+      return;
+    }
+
+    setCorrectionSaving(true);
+    try {
+      await applyManualAdjustment({
+        customerId: selectedCorrectionCustomerId,
+        staffEmail: adminEmail,
+        reason: correctionReason.trim(),
+        stamps: correctionStamps,
+        rewards: correctionRewards,
+        claimedRewards: correctionClaimed,
+        visitDelta: correctionVisitDelta,
+      });
+      await loadTransactions();
+      setCorrectionSuccess('Correctie opgeslagen en toegevoegd aan de historiek.');
+      resetCorrectionForm();
+    } catch (error: any) {
+      setCorrectionError(error?.message || 'Correctie opslaan mislukt.');
+    } finally {
+      setCorrectionSaving(false);
+    }
+  }, [
+    correctionClaimed,
+    correctionReason,
+    correctionRewards,
+    correctionStamps,
+    correctionVisitDelta,
+    selectedCorrectionCustomerId,
+    applyManualAdjustment,
+    adminEmail,
+    loadTransactions,
+    resetCorrectionForm,
+  ]);
+
+  const filteredTransactions = useMemo(() => {
+    const query = historySearch.trim().toLowerCase();
+    return transactions.filter(transaction => {
+      if (historyFilter !== 'all' && transaction.eventType !== historyFilter) return false;
+      if (!query) return true;
+
+      return transaction.customerName.toLowerCase().includes(query)
+        || transaction.customerEmail.toLowerCase().includes(query)
+        || (transaction.staffEmail ?? '').toLowerCase().includes(query)
+        || (transaction.reason ?? '').toLowerCase().includes(query);
+    });
+  }, [historyFilter, historySearch, transactions]);
+
+  const sortedCustomers = useMemo(
+    () => [...customers].sort((left, right) => left.name.localeCompare(right.name, 'nl-BE')),
+    [customers],
+  );
+
   const handleIncrement = (type: CardType) => {
     setConsumptions(prev => ({ ...prev, [type]: prev[type] + 1 }));
   };
@@ -555,6 +739,7 @@ export const BusinessPage: React.FC = () => {
     customersSnapshotRef.current = JSON.stringify(customers);
     const payload = {
       ...consumptions,
+      staffEmail: adminEmail,
       txId: Math.random().toString(36).substring(7),
       timestamp: Date.now()
     };
@@ -648,7 +833,7 @@ export const BusinessPage: React.FC = () => {
           </button>
         </div>
         
-        <div className="grid grid-cols-4 gap-1 bg-gray-100 p-1 rounded-[22px] mb-1">
+        <div className="grid grid-cols-5 gap-1 bg-gray-100 p-1 rounded-[22px] mb-1">
           <button
             onClick={() => { reset(); setView('create'); }}
             className={cn(
@@ -675,6 +860,15 @@ export const BusinessPage: React.FC = () => {
             )}
           >
             Klanten
+          </button>
+          <button
+            onClick={() => { reset(); setView('history'); }}
+            className={cn(
+              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
+              view === 'history' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
+            )}
+          >
+            Historiek
           </button>
           <button
             onClick={() => { reset(); setView('redeem'); }}
@@ -1569,6 +1763,256 @@ export const BusinessPage: React.FC = () => {
           </motion.div>
         )}
 
+        {view === 'history' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)] flex items-center gap-3">
+                  <History size={28} className="text-[var(--color-cozy-olive)]" />
+                  Historiek & correcties
+                </h2>
+                <p className="text-sm text-gray-500 mt-1 max-w-3xl">
+                  Bekijk de laatste scans, inwisselingen en manuele correcties. Corrigeer fouten altijd met een reden en een medewerker in de audittrail.
+                </p>
+              </div>
+              <div className="bg-white rounded-2xl px-4 py-3 shadow-sm min-w-[220px]">
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Actieve medewerker</p>
+                <p className="font-mono text-sm font-bold text-[var(--color-cozy-text)] break-all">{adminEmail ?? 'Onbekend'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1.4fr] gap-4 items-start">
+              <div className="bg-white rounded-[28px] shadow-sm p-5 space-y-4">
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Manuele correctie</p>
+                  <h3 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">Nieuwe correctie registreren</h3>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Klant</label>
+                  <select
+                    value={selectedCorrectionCustomerId}
+                    onChange={(event) => setSelectedCorrectionCustomerId(event.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)]"
+                  >
+                    <option value="">Kies een klant…</option>
+                    {sortedCustomers.map(customer => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name} {customer.email ? `(${customer.email})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Reden</label>
+                  <textarea
+                    value={correctionReason}
+                    onChange={(event) => setCorrectionReason(event.target.value)}
+                    rows={3}
+                    placeholder="bv. verkeerde scan gecompenseerd aan de toog"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)] resize-none"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">Stempels huidige kaart</p>
+                    <span className="text-[11px] text-gray-400">Moet tussen 0 en 9 uitkomen</span>
+                  </div>
+                  {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
+                    <DeltaControl
+                      key={`stamp-${type}`}
+                      label={cardTypeLabels[type]}
+                      value={correctionStamps[type]}
+                      onChange={(value) => changeCorrectionRecord('stamps', type, value)}
+                      accent="olive"
+                    />
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider">Beschikbare beloningen</p>
+                  {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
+                    <DeltaControl
+                      key={`reward-${type}`}
+                      label={cardTypeLabels[type]}
+                      value={correctionRewards[type]}
+                      onChange={(value) => changeCorrectionRecord('rewards', type, value)}
+                      accent="amber"
+                    />
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider">Ingewisselde beloningen</p>
+                  {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
+                    <DeltaControl
+                      key={`claimed-${type}`}
+                      label={cardTypeLabels[type]}
+                      value={correctionClaimed[type]}
+                      onChange={(value) => changeCorrectionRecord('claimed', type, value)}
+                      accent="rose"
+                    />
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider">Bezoeken</p>
+                  <DeltaControl
+                    label="Totaal bezoeken"
+                    value={correctionVisitDelta}
+                    onChange={setCorrectionVisitDelta}
+                    accent="blue"
+                  />
+                </div>
+
+                {correctionError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {correctionError}
+                  </div>
+                )}
+                {correctionSuccess && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    {correctionSuccess}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    onClick={submitManualCorrection}
+                    disabled={correctionSaving}
+                    className="rounded-full bg-[var(--color-cozy-olive)] px-5 py-3 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <Save size={16} />
+                    {correctionSaving ? 'Opslaan…' : 'Correctie opslaan'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCorrectionError(null);
+                      setCorrectionSuccess(null);
+                      resetCorrectionForm();
+                    }}
+                    disabled={correctionSaving}
+                    className="rounded-full bg-gray-100 px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gray-200 active:scale-[0.98] transition-all disabled:opacity-50"
+                  >
+                    Formulier leegmaken
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-white rounded-[28px] shadow-sm p-5 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {([
+                      { key: 'all', label: 'Alles', count: transactions.length },
+                      { key: 'scan', label: 'Scans', count: transactions.filter(item => item.eventType === 'scan').length },
+                      { key: 'redeem', label: 'Inwisselingen', count: transactions.filter(item => item.eventType === 'redeem').length },
+                      { key: 'adjustment', label: 'Correcties', count: transactions.filter(item => item.eventType === 'adjustment').length },
+                    ] as const).map((item) => (
+                      <button
+                        key={item.key}
+                        onClick={() => setHistoryFilter(item.key as 'all' | TransactionEventType)}
+                        className={cn(
+                          'rounded-2xl border px-4 py-3 text-left transition-all',
+                          historyFilter === item.key
+                            ? 'bg-[var(--color-cozy-olive)]/8 border-[var(--color-cozy-olive)]/20 text-[var(--color-cozy-text)]'
+                            : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'
+                        )}
+                      >
+                        <p className="text-[10px] uppercase tracking-wider">{item.label}</p>
+                        <p className="font-mono text-2xl font-bold mt-1">{item.count}</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={historySearch}
+                      onChange={(event) => setHistorySearch(event.target.value)}
+                      placeholder="Zoek op klant, medewerker of reden..."
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {transactionsLoading && (
+                    <div className="bg-white rounded-[28px] shadow-sm p-6 text-sm text-gray-400">Historiek laden…</div>
+                  )}
+                  {transactionsError && (
+                    <div className="bg-red-50 border border-red-200 rounded-[28px] p-6 text-sm text-red-600">{transactionsError}</div>
+                  )}
+                  {!transactionsLoading && !transactionsError && filteredTransactions.length === 0 && (
+                    <div className="bg-white rounded-[28px] shadow-sm p-6 text-sm text-gray-400">Geen transacties gevonden voor deze filter.</div>
+                  )}
+
+                  {!transactionsLoading && !transactionsError && filteredTransactions.map((transaction) => {
+                    const summaryParts = buildTransactionSummaryParts(transaction);
+                    const badgeClasses = transaction.eventType === 'scan'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : transaction.eventType === 'redeem'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-blue-50 text-blue-700 border-blue-200';
+
+                    return (
+                      <div key={transaction.id} className="bg-white rounded-[28px] shadow-sm p-5 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider', badgeClasses)}>
+                                {getTransactionLabel(transaction.eventType)}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {new Date(transaction.createdAt).toLocaleString('nl-BE', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                            <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)] mt-2">{transaction.customerName}</h3>
+                            <p className="text-sm text-gray-400">{transaction.customerEmail || 'Geen e-mail'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] uppercase tracking-wider text-gray-400">Medewerker</p>
+                            <p className="font-mono text-sm font-bold text-[var(--color-cozy-text)] break-all max-w-[200px]">
+                              {transaction.staffEmail ?? 'Onbekend'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {summaryParts.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {summaryParts.map((part) => (
+                              <span key={part} className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                                {part}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {transaction.reason && (
+                          <div className="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                            <span className="text-gray-400">Reden:</span> {transaction.reason}
+                          </div>
+                        )}
+
+                        {transaction.txId && (
+                          <p className="text-[11px] text-gray-400">QR transactie-ID: {transaction.txId}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {view === 'redeem' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {!qrPayload ? (
@@ -1595,6 +2039,7 @@ export const BusinessPage: React.FC = () => {
                           const payload = {
                             type: 'redeem',
                             cardType: type,
+                            staffEmail: adminEmail,
                             txId: Math.random().toString(36).substring(7),
                             timestamp: Date.now(),
                           };
@@ -1750,6 +2195,50 @@ interface ConsumptionRowProps {
   bg: string;
   index: number; // for staggered slide-in delay
 }
+
+interface DeltaControlProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  accent: 'olive' | 'amber' | 'rose' | 'blue';
+}
+
+const deltaAccentClass: Record<DeltaControlProps['accent'], string> = {
+  olive: 'bg-[var(--color-cozy-olive)]/8 text-[var(--color-cozy-text)]',
+  amber: 'bg-amber-50 text-amber-800',
+  rose: 'bg-rose-50 text-rose-800',
+  blue: 'bg-blue-50 text-blue-800',
+};
+
+const DeltaControl: React.FC<DeltaControlProps> = ({ label, value, onChange, accent }) => {
+  return (
+    <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-medium text-[var(--color-cozy-text)]">{label}</p>
+        <p className="text-[11px] text-gray-400">Negatief = terugdraaien, positief = toevoegen</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onChange(value - 1)}
+          className="w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-transform"
+        >
+          <Minus size={16} />
+        </button>
+        <span className={cn('min-w-[68px] rounded-full px-3 py-1.5 text-center font-mono text-sm font-bold', deltaAccentClass[accent])}>
+          {value > 0 ? `+${value}` : value}
+        </span>
+        <button
+          type="button"
+          onClick={() => onChange(value + 1)}
+          className="w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-transform"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, count, onInc, onDec, color, bg, index }) => {
   const countControls = useAnimationControls();

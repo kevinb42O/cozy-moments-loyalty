@@ -12,6 +12,7 @@ const STORAGE_KEY = 'cozy-admin-session';
 
 interface BusinessAuthContextType {
   isAdmin: boolean;
+  adminEmail: string | null;
   isLoading: boolean;
   loginError: string | null;
   login: (login: string, password: string) => Promise<boolean>;
@@ -22,6 +23,7 @@ const BusinessAuthContext = createContext<BusinessAuthContextType | undefined>(u
 
 export const BusinessAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -32,14 +34,23 @@ export const BusinessAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
           const email = data.session.user.email?.toLowerCase() || '';
           if (ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(email)) {
             setIsAdmin(true);
+            setAdminEmail(email || null);
           }
         }
         setIsLoading(false);
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') {
           setIsAdmin(false);
+          setAdminEmail(null);
+          return;
+        }
+
+        const email = session?.user?.email?.toLowerCase() || null;
+        if (email && (ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(email))) {
+          setIsAdmin(true);
+          setAdminEmail(email);
         }
       });
 
@@ -78,6 +89,7 @@ export const BusinessAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (password === DEV_ADMIN_PASSWORD) {
         sessionStorage.setItem(STORAGE_KEY, 'true');
         setIsAdmin(true);
+        setAdminEmail(email.trim().toLowerCase() || 'lokale-admin');
         return true;
       }
       setLoginError('Ongeldige inloggegevens.');
@@ -89,11 +101,12 @@ export const BusinessAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (SUPABASE_READY && supabase) supabase.auth.signOut();
     sessionStorage.removeItem(STORAGE_KEY);
     setIsAdmin(false);
+    setAdminEmail(null);
   }, []);
 
   const value = useMemo(() => ({
-    isAdmin, isLoading, loginError, login, logout,
-  }), [isAdmin, isLoading, loginError, login, logout]);
+    isAdmin, adminEmail, isLoading, loginError, login, logout,
+  }), [isAdmin, adminEmail, isLoading, loginError, login, logout]);
 
   return (
     <BusinessAuthContext.Provider value={value}>

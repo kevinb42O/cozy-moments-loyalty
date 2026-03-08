@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { calculateLifetimeConsumptions, resolveLoyaltyTier, type LoyaltyTier } from '../lib/loyalty-tier';
 
 export type CardType = 'coffee' | 'wine' | 'beer' | 'soda';
 
@@ -22,6 +23,8 @@ export interface Customer {
   lastVisitAt: string | null;
   welcomeBonusClaimed: boolean;
   bonusCardType: CardType | null;
+  loyaltyPoints: number;
+  loyaltyTier: LoyaltyTier;
 }
 
 export interface AddResult {
@@ -30,14 +33,30 @@ export interface AddResult {
   bonusType?: CardType;
 }
 
+export interface TransactionMeta {
+  txId?: string;
+  staffEmail?: string | null;
+}
+
+export interface ManualAdjustmentInput {
+  customerId: string;
+  staffEmail?: string | null;
+  reason: string;
+  stamps: Record<CardType, number>;
+  rewards: Record<CardType, number>;
+  claimedRewards: Record<CardType, number>;
+  visitDelta: number;
+}
+
 interface LoyaltyContextType {
   customers: Customer[];
   currentCustomer: Customer | null;
   loading: boolean;
   dbError: string | null;
   setCurrentCustomer: (id: string) => void;
-  addConsumptions: (customerId: string, consumptions: Record<CardType, number>) => Promise<AddResult>;
-  claimReward: (customerId: string, type: CardType) => Promise<boolean>;
+  addConsumptions: (customerId: string, consumptions: Record<CardType, number>, meta?: TransactionMeta) => Promise<AddResult>;
+  claimReward: (customerId: string, type: CardType, meta?: TransactionMeta) => Promise<boolean>;
+  applyManualAdjustment: (input: ManualAdjustmentInput) => Promise<boolean>;
   deleteCustomer: (customerId: string) => Promise<boolean>;
   upsertCustomer: (id: string, name: string, email: string) => Promise<void>;
   refreshCustomers: () => Promise<void>;
@@ -45,19 +64,54 @@ interface LoyaltyContextType {
 
 const emptyCards = (): Record<CardType, number> => ({ coffee: 0, wine: 0, beer: 0, soda: 0 });
 
+function asCardRecord(value: any): Record<CardType, number> {
+  return {
+    coffee: Number(value?.coffee ?? 0),
+    wine: Number(value?.wine ?? 0),
+    beer: Number(value?.beer ?? 0),
+    soda: Number(value?.soda ?? 0),
+  };
+}
+
 function rowToCustomer(row: any): Customer {
+  const cards = {
+    coffee: row.coffee_stamps ?? 0,
+    wine: row.wine_stamps ?? 0,
+    beer: row.beer_stamps ?? 0,
+    soda: row.soda_stamps ?? 0,
+  };
+  const rewards = {
+    coffee: row.coffee_rewards ?? 0,
+    wine: row.wine_rewards ?? 0,
+    beer: row.beer_rewards ?? 0,
+    soda: row.soda_rewards ?? 0,
+  };
+  const claimedRewards = {
+    coffee: row.coffee_claimed ?? 0,
+    wine: row.wine_claimed ?? 0,
+    beer: row.beer_claimed ?? 0,
+    soda: row.soda_claimed ?? 0,
+  };
+  const fallbackPoints = calculateLifetimeConsumptions({ cards, rewards, claimedRewards });
+  const loyaltyPoints = Number.isFinite(Number(row.loyalty_points)) ? Number(row.loyalty_points) : fallbackPoints;
+  const loyaltyTier = typeof row.loyalty_tier === 'string'
+    ? resolveLoyaltyTier(loyaltyPoints)
+    : resolveLoyaltyTier(loyaltyPoints);
+
   return {
     id: row.id,
     name: row.name,
     email: row.email ?? '',
     createdAt: row.created_at ?? new Date().toISOString(),
-    cards: { coffee: row.coffee_stamps ?? 0, wine: row.wine_stamps ?? 0, beer: row.beer_stamps ?? 0, soda: row.soda_stamps ?? 0 },
-    rewards: { coffee: row.coffee_rewards ?? 0, wine: row.wine_rewards ?? 0, beer: row.beer_rewards ?? 0, soda: row.soda_rewards ?? 0 },
-    claimedRewards: { coffee: row.coffee_claimed ?? 0, wine: row.wine_claimed ?? 0, beer: row.beer_claimed ?? 0, soda: row.soda_claimed ?? 0 },
+    cards,
+    rewards,
+    claimedRewards,
     totalVisits: row.total_visits ?? 0,
     lastVisitAt: row.last_visit_at ?? null,
     welcomeBonusClaimed: row.welcome_bonus_claimed ?? false,
     bonusCardType: (row.bonus_card_type as CardType | null) ?? null,
+    loyaltyPoints,
+    loyaltyTier,
   };
 }
 
@@ -96,7 +150,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       })
       .subscribe();
 
-    return () => { supabase!.removeChannel(channel); };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   // Keep currentCustomerId pinned to authenticated customer after fetch
@@ -135,111 +189,90 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addConsumptions = useCallback(async (
     customerId: string,
-    consumptions: Record<CardType, number>
+    consumptions: Record<CardType, number>,
+    meta?: TransactionMeta,
   ): Promise<AddResult> => {
     const earned: Record<CardType, number> = emptyCards();
     let bonusApplied = false;
     if (!supabase) return { earned, bonusApplied };
 
-    // Always fetch fresh customer data from DB to avoid stale closure issues
-    const { data: row, error: fetchErr } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('id', customerId)
-      .single();
-
-    if (fetchErr || !row) {
-      console.error('addConsumptions: customer not found in DB', fetchErr);
-      return { earned, bonusApplied };
-    }
-
-    const customer = rowToCustomer(row);
-    const newCards = { ...customer.cards };
-    const newRewards = { ...customer.rewards };
-
-    // Welcome bonus: +2 extra stamps on first-ever transaction
-    const applyBonus = !customer.welcomeBonusClaimed;
-    const actualConsumptions = { ...consumptions };
-    let bonusCardType: CardType | undefined;
-    if (applyBonus) {
-      // Find the first category with stamps to apply the bonus to
-      const foundType = (Object.keys(actualConsumptions) as CardType[]).find(
-        type => actualConsumptions[type] > 0
-      );
-      if (foundType) {
-        bonusCardType = foundType;
-        actualConsumptions[foundType] += 2;
-        bonusApplied = true;
-      }
-    }
-
-    (Object.keys(actualConsumptions) as CardType[]).forEach(type => {
-      if (actualConsumptions[type] <= 0) return;
-      const total = newCards[type] + actualConsumptions[type];
-      const rewardsEarned = Math.floor(total / 10);
-      earned[type] = rewardsEarned;
-      newCards[type] = total % 10;
-      if (rewardsEarned > 0) newRewards[type] = (newRewards[type] || 0) + rewardsEarned;
+    const { data, error } = await supabase.rpc('apply_customer_scan', {
+      p_customer_id: customerId,
+      p_tx_id: meta?.txId ?? `scan-${Date.now()}`,
+      p_staff_email: meta?.staffEmail ?? null,
+      p_coffee: consumptions.coffee,
+      p_wine: consumptions.wine,
+      p_beer: consumptions.beer,
+      p_soda: consumptions.soda,
     });
 
-    const updatePayload: Record<string, unknown> = {
-      coffee_stamps: newCards.coffee, wine_stamps: newCards.wine, beer_stamps: newCards.beer, soda_stamps: newCards.soda,
-      coffee_rewards: newRewards.coffee, wine_rewards: newRewards.wine, beer_rewards: newRewards.beer, soda_rewards: newRewards.soda,
-      total_visits: (customer.totalVisits || 0) + 1,
-      last_visit_at: new Date().toISOString(),
-    };
-    if (bonusApplied) {
-      updatePayload.welcome_bonus_claimed = true;
-      updatePayload.bonus_card_type = bonusCardType;
-    } else if (customer.bonusCardType && earned[customer.bonusCardType] > 0) {
-      // The first full card cycle for the bonus type completed — retire the gold highlight
-      updatePayload.bonus_card_type = null;
-    }
-
-    const { error } = await supabase.from('customers').update(updatePayload).eq('id', customerId);
-
     if (error) {
-      console.error('Supabase update error:', error);
-      throw new Error('Database update mislukt');
+      console.error('apply_customer_scan error:', error);
+      throw new Error(error.message || 'Database update mislukt');
     }
 
-    // Optimistic update so UI responds instantly, then sync from DB
-    const shouldClearBonus = !bonusApplied && customer.bonusCardType !== null && earned[customer.bonusCardType as CardType] > 0;
-    setCustomers(prev => prev.map(c =>
-      c.id === customerId ? { ...c, cards: newCards, rewards: newRewards, totalVisits: (c.totalVisits || 0) + 1, lastVisitAt: new Date().toISOString(), welcomeBonusClaimed: bonusApplied ? true : c.welcomeBonusClaimed, bonusCardType: bonusApplied ? (bonusCardType ?? null) : shouldClearBonus ? null : c.bonusCardType } : c
-    ));
+    const rpcResult = (data ?? {}) as { earned?: Partial<Record<CardType, number>>; bonusApplied?: boolean; bonusType?: CardType | null };
+    const rpcEarned = asCardRecord(rpcResult.earned);
+    const rpcBonusApplied = Boolean(rpcResult.bonusApplied);
+    const rpcBonusType = rpcResult.bonusType ?? undefined;
+
+    earned.coffee = rpcEarned.coffee;
+    earned.wine = rpcEarned.wine;
+    earned.beer = rpcEarned.beer;
+    earned.soda = rpcEarned.soda;
+    bonusApplied = rpcBonusApplied;
+
     await fetchFromSupabase();
 
-    return { earned, bonusApplied, bonusType: bonusCardType };
+    return { earned, bonusApplied, bonusType: rpcBonusType };
   }, [fetchFromSupabase]);
 
-  const claimReward = useCallback(async (customerId: string, type: CardType): Promise<boolean> => {
+  const claimReward = useCallback(async (customerId: string, type: CardType, meta?: TransactionMeta): Promise<boolean> => {
     if (!supabase) return false;
 
-    // Fetch fresh data from DB to avoid stale closure
-    const { data: row, error: fetchErr } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('id', customerId)
-      .single();
+    const { error } = await supabase.rpc('claim_customer_reward', {
+      p_customer_id: customerId,
+      p_card_type: type,
+      p_tx_id: meta?.txId ?? `redeem-${Date.now()}`,
+      p_staff_email: meta?.staffEmail ?? null,
+    });
 
-    if (fetchErr || !row) return false;
-    const customer = rowToCustomer(row);
-    if ((customer.rewards[type] || 0) <= 0) return false;
+    if (error) {
+      console.error('claim_customer_reward error:', error);
+      return false;
+    }
 
-    const newRewards = { ...customer.rewards, [type]: customer.rewards[type] - 1 };
-    const newClaimed = { ...customer.claimedRewards, [type]: (customer.claimedRewards[type] || 0) + 1 };
+    await fetchFromSupabase();
+    return true;
+  }, [fetchFromSupabase]);
 
-    const { error } = await supabase.from('customers').update({
-      [`${type}_rewards`]: newRewards[type],
-      [`${type}_claimed`]: newClaimed[type],
-    }).eq('id', customerId);
+  const applyManualAdjustment = useCallback(async (input: ManualAdjustmentInput): Promise<boolean> => {
+    if (!supabase) return false;
 
-    if (error) { console.error(error); return false; }
+    const { error } = await supabase.rpc('apply_manual_adjustment', {
+      p_customer_id: input.customerId,
+      p_staff_email: input.staffEmail ?? null,
+      p_reason: input.reason,
+      p_coffee_stamps: input.stamps.coffee,
+      p_wine_stamps: input.stamps.wine,
+      p_beer_stamps: input.stamps.beer,
+      p_soda_stamps: input.stamps.soda,
+      p_coffee_rewards: input.rewards.coffee,
+      p_wine_rewards: input.rewards.wine,
+      p_beer_rewards: input.rewards.beer,
+      p_soda_rewards: input.rewards.soda,
+      p_coffee_claimed: input.claimedRewards.coffee,
+      p_wine_claimed: input.claimedRewards.wine,
+      p_beer_claimed: input.claimedRewards.beer,
+      p_soda_claimed: input.claimedRewards.soda,
+      p_visit_delta: input.visitDelta,
+    });
 
-    setCustomers(prev => prev.map(c =>
-      c.id === customerId ? { ...c, rewards: newRewards, claimedRewards: newClaimed } : c
-    ));
+    if (error) {
+      console.error('apply_manual_adjustment error:', error);
+      throw new Error(error.message || 'Correctie opslaan mislukt');
+    }
+
     await fetchFromSupabase();
     return true;
   }, [fetchFromSupabase]);
@@ -264,12 +297,26 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await fetchFromSupabase();
   }, [fetchFromSupabase]);
 
+  const value = useMemo(() => ({
+    customers, currentCustomer, loading, dbError,
+    setCurrentCustomer: setCurrentCustomerWithPin,
+    addConsumptions, claimReward, applyManualAdjustment, deleteCustomer, upsertCustomer, refreshCustomers,
+  }), [
+    customers,
+    currentCustomer,
+    loading,
+    dbError,
+    setCurrentCustomerWithPin,
+    addConsumptions,
+    claimReward,
+    applyManualAdjustment,
+    deleteCustomer,
+    upsertCustomer,
+    refreshCustomers,
+  ]);
+
   return (
-    <LoyaltyContext.Provider value={{
-      customers, currentCustomer, loading, dbError,
-      setCurrentCustomer: setCurrentCustomerWithPin,
-      addConsumptions, claimReward, deleteCustomer, upsertCustomer, refreshCustomers,
-    }}>
+    <LoyaltyContext.Provider value={value}>
       {children}
     </LoyaltyContext.Provider>
   );

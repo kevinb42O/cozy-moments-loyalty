@@ -288,6 +288,8 @@ export const Scanner: React.FC = () => {
               // ── Redeem QR ──
               if (payload.type === 'redeem' && payload.cardType) {
                 const cardType = payload.cardType as CardType;
+                const txId = typeof payload.txId === 'string' ? payload.txId : undefined;
+                const staffEmail = typeof payload.staffEmail === 'string' ? payload.staffEmail : null;
                 if (!['coffee', 'wine', 'beer', 'soda'].includes(cardType)) {
                   setScanError('Ongeldige QR code');
                   setTimeout(() => setScanError(null), 3000);
@@ -301,7 +303,13 @@ export const Scanner: React.FC = () => {
                 }
 
                 stopAndClear().then(() => {
-                  claimReward(currentCustomer.id, cardType).then(() => {
+                  claimReward(currentCustomer.id, cardType, { txId, staffEmail }).then((ok) => {
+                    if (!ok) {
+                      setScanError('Deze beloning kon niet worden ingewisseld');
+                      setTimeout(() => setScanError(null), 3000);
+                      return;
+                    }
+
                     playSuccessChime();
                     setScanResult({ type: 'redeem', claimedType: cardType });
                     setScanned(true);
@@ -317,13 +325,15 @@ export const Scanner: React.FC = () => {
                 payload.wine !== undefined &&
                 payload.beer !== undefined
               ) {
+                const txId = typeof payload.txId === 'string' ? payload.txId : undefined;
+                const staffEmail = typeof payload.staffEmail === 'string' ? payload.staffEmail : null;
                 stopAndClear().then(() => {
                   addConsumptions(currentCustomer.id, {
                     coffee: payload.coffee as number,
                     wine: payload.wine as number,
                     beer: payload.beer as number,
                     soda: (payload.soda as number) || 0,
-                  }).then(result => {
+                  }, { txId, staffEmail }).then(result => {
                     playSuccessChime();
                     setScanResult({ type: 'add', earned: result.earned, bonusApplied: result.bonusApplied, bonusType: result.bonusType });
                     setScanned(true);
@@ -443,7 +453,7 @@ export const Scanner: React.FC = () => {
                         Omdat dit je eerste scan is, krijg je van ons <span className="font-bold text-amber-300">2 extra stempels</span> cadeau op je kaart! 🎁
                       </p>
                     </motion.div>
-                    {scanResult.bonusType !== undefined && scanResult.bonusStartPosition !== undefined && currentCustomer && (
+                    {scanResult.bonusType !== undefined && currentCustomer && (
                       <motion.div
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}

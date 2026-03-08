@@ -78,7 +78,7 @@ interface OpenBottleProduct {
   priceLabel: string;
   risk: OpenBottleRisk;
   reason: string;
-  remainingGlasses: number;
+  remainingLabel: string;
   expiryHours: number;
   promoMessage: string;
 }
@@ -90,7 +90,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€12,50',
     risk: 'red',
     reason: 'Duurste glas op de kaart. De bubbels lopen snel terug, dus deze moet bijna meteen gepusht worden.',
-    remainingGlasses: 5,
+    remainingLabel: 'Nog 5 glazen over',
     expiryHours: 48,
     promoMessage: '🌟 Vandaag in de kijker: Champagne Charles Latour per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -100,7 +100,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€8,50',
     risk: 'red',
     reason: 'Zelfde tikkende klok als champagne: open fles, snel actie nodig.',
-    remainingGlasses: 5,
+    remainingLabel: 'Nog 5 glazen over',
     expiryHours: 48,
     promoMessage: '🌟 Vandaag in de kijker: Cava Brisa Nova per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -110,7 +110,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€8,50',
     risk: 'red',
     reason: 'Premium rosé per glas die trager loopt dan de huisrosé.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Altés L\'Espontania Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -120,7 +120,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€8,00',
     risk: 'red',
     reason: 'Premium witte wijn. Mooie marge, maar gevoelig als hij maar af en toe besteld wordt.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Les Silex Sauvignon per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -130,7 +130,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€7,00',
     risk: 'red',
     reason: 'Premium witte wijn die snel pijn doet als de fles traag draait.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: No Excuse Chardonnay per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -140,7 +140,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€7,00',
     risk: 'red',
     reason: 'Zoete witte wijn is een niche. Zonder extra push blijft die fles vaak staan.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: onze zachte Moelleux per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -150,7 +150,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€7,00',
     risk: 'red',
     reason: 'Alcoholvrije witte wijn met beperkte doelgroep. Groot risico op derving.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: onze heerlijke alcoholvrije Pinot Blanc! Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -160,7 +160,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€7,00',
     risk: 'red',
     reason: 'Alcoholvrije rode wijn is een trage loper. Deze moet meteen zichtbaar gemaakt worden.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: onze heerlijke alcoholvrije Pinot Noir! Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -170,7 +170,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€5,50',
     risk: 'orange',
     reason: 'Huiswijn die meestal goed draait, maar laat op de week wel opgevolgd moet worden.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Wit per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -180,7 +180,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€5,50',
     risk: 'orange',
     reason: 'Huisrode wijn. Minder risicovol, maar nog altijd jammer als de fles blijft hangen.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Rood per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -190,7 +190,7 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€5,50',
     risk: 'orange',
     reason: 'Huisrosé. Minder kritiek, maar opvolging blijft zinvol zodra een fles open is.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
   },
@@ -200,9 +200,19 @@ const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
     priceLabel: '€5,50',
     risk: 'orange',
     reason: 'Nog een rosé per glas die opgevolgd moet worden zodra een nieuwe fles open gaat.',
-    remainingGlasses: 4,
+    remainingLabel: 'Nog 4 glazen over',
     expiryHours: 72,
     promoMessage: '🌟 Vandaag in de kijker: Gris Blanc Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'lactosevrije-melk',
+    name: 'Lactosevrije melk',
+    priceLabel: 'Koffie-special',
+    risk: 'red',
+    reason: 'Een open pak lactosevrije melk is een niche-product. Zodra het open is, wil je snel extra lattes, cappuccino\'s en koffie verkeerd verkopen.',
+    remainingLabel: 'Nog 6 koffies mogelijk',
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: Latte, Cappuccino of Koffie Verkeerd met lactosevrije melk. Bestel dit vandaag en scoor een EXTRA stempel op je Koffie-kaart.',
   },
 ];
 
@@ -739,7 +749,7 @@ export const BusinessPage: React.FC = () => {
                   Open flessen
                 </h2>
                 <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-                  Enkel de 12 risicowijnen staan hier. Open een fles, volg de timer en zet ze met 1 tik in de kijker voor klanten.
+                  Hier staan enkel de risico-items: de 12 wijnen per glas plus lactosevrije melk. Open iets, volg de timer en zet het met 1 tik in de kijker voor klanten.
                 </p>
               </div>
               <div className="hidden md:grid grid-cols-3 gap-2 min-w-[320px]">
@@ -856,7 +866,7 @@ export const BusinessPage: React.FC = () => {
                                   {product.priceLabel}
                                 </span>
                                 <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
-                                  Nog {product.remainingGlasses} glazen over
+                                  {product.remainingLabel}
                                 </span>
                               </div>
                               <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)] leading-tight">

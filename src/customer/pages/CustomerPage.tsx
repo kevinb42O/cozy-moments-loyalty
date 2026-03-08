@@ -26,8 +26,28 @@ export const CustomerPage: React.FC = () => {
   // Fetch promo message
   useEffect(() => {
     if (!supabase) return;
-    supabase.from('site_settings').select('promo_message').eq('id', 'default').single()
-      .then(({ data }) => { if (data?.promo_message) setPromoMessage(data.promo_message); });
+
+    const loadPromoMessage = async () => {
+      const { data, error } = await supabase.from('site_settings').select('promo_message').eq('id', 'default').single();
+      if (error) {
+        console.error('Kon promo banner niet laden:', error);
+        return;
+      }
+      setPromoMessage(data?.promo_message ?? '');
+    };
+
+    loadPromoMessage();
+
+    const channel = supabase
+      .channel('site-settings-realtime-customer')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, () => {
+        loadPromoMessage();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // If currentCustomer doesn't load within 8s, show escape hatch

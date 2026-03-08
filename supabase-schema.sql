@@ -101,6 +101,9 @@ CREATE TABLE IF NOT EXISTS public.site_settings (
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE public.site_settings
+  ADD COLUMN IF NOT EXISTS open_bottles JSONB NOT NULL DEFAULT '{}'::jsonb;
+
 -- Insert the single default row
 INSERT INTO public.site_settings (id) VALUES ('default') ON CONFLICT DO NOTHING;
 

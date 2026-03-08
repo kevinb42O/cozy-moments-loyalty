@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X, Gift } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X, Gift, Clock3 } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -64,6 +64,173 @@ const PRICE_ESTIMATE: Record<CardType, number> = {
   beer: 4.00,
   soda: 3.00,
 };
+
+type BusinessView = 'create' | 'open-bottles' | 'customers' | 'redeem';
+type OpenBottleRisk = 'red' | 'orange';
+
+interface OpenBottleEntry {
+  openedAt: string;
+}
+
+interface OpenBottleProduct {
+  id: string;
+  name: string;
+  priceLabel: string;
+  risk: OpenBottleRisk;
+  reason: string;
+  remainingGlasses: number;
+  expiryHours: number;
+  promoMessage: string;
+}
+
+const OPEN_BOTTLE_PRODUCTS: OpenBottleProduct[] = [
+  {
+    id: 'champagne-charles-latour',
+    name: 'Champagne Charles Latour Glas',
+    priceLabel: '€12,50',
+    risk: 'red',
+    reason: 'Duurste glas op de kaart. De bubbels lopen snel terug, dus deze moet bijna meteen gepusht worden.',
+    remainingGlasses: 5,
+    expiryHours: 48,
+    promoMessage: '🌟 Vandaag in de kijker: Champagne Charles Latour per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'cava-brisa-nova',
+    name: 'Cava Brisa Nova Glas',
+    priceLabel: '€8,50',
+    risk: 'red',
+    reason: 'Zelfde tikkende klok als champagne: open fles, snel actie nodig.',
+    remainingGlasses: 5,
+    expiryHours: 48,
+    promoMessage: '🌟 Vandaag in de kijker: Cava Brisa Nova per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'altes-espontania-rose',
+    name: 'Altés L\'Espontania Rosé Glas',
+    priceLabel: '€8,50',
+    risk: 'red',
+    reason: 'Premium rosé per glas die trager loopt dan de huisrosé.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: Altés L\'Espontania Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'les-silex-sauvignon',
+    name: 'Les Silex Sauvignon',
+    priceLabel: '€8,00',
+    risk: 'red',
+    reason: 'Premium witte wijn. Mooie marge, maar gevoelig als hij maar af en toe besteld wordt.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: Les Silex Sauvignon per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'no-excuse-chardonnay',
+    name: 'No Excuse Chardonnay',
+    priceLabel: '€7,00',
+    risk: 'red',
+    reason: 'Premium witte wijn die snel pijn doet als de fles traag draait.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: No Excuse Chardonnay per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'terroir-moelleux',
+    name: 'Terroir et Vignobles Moelleux | zoet',
+    priceLabel: '€7,00',
+    risk: 'red',
+    reason: 'Zoete witte wijn is een niche. Zonder extra push blijft die fles vaak staan.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: onze zachte Moelleux per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'keth-pinot-blanc-00',
+    name: 'Keth Pinot Blanc 0,0',
+    priceLabel: '€7,00',
+    risk: 'red',
+    reason: 'Alcoholvrije witte wijn met beperkte doelgroep. Groot risico op derving.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: onze heerlijke alcoholvrije Pinot Blanc! Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'divin-pinot-noir-00',
+    name: 'Divin Pinot Noir 0,0',
+    priceLabel: '€7,00',
+    risk: 'red',
+    reason: 'Alcoholvrije rode wijn is een trage loper. Deze moet meteen zichtbaar gemaakt worden.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: onze heerlijke alcoholvrije Pinot Noir! Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'les-rochettes-wit',
+    name: 'Les Rochettes Wit',
+    priceLabel: '€5,50',
+    risk: 'orange',
+    reason: 'Huiswijn die meestal goed draait, maar laat op de week wel opgevolgd moet worden.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Wit per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'les-rochettes-rood',
+    name: 'Les Rochettes Rood Glas',
+    priceLabel: '€5,50',
+    risk: 'orange',
+    reason: 'Huisrode wijn. Minder risicovol, maar nog altijd jammer als de fles blijft hangen.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Rood per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'les-rochettes-rose',
+    name: 'Les Rochettes Rosé Glas',
+    priceLabel: '€5,50',
+    risk: 'orange',
+    reason: 'Huisrosé. Minder kritiek, maar opvolging blijft zinvol zodra een fles open is.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: Les Rochettes Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+  {
+    id: 'gris-blanc-rose',
+    name: 'Gris Blanc Rosé Glas',
+    priceLabel: '€5,50',
+    risk: 'orange',
+    reason: 'Nog een rosé per glas die opgevolgd moet worden zodra een nieuwe fles open gaat.',
+    remainingGlasses: 4,
+    expiryHours: 72,
+    promoMessage: '🌟 Vandaag in de kijker: Gris Blanc Rosé per glas. Bestel dit vandaag en scoor een EXTRA stempel op je Wijn-kaart.',
+  },
+];
+
+function normalizeOpenBottleState(value: unknown): Record<string, OpenBottleEntry> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, OpenBottleEntry>>((acc, [key, entry]) => {
+    if (
+      entry
+      && typeof entry === 'object'
+      && !Array.isArray(entry)
+      && typeof (entry as { openedAt?: unknown }).openedAt === 'string'
+    ) {
+      acc[key] = { openedAt: (entry as { openedAt: string }).openedAt };
+    }
+    return acc;
+  }, {});
+}
+
+function formatDuration(ms: number) {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) return `${days}d ${hours}u`;
+  return `${hours}u ${minutes.toString().padStart(2, '0')}m`;
+}
 
 function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext').Customer, nowMs: number) {
   const createdMs = new Date(customer.createdAt).getTime();
@@ -146,7 +313,7 @@ export const BusinessPage: React.FC = () => {
   });
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [qrScanned, setQrScanned] = useState(false);
-  const [view, setView] = useState<'create' | 'customers' | 'redeem'>('create');
+  const [view, setView] = useState<BusinessView>('create');
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
@@ -156,6 +323,8 @@ export const BusinessPage: React.FC = () => {
   const [promoInput, setPromoInput] = useState('');
   const [promoEditing, setPromoEditing] = useState(false);
   const [promoSaving, setPromoSaving] = useState(false);
+  const [openBottles, setOpenBottles] = useState<Record<string, OpenBottleEntry>>({});
+  const [clockNow, setClockNow] = useState(Date.now());
   // Snapshot of customers when a QR is generated — used to detect when it gets scanned
   const customersSnapshotRef = useRef<string>('');
 
@@ -175,26 +344,111 @@ export const BusinessPage: React.FC = () => {
     if (view === 'customers') refreshCustomers();
   }, [view]);
 
-  // Fetch promo message on mount
+  useEffect(() => {
+    const interval = window.setInterval(() => setClockNow(Date.now()), 30000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const loadSiteSettings = useCallback(async () => {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('promo_message, open_bottles')
+      .eq('id', 'default')
+      .single();
+
+    if (error) {
+      console.error('Kon site_settings niet laden:', error);
+      return;
+    }
+
+    const nextPromo = data?.promo_message ?? '';
+    setPromoMessage(nextPromo);
+    setPromoInput(current => promoEditing ? current : nextPromo);
+    setOpenBottles(normalizeOpenBottleState((data as { open_bottles?: unknown } | null)?.open_bottles));
+  }, [promoEditing]);
+
+  // Fetch promo message + open bottles and keep in sync across devices
   useEffect(() => {
     if (!supabase) return;
-    supabase.from('site_settings').select('promo_message').eq('id', 'default').single()
-      .then(({ data }) => {
-        const msg = data?.promo_message ?? '';
-        setPromoMessage(msg);
-        setPromoInput(msg);
-      });
+
+    loadSiteSettings();
+
+    const channel = supabase
+      .channel('site-settings-realtime-business')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, () => {
+        loadSiteSettings();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadSiteSettings]);
+
+  const persistSiteSettings = useCallback(async (
+    nextPromoMessage: string,
+    nextOpenBottles: Record<string, OpenBottleEntry>
+  ) => {
+    setPromoMessage(nextPromoMessage);
+    setOpenBottles(nextOpenBottles);
+
+    if (!supabase) return true;
+
+    setPromoSaving(true);
+    const { error } = await supabase
+      .from('site_settings')
+      .update({
+        promo_message: nextPromoMessage,
+        open_bottles: nextOpenBottles,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', 'default');
+    setPromoSaving(false);
+
+    if (error) {
+      console.error('Kon site_settings niet opslaan:', error);
+      return false;
+    }
+
+    return true;
   }, []);
 
   const savePromo = async (msg: string) => {
-    if (!supabase) return;
-    setPromoSaving(true);
-    await supabase.from('site_settings').update({ promo_message: msg, updated_at: new Date().toISOString() }).eq('id', 'default');
-    setPromoMessage(msg);
+    const ok = await persistSiteSettings(msg, openBottles);
+    if (!ok) return;
     setPromoInput(msg);
     setPromoEditing(false);
-    setPromoSaving(false);
   };
+
+  const handleOpenBottle = async (productId: string) => {
+    const nextOpenBottles = {
+      ...openBottles,
+      [productId]: { openedAt: new Date().toISOString() },
+    };
+    await persistSiteSettings(promoMessage, nextOpenBottles);
+  };
+
+  const handleClearBottle = async (productId: string) => {
+    const nextOpenBottles = { ...openBottles };
+    delete nextOpenBottles[productId];
+
+    const nextPromo = OPEN_BOTTLE_PRODUCTS.find(product => product.id === productId)?.promoMessage === promoMessage
+      ? ''
+      : promoMessage;
+
+    await persistSiteSettings(nextPromo, nextOpenBottles);
+  };
+
+  const handlePromoteBottle = async (product: OpenBottleProduct) => {
+    if (!openBottles[product.id]) return;
+    setPromoInput(product.promoMessage);
+    setPromoEditing(false);
+    await persistSiteSettings(product.promoMessage, openBottles);
+  };
+
+  const activePromoProduct = OPEN_BOTTLE_PRODUCTS.find(product => product.promoMessage === promoMessage) ?? null;
 
   const handleIncrement = (type: CardType) => {
     setConsumptions(prev => ({ ...prev, [type]: prev[type] + 1 }));
@@ -302,20 +556,29 @@ export const BusinessPage: React.FC = () => {
           </button>
         </div>
         
-        <div className="flex bg-gray-100 p-1 rounded-full mb-1">
+        <div className="grid grid-cols-4 gap-1 bg-gray-100 p-1 rounded-[22px] mb-1">
           <button
             onClick={() => { reset(); setView('create'); }}
             className={cn(
-              "flex-1 py-2 px-4 rounded-full text-sm font-display font-bold transition-all",
+              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
               view === 'create' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
             )}
           >
             Nieuwe QR
           </button>
           <button
+            onClick={() => { reset(); setView('open-bottles'); }}
+            className={cn(
+              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
+              view === 'open-bottles' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
+            )}
+          >
+            Open flessen
+          </button>
+          <button
             onClick={() => { reset(); setView('customers'); }}
             className={cn(
-              "flex-1 py-2 px-4 rounded-full text-sm font-display font-bold transition-all",
+              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
               view === 'customers' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
             )}
           >
@@ -324,7 +587,7 @@ export const BusinessPage: React.FC = () => {
           <button
             onClick={() => { reset(); setView('redeem'); }}
             className={cn(
-              "flex-1 py-2 px-4 rounded-full text-sm font-display font-bold transition-all",
+              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
               view === 'redeem' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
             )}
           >
@@ -465,6 +728,221 @@ export const BusinessPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {view === 'open-bottles' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div className="flex items-start justify-between gap-4 mb-2">
+              <div>
+                <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)]">
+                  Open flessen
+                </h2>
+                <p className="text-sm text-gray-500 mt-1 max-w-2xl">
+                  Enkel de 12 risicowijnen staan hier. Open een fles, volg de timer en zet ze met 1 tik in de kijker voor klanten.
+                </p>
+              </div>
+              <div className="hidden md:grid grid-cols-3 gap-2 min-w-[320px]">
+                <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400">Open nu</p>
+                  <p className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{Object.keys(openBottles).length}</p>
+                </div>
+                <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400">Over tijd</p>
+                  <p className="font-mono text-2xl font-bold text-red-500">
+                    {
+                      OPEN_BOTTLE_PRODUCTS.filter(product => {
+                        const entry = openBottles[product.id];
+                        if (!entry) return false;
+                        return new Date(entry.openedAt).getTime() + product.expiryHours * 60 * 60 * 1000 <= clockNow;
+                      }).length
+                    }
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400">In promo</p>
+                  <p className="font-mono text-2xl font-bold text-[var(--color-cozy-olive)]">{activePromoProduct ? '1' : '0'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[24px] shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Megaphone size={16} className="text-[var(--color-cozy-olive)]" />
+                <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">Wat klanten nu zien</span>
+              </div>
+              {promoMessage ? (
+                <div className="rounded-2xl border border-[var(--color-cozy-olive)]/15 bg-[var(--color-cozy-olive)]/8 px-4 py-3">
+                  <p className="text-sm text-[var(--color-cozy-text)]/85 leading-snug">{promoMessage}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {activePromoProduct && (
+                      <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-[var(--color-cozy-olive)] shadow-sm">
+                        Actieve fles: {activePromoProduct.name}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => savePromo('')}
+                      disabled={promoSaving}
+                      className="text-xs text-red-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                    >
+                      Promo wissen
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-400">
+                  Er staat momenteel geen banner live voor klanten.
+                </div>
+              )}
+            </div>
+
+            {(['red', 'orange'] as OpenBottleRisk[]).map(risk => {
+              const products = OPEN_BOTTLE_PRODUCTS.filter(product => product.risk === risk);
+              const riskConfig = risk === 'red'
+                ? {
+                    title: 'Code rood: absolute prioriteit',
+                    note: 'Absolute prioriteit. Open flessen in deze groep moeten actief verkocht worden.',
+                    badge: 'bg-red-50 text-red-600 border-red-200',
+                  }
+                : {
+                    title: 'Code oranje: huiswijnen',
+                    note: 'Minder kritiek, maar wel opvolgen zodra laat op de week een nieuwe fles open gaat.',
+                    badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                  };
+
+              return (
+                <div key={risk} className="space-y-3">
+                  <div className="flex items-center gap-3 pt-2">
+                    <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider', riskConfig.badge)}>
+                      {riskConfig.title}
+                    </span>
+                    <p className="text-sm text-gray-500">{riskConfig.note}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                    {products.map(product => {
+                      const entry = openBottles[product.id];
+                      const openedAtMs = entry ? new Date(entry.openedAt).getTime() : null;
+                      const expiresAtMs = openedAtMs ? openedAtMs + product.expiryHours * 60 * 60 * 1000 : null;
+                      const remainingMs = expiresAtMs ? expiresAtMs - clockNow : null;
+                      const isExpired = remainingMs !== null && remainingMs <= 0;
+                      const isActive = Boolean(entry);
+                      const isPromoActive = promoMessage === product.promoMessage;
+
+                      return (
+                        <div
+                          key={product.id}
+                          className={cn(
+                            'rounded-[24px] border p-4 shadow-sm transition-colors',
+                            isPromoActive
+                              ? 'bg-[var(--color-cozy-olive)]/5 border-[var(--color-cozy-olive)]/20'
+                              : isActive
+                                ? 'bg-white border-gray-200'
+                                : 'bg-white/70 border-gray-100'
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span className={cn(
+                                  'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider',
+                                  product.risk === 'red'
+                                    ? 'bg-red-50 text-red-600 border-red-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                )}>
+                                  {product.risk === 'red' ? 'Code rood' : 'Code oranje'}
+                                </span>
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
+                                  {product.priceLabel}
+                                </span>
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
+                                  Nog {product.remainingGlasses} glazen over
+                                </span>
+                              </div>
+                              <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)] leading-tight">
+                                {product.name}
+                              </h3>
+                              <p className="text-sm text-gray-500 mt-2 leading-relaxed">{product.reason}</p>
+                            </div>
+
+                            <div className={cn(
+                              'min-w-[120px] rounded-2xl border px-3 py-2 text-center',
+                              !isActive
+                                ? 'bg-gray-50 border-gray-100 text-gray-400'
+                                : isExpired
+                                  ? 'bg-red-50 border-red-200 text-red-600'
+                                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                            )}>
+                              <div className="flex items-center justify-center gap-1 mb-1">
+                                <Clock3 size={14} />
+                                <span className="text-[10px] uppercase tracking-wider font-semibold">Timer</span>
+                              </div>
+                              <p className="font-mono text-sm font-bold">
+                                {!isActive
+                                  ? 'Niet open'
+                                  : isExpired
+                                    ? `${formatDuration(Math.abs(remainingMs ?? 0))} te laat`
+                                    : formatDuration(remainingMs ?? 0)}
+                              </p>
+                              <p className="text-[10px] mt-1 opacity-80">
+                                {!isActive
+                                  ? `${product.expiryHours}u venster`
+                                  : isExpired
+                                    ? 'Tijd om te duwen of af te sluiten'
+                                    : 'Tijd resterend'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {entry && (
+                            <p className="text-xs text-gray-400 mt-3">
+                              Open sinds {new Date(entry.openedAt).toLocaleString('nl-BE', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </p>
+                          )}
+
+                          <div className="flex flex-wrap gap-2 mt-4">
+                            <button
+                              onClick={() => handleOpenBottle(product.id)}
+                              disabled={promoSaving}
+                              className="rounded-full bg-[var(--color-cozy-olive)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+                            >
+                              {entry ? 'Timer herstarten' : '+ Nieuwe fles'}
+                            </button>
+                            <button
+                              onClick={() => handlePromoteBottle(product)}
+                              disabled={!entry || promoSaving}
+                              className={cn(
+                                'rounded-full px-4 py-2 text-sm font-medium transition-all',
+                                isPromoActive
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-white text-[var(--color-cozy-text)] border border-gray-200 hover:bg-gray-50',
+                                (!entry || promoSaving) && 'opacity-50 cursor-not-allowed'
+                              )}
+                            >
+                              {isPromoActive ? 'Nu in promo' : 'Zet in promo'}
+                            </button>
+                            {entry && (
+                              <button
+                                onClick={() => handleClearBottle(product.id)}
+                                disabled={promoSaving}
+                                className="rounded-full bg-red-50 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-100 active:scale-[0.98] transition-all disabled:opacity-50"
+                              >
+                                Fles weg
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </motion.div>
         )}
 

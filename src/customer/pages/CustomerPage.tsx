@@ -6,6 +6,7 @@ import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
 import { LoadingScreen } from '../../shared/components/LoadingScreen';
 import { supabase } from '../../shared/lib/supabase';
+import { LOYALTY_TIER_CONFIG, getLoyaltyProgress } from '../../shared/lib/loyalty-tier';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
@@ -83,6 +84,8 @@ export const CustomerPage: React.FC = () => {
 
   const displayName = user?.name || currentCustomer.name;
   const totalRewards = (currentCustomer.rewards?.coffee || 0) + (currentCustomer.rewards?.wine || 0) + (currentCustomer.rewards?.beer || 0) + (currentCustomer.rewards?.soda || 0);
+  const loyaltyConfig = LOYALTY_TIER_CONFIG[currentCustomer.loyaltyTier];
+  const loyaltyProgress = getLoyaltyProgress(currentCustomer.loyaltyPoints);
 
   return (
     <div className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">
@@ -108,8 +111,12 @@ export const CustomerPage: React.FC = () => {
           <a href="https://www.cozy-moments.be/" target="_blank" rel="noopener noreferrer">
             <img src="/cozylogo.png" alt="COZY Moments" className="w-20 h-20 object-contain -my-2" />
           </a>
-          <div className="w-9 h-9 bg-[#e8dcc8] rounded-full flex items-center justify-center text-[var(--color-cozy-coffee)] font-serif font-bold text-base shadow-sm">
-            {displayName.charAt(0)}
+          <div
+            className="min-w-11 h-11 rounded-full flex items-center justify-center px-2 text-[11px] font-bold shadow-sm"
+            style={loyaltyConfig.customerBadgeStyle}
+            title={`${loyaltyConfig.label} status`}
+          >
+            {loyaltyConfig.shortLabel}
           </div>
         </div>
         <AnimatePresence>
@@ -128,6 +135,57 @@ export const CustomerPage: React.FC = () => {
           )}
         </AnimatePresence>
       </motion.header>
+
+      <div className="px-6 mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="rounded-[26px] p-4 border shadow-[0_8px_30px_rgba(0,0,0,0.04)]"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.52) 100%)',
+            borderColor: 'rgba(255,255,255,0.7)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+          }}
+        >
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-gray-400 mb-1">Jouw status</p>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold border ${loyaltyConfig.customerBadgeClassName}`}>
+                  {loyaltyConfig.label}
+                </span>
+                <span className="text-sm text-[var(--color-cozy-text)]/70">{currentCustomer.loyaltyPoints} punten</span>
+              </div>
+            </div>
+            <div
+              className="min-w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold"
+              style={loyaltyConfig.customerBadgeStyle}
+            >
+              {loyaltyConfig.shortLabel}
+            </div>
+          </div>
+
+          <div className="h-2 rounded-full bg-white/80 overflow-hidden mb-2">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${loyaltyProgress.progressPercent}%`,
+                background: loyaltyProgress.nextTier
+                  ? `linear-gradient(90deg, ${loyaltyConfig.accentColor}, ${LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier].accentColor})`
+                  : loyaltyConfig.accentColor,
+              }}
+            />
+          </div>
+
+          <p className="text-sm text-[var(--color-cozy-text)]/75 leading-snug">
+            {loyaltyProgress.nextTier
+              ? `Nog ${loyaltyProgress.pointsNeeded} punten tot ${LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier].label}.`
+              : 'Je hebt het hoogste niveau bereikt. Tijd voor extra verwennerij bij Cozy Moments.'}
+          </p>
+        </motion.div>
+      </div>
 
       {/* Promo banner */}
       {promoMessage && (

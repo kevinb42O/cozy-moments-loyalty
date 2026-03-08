@@ -94,9 +94,7 @@ function rowToCustomer(row: any): Customer {
   };
   const fallbackPoints = calculateLifetimeConsumptions({ cards, rewards, claimedRewards });
   const loyaltyPoints = Number.isFinite(Number(row.loyalty_points)) ? Number(row.loyalty_points) : fallbackPoints;
-  const loyaltyTier = typeof row.loyalty_tier === 'string'
-    ? resolveLoyaltyTier(loyaltyPoints)
-    : resolveLoyaltyTier(loyaltyPoints);
+  const loyaltyTier = resolveLoyaltyTier(loyaltyPoints);
 
   return {
     id: row.id,
@@ -150,7 +148,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase?.removeChannel(channel); };
   }, []);
 
   // Keep currentCustomerId pinned to authenticated customer after fetch

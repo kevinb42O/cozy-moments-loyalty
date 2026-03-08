@@ -31,12 +31,14 @@ www.webaanzee.be
    - 3.1 Inloggen
    - 3.2 Tab: Nieuwe QR
    - 3.3 Tab: Klanten
+   - 3.3.1 VIP- en niveaustatus
    - 3.4 Tab: Inwisselen
    - 3.5 Screensaver
    - 3.6 Uitloggen
 4. [De Klanten App (voor de klant)](#4-de-klanten-app-voor-de-klant)
    - 4.1 Account aanmaken
    - 4.2 Dashboard
+   - 4.2.1 Levels & status
    - 4.3 QR Code scannen
    - 4.4 Beloningen bekijken
 5. [Het Spaarsysteem — Spelregels](#5-het-spaarsysteem--spelregels)
@@ -166,6 +168,22 @@ Dit is het startscherm. Hier genereert u QR codes voor klanten die iets hebben b
 
 Hier ziet u **al uw klanten** en hun volledige statistieken.
 
+### 3.3.1 VIP- en niveaustatus
+
+Elke klant krijgt automatisch een **statusniveau** op basis van zijn of haar totale aantal verzamelde consumpties:
+
+- **Bronze** — startniveau
+- **Silver** — vanaf 25 punten
+- **Gold** — vanaf 75 punten
+- **VIP** — vanaf 150 punten
+
+In het klantenscherm ziet u per klant:
+- het huidige niveau
+- het totaal aantal punten
+- hoeveel punten nog nodig zijn tot het volgende niveau
+
+Zo ziet u snel welke klanten het trouwst zijn en welke klanten u extra aandacht kunt geven, bijvoorbeeld voor acties of privé-events.
+
 ### Dashboard Samenvatting (bovenaan)
 
 Bovenaan de klantenpagina ziet u vier samenvattingskaarten:
@@ -271,8 +289,23 @@ Klanten kunnen op twee manieren een account aanmaken:
 Na het inloggen ziet de klant:
 - **4 stempelkaarten** — visueel met gevulde bolletjes (☕🍷🍺🧃)
 - **Motiverende teksten** — "Halverwege! Nog 5 stempels 🍻"
+- **Statusbadge** — Bronze, Silver, Gold of VIP rechtsboven in beeld
+- **Levelvoortgang** — de app toont hoeveel punten nog nodig zijn voor het volgende niveau
 - **Beloningenbanner** — als er gratis consumpties beschikbaar zijn
 - **Scan-knop** — om een QR code te scannen
+
+## 4.2.1 Levels & status
+
+Naast stempels spaart de klant ook **statuspunten**. Het niveau stijgt automatisch naarmate de klant meer consumpties verzamelt.
+
+| Niveau | Vanaf | Beschrijving |
+|-------|-------|-------------|
+| **Bronze** | 0 punten | Startniveau voor elke klant |
+| **Silver** | 25 punten | Vaste klant in opbouw |
+| **Gold** | 75 punten | Zeer trouwe klant |
+| **VIP** | 150 punten | Absolute topklant |
+
+> De status is zichtbaar in de klanten-app en in het admin-paneel, zodat zowel klant als zaak meteen ziet hoe waardevol de relatie aan het worden is.
 
 ## 4.3 QR Code scannen
 

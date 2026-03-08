@@ -24,8 +24,22 @@ CREATE TABLE IF NOT EXISTS public.customers (
   last_visit_at    TIMESTAMPTZ,
   welcome_bonus_claimed BOOLEAN NOT NULL DEFAULT FALSE,
   bonus_card_type  TEXT,
+  loyalty_points   INTEGER     NOT NULL DEFAULT 0,
+  loyalty_tier     TEXT        NOT NULL DEFAULT 'bronze' CHECK (loyalty_tier IN ('bronze', 'silver', 'gold', 'vip')),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS loyalty_points INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS loyalty_tier TEXT NOT NULL DEFAULT 'bronze';
+
+ALTER TABLE public.customers
+  DROP CONSTRAINT IF EXISTS customers_loyalty_tier_check;
+
+ALTER TABLE public.customers
+  ADD CONSTRAINT customers_loyalty_tier_check CHECK (loyalty_tier IN ('bronze', 'silver', 'gold', 'vip'));
 
 -- 2. Row Level Security — customers can only see their own row
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
@@ -169,12 +183,150 @@ CREATE POLICY "Settings: admin can update"
   ON public.site_settings FOR UPDATE
   USING (is_admin());
 
--- 5. Indexes
+-- 5. Loyalty tier helpers (Bronze / Silver / Gold / VIP)
+CREATE OR REPLACE FUNCTION public.calculate_customer_loyalty_points(
+  p_coffee_stamps INTEGER,
+  p_wine_stamps INTEGER,
+  p_beer_stamps INTEGER,
+  p_soda_stamps INTEGER,
+  p_coffee_rewards INTEGER,
+  p_wine_rewards INTEGER,
+  p_beer_rewards INTEGER,
+  p_soda_rewards INTEGER,
+  p_coffee_claimed INTEGER,
+  p_wine_claimed INTEGER,
+  p_beer_claimed INTEGER,
+  p_soda_claimed INTEGER
+)
+RETURNS INTEGER
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT
+    GREATEST(COALESCE(p_coffee_stamps, 0), 0)
+    + GREATEST(COALESCE(p_wine_stamps, 0), 0)
+    + GREATEST(COALESCE(p_beer_stamps, 0), 0)
+    + GREATEST(COALESCE(p_soda_stamps, 0), 0)
+    + ((GREATEST(COALESCE(p_coffee_rewards, 0), 0) + GREATEST(COALESCE(p_coffee_claimed, 0), 0)) * 10)
+    + ((GREATEST(COALESCE(p_wine_rewards, 0), 0) + GREATEST(COALESCE(p_wine_claimed, 0), 0)) * 10)
+    + ((GREATEST(COALESCE(p_beer_rewards, 0), 0) + GREATEST(COALESCE(p_beer_claimed, 0), 0)) * 10)
+    + ((GREATEST(COALESCE(p_soda_rewards, 0), 0) + GREATEST(COALESCE(p_soda_claimed, 0), 0)) * 10);
+$$;
+
+CREATE OR REPLACE FUNCTION public.calculate_customer_loyalty_tier(p_loyalty_points INTEGER)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN COALESCE(p_loyalty_points, 0) >= 150 THEN 'vip'
+    WHEN COALESCE(p_loyalty_points, 0) >= 75 THEN 'gold'
+    WHEN COALESCE(p_loyalty_points, 0) >= 25 THEN 'silver'
+    ELSE 'bronze'
+  END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.sync_customer_loyalty_fields()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.loyalty_points := public.calculate_customer_loyalty_points(
+    NEW.coffee_stamps,
+    NEW.wine_stamps,
+    NEW.beer_stamps,
+    NEW.soda_stamps,
+    NEW.coffee_rewards,
+    NEW.wine_rewards,
+    NEW.beer_rewards,
+    NEW.soda_rewards,
+    NEW.coffee_claimed,
+    NEW.wine_claimed,
+    NEW.beer_claimed,
+    NEW.soda_claimed
+  );
+  NEW.loyalty_tier := public.calculate_customer_loyalty_tier(NEW.loyalty_points);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS customers_sync_loyalty_fields ON public.customers;
+CREATE TRIGGER customers_sync_loyalty_fields
+  BEFORE INSERT OR UPDATE ON public.customers
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_customer_loyalty_fields();
+
+UPDATE public.customers
+SET
+  loyalty_points = public.calculate_customer_loyalty_points(
+    coffee_stamps,
+    wine_stamps,
+    beer_stamps,
+    soda_stamps,
+    coffee_rewards,
+    wine_rewards,
+    beer_rewards,
+    soda_rewards,
+    coffee_claimed,
+    wine_claimed,
+    beer_claimed,
+    soda_claimed
+  ),
+  loyalty_tier = public.calculate_customer_loyalty_tier(
+    public.calculate_customer_loyalty_points(
+      coffee_stamps,
+      wine_stamps,
+      beer_stamps,
+      soda_stamps,
+      coffee_rewards,
+      wine_rewards,
+      beer_rewards,
+      soda_rewards,
+      coffee_claimed,
+      wine_claimed,
+      beer_claimed,
+      soda_claimed
+    )
+  )
+WHERE loyalty_points IS DISTINCT FROM public.calculate_customer_loyalty_points(
+  coffee_stamps,
+  wine_stamps,
+  beer_stamps,
+  soda_stamps,
+  coffee_rewards,
+  wine_rewards,
+  beer_rewards,
+  soda_rewards,
+  coffee_claimed,
+  wine_claimed,
+  beer_claimed,
+  soda_claimed
+)
+OR loyalty_tier IS DISTINCT FROM public.calculate_customer_loyalty_tier(
+  public.calculate_customer_loyalty_points(
+    coffee_stamps,
+    wine_stamps,
+    beer_stamps,
+    soda_stamps,
+    coffee_rewards,
+    wine_rewards,
+    beer_rewards,
+    soda_rewards,
+    coffee_claimed,
+    wine_claimed,
+    beer_claimed,
+    soda_claimed
+  )
+);
+
+-- 6. Indexes
 CREATE INDEX IF NOT EXISTS customers_email_idx ON public.customers (email);
+CREATE INDEX IF NOT EXISTS customers_loyalty_tier_idx ON public.customers (loyalty_tier);
+CREATE INDEX IF NOT EXISTS customers_loyalty_points_idx ON public.customers (loyalty_points DESC);
 CREATE INDEX IF NOT EXISTS customer_transactions_customer_created_idx ON public.customer_transactions (customer_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS customer_transactions_tx_id_uidx ON public.customer_transactions (tx_id) WHERE tx_id IS NOT NULL;
 
--- 5b. RPC: apply a signed scan exactly once and log it in the history
+-- 6b. RPC: apply a signed scan exactly once and log it in the history
 CREATE OR REPLACE FUNCTION public.apply_customer_scan(
   p_customer_id TEXT,
   p_tx_id TEXT,
@@ -637,7 +789,11 @@ $$;
 -- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS welcome_bonus_claimed BOOLEAN NOT NULL DEFAULT FALSE;
 -- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS bonus_card_type TEXT;
 
--- 7. Admin function: Delete a customer completely (customers row + auth user)
+-- 7. Migration: Add loyalty tier columns (run if upgrading existing installation)
+-- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS loyalty_points INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS loyalty_tier TEXT NOT NULL DEFAULT 'bronze';
+
+-- 8. Admin function: Delete a customer completely (customers row + auth user)
 --    Only callable by admin users (checked inside the function).
 CREATE OR REPLACE FUNCTION public.delete_customer_account(customer_id TEXT)
 RETURNS VOID

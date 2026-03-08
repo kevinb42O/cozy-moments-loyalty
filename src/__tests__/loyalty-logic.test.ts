@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { calculateLifetimeConsumptions, getLoyaltyProgress, resolveLoyaltyTier } from '../shared/lib/loyalty-tier';
 
 /**
  * Tests the stamp → reward arithmetic used in LoyaltyContext.addConsumptions.
@@ -236,5 +237,50 @@ describe('Estimated Revenue', () => {
 
   it('should handle single-type drinker', () => {
     expect(calcEstimatedRevenue({ coffee: 0, wine: 20, beer: 0, soda: 0 })).toBe(100);
+  });
+});
+
+describe('Loyalty Tier Logic', () => {
+  it('should calculate lifetime consumptions from cards, rewards and claimed rewards', () => {
+    const points = calculateLifetimeConsumptions({
+      cards: { coffee: 4, wine: 2, beer: 1, soda: 0 },
+      rewards: { coffee: 1, wine: 0, beer: 0, soda: 0 },
+      claimedRewards: { coffee: 2, wine: 1, beer: 0, soda: 0 },
+    });
+
+    expect(points).toBe(47);
+  });
+
+  it('should assign Bronze below 25 points', () => {
+    expect(resolveLoyaltyTier(24)).toBe('bronze');
+  });
+
+  it('should assign Silver from 25 points', () => {
+    expect(resolveLoyaltyTier(25)).toBe('silver');
+  });
+
+  it('should assign Gold from 75 points', () => {
+    expect(resolveLoyaltyTier(75)).toBe('gold');
+  });
+
+  it('should assign VIP from 150 points', () => {
+    expect(resolveLoyaltyTier(150)).toBe('vip');
+  });
+
+  it('should report progress to the next tier', () => {
+    const progress = getLoyaltyProgress(60);
+
+    expect(progress.tier).toBe('silver');
+    expect(progress.nextTier).toBe('gold');
+    expect(progress.pointsNeeded).toBe(15);
+    expect(progress.progressPercent).toBe(70);
+  });
+
+  it('should cap VIP progress at 100 percent', () => {
+    const progress = getLoyaltyProgress(210);
+
+    expect(progress.tier).toBe('vip');
+    expect(progress.nextTier).toBeNull();
+    expect(progress.progressPercent).toBe(100);
   });
 });

@@ -8,6 +8,13 @@ import { Screensaver } from '../components/Screensaver';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
 import {
+  LOYALTY_TIER_CONFIG,
+  LOYALTY_TIER_ORDER,
+  getLoyaltyProgress,
+  getLoyaltyTierRank,
+  type LoyaltyTier,
+} from '../../shared/lib/loyalty-tier';
+import {
   buildTransactionSummaryParts,
   emptyDeltaRecord,
   getTransactionLabel,
@@ -338,40 +345,34 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
   const lastVisitMs = customer.lastVisitAt ? new Date(customer.lastVisitAt).getTime() : null;
   const daysSinceLastVisit = lastVisitMs ? Math.floor((nowMs - lastVisitMs) / (24 * 60 * 60 * 1000)) : null;
 
-  // Loyalty status
-  const visitsPerMonth = monthsActive >= 1 ? (customer.totalVisits || 0) / monthsActive : (customer.totalVisits || 0);
-  let loyaltyStatus: 'vip' | 'loyal' | 'active' | 'sleeping' | 'new';
-  if ((customer.totalVisits || 0) <= 2 && monthsActive < 2) {
-    loyaltyStatus = 'new';
-  } else if (daysSinceLastVisit !== null && daysSinceLastVisit > 30) {
-    loyaltyStatus = 'sleeping';
-  } else if (visitsPerMonth >= 4 && daysSinceLastVisit !== null && daysSinceLastVisit <= 10) {
-    loyaltyStatus = 'vip';
-  } else if (visitsPerMonth >= 2 && daysSinceLastVisit !== null && daysSinceLastVisit <= 21) {
-    loyaltyStatus = 'loyal';
-  } else {
-    loyaltyStatus = 'active';
-  }
+  const loyaltyProgress = getLoyaltyProgress(customer.loyaltyPoints);
 
-  return { total, avgPerMonth, monthsActive, grandTotal, favorite, hasFavorite, estimatedRevenue, estimatedGivenAway, avgPerVisit, daysSinceLastVisit, loyaltyStatus };
+  return {
+    total,
+    avgPerMonth,
+    monthsActive,
+    grandTotal,
+    favorite,
+    hasFavorite,
+    estimatedRevenue,
+    estimatedGivenAway,
+    avgPerVisit,
+    daysSinceLastVisit,
+    loyaltyTier: customer.loyaltyTier,
+    loyaltyPoints: customer.loyaltyPoints,
+    loyaltyProgress,
+  };
 }
 
 export const BusinessPage: React.FC = () => {
   const { customers, refreshCustomers, deleteCustomer, applyManualAdjustment } = useLoyalty();
   const { logout, adminEmail } = useBusinessAuth();
 
-  const loyaltyBadge = (status: 'vip' | 'loyal' | 'active' | 'sleeping' | 'new') => {
-    const config = {
-      vip:      { label: 'VIP',          bg: 'bg-amber-100 text-amber-800 border-amber-200' },
-      loyal:    { label: 'Trouwe klant', bg: 'bg-green-100 text-green-800 border-green-200' },
-      active:   { label: 'Actief',       bg: 'bg-blue-100 text-blue-800 border-blue-200' },
-      sleeping: { label: 'Slapend',      bg: 'bg-red-100 text-red-700 border-red-200' },
-      new:      { label: 'Nieuw',        bg: 'bg-purple-100 text-purple-800 border-purple-200' },
-    };
-    const c = config[status];
+  const loyaltyBadge = (tier: LoyaltyTier) => {
+    const config = LOYALTY_TIER_CONFIG[tier];
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${c.bg}`}>
-        {c.label}
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${config.adminBadgeClassName}`}>
+        {config.label}
       </span>
     );
   };
@@ -387,6 +388,7 @@ export const BusinessPage: React.FC = () => {
   const [view, setView] = useState<BusinessView>('create');
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loyaltyFilter, setLoyaltyFilter] = useState<'all' | LoyaltyTier>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   // Promo message state
@@ -722,7 +724,15 @@ export const BusinessPage: React.FC = () => {
   }, [historyFilter, historySearch, transactions]);
 
   const sortedCustomers = useMemo(
-    () => [...customers].sort((left, right) => left.name.localeCompare(right.name, 'nl-BE')),
+    () => [...customers].sort((left, right) => {
+      const tierRankDelta = getLoyaltyTierRank(right.loyaltyTier) - getLoyaltyTierRank(left.loyaltyTier);
+      if (tierRankDelta !== 0) return tierRankDelta;
+      if (right.loyaltyPoints !== left.loyaltyPoints) return right.loyaltyPoints - left.loyaltyPoints;
+      const rightLastVisit = right.lastVisitAt ? new Date(right.lastVisitAt).getTime() : 0;
+      const leftLastVisit = left.lastVisitAt ? new Date(left.lastVisitAt).getTime() : 0;
+      if (rightLastVisit !== leftLastVisit) return rightLastVisit - leftLastVisit;
+      return left.name.localeCompare(right.name, 'nl-BE');
+    }),
     [customers],
   );
 
@@ -1276,7 +1286,8 @@ export const BusinessPage: React.FC = () => {
 
                   // ── Pre-compute stats for all customers ────────────
                   const nowMs = now.getTime();
-                  const allStats = customers.map(c => calcCustomerStats(c, nowMs));
+                  const exportCustomers = sortedCustomers;
+                  const allStats = exportCustomers.map(c => calcCustomerStats(c, nowMs));
                   const grandTotal = {
                     coffee: allStats.reduce((s, st) => s + st.total.coffee, 0),
                     wine:   allStats.reduce((s, st) => s + st.total.wine,   0),
@@ -1287,14 +1298,14 @@ export const BusinessPage: React.FC = () => {
                   // ── 1. CSV (Excel / nieuwsbrief import) ────────────
                   // Belgian/Dutch Excel uses semicolons as separator
                   const SEP = ';';
-                  const csvHeader = ['Naam','Email','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Loyaliteitskorting','Klant_Sinds'].join(SEP);
-                  const csvRows = customers.map((c, idx) => {
+                  const csvHeader = ['Naam','Email','Level','Level_Punten','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Loyaliteitskorting','Klant_Sinds'].join(SEP);
+                  const csvRows = exportCustomers.map((c, idx) => {
                     const st = allStats[idx];
                     const name = `"${c.name.replace(/"/g, '""')}"`;
                     const email = `"${(c.email || '').replace(/"/g, '""')}"`;
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-                    return [name, email, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, `€${st.estimatedGivenAway.toFixed(2)}`, since].join(SEP);
+                    return [name, email, LOYALTY_TIER_CONFIG[c.loyaltyTier].label, c.loyaltyPoints, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, `€${st.estimatedGivenAway.toFixed(2)}`, since].join(SEP);
                   });
                   const csvTotalsRow = ['"TOTAAL ALLE KLANTEN"', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotal.coffee, grandTotal.wine, grandTotal.beer, grandTotal.soda, '', '', '', '', ''].join(SEP);
                   download([csvHeader, ...csvRows, '', csvTotalsRow].join('\n'), `cozy-moments-klanten-${fileDate}.csv`, 'text/csv');
@@ -1309,13 +1320,14 @@ export const BusinessPage: React.FC = () => {
                     `Totaal aantal klanten: ${customers.length}`,
                     '',
                   ];
-                  customers.forEach((c, i) => {
+                  exportCustomers.forEach((c, i) => {
                     const st = allStats[i];
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
                     lines.push('────────────────────────────────────────');
                     lines.push(`${i + 1}. ${c.name}`);
                     lines.push(`   E-mail:        ${c.email || '—'}`);
+                    lines.push(`   Level:         ${LOYALTY_TIER_CONFIG[c.loyaltyTier].label} (${c.loyaltyPoints} punten)`);
                     lines.push(`   Klant sinds:   ${since}`);
                     lines.push(`   Laatste bezoek: ${lastVisit}`);
                     lines.push(`   Totaal bezoeken: ${c.totalVisits || 0}`);
@@ -1449,6 +1461,58 @@ export const BusinessPage: React.FC = () => {
                 </div>
               );
             })()}
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {LOYALTY_TIER_ORDER.map((tier) => {
+                const config = LOYALTY_TIER_CONFIG[tier];
+                const count = customers.filter((customer) => customer.loyaltyTier === tier).length;
+                return (
+                  <div key={tier} className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      {loyaltyBadge(tier)}
+                      <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{count}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 leading-snug">
+                      vanaf {config.minPoints} punten
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-3">
+              <button
+                onClick={() => setLoyaltyFilter('all')}
+                className={cn(
+                  'rounded-full px-4 py-2 text-sm font-medium border transition-colors',
+                  loyaltyFilter === 'all'
+                    ? 'bg-[var(--color-cozy-text)] text-white border-[var(--color-cozy-text)]'
+                    : 'bg-white text-[var(--color-cozy-text)] border-gray-200 hover:bg-gray-50'
+                )}
+              >
+                Alle levels
+              </button>
+              {LOYALTY_TIER_ORDER.map((tier) => {
+                const config = LOYALTY_TIER_CONFIG[tier];
+                const count = customers.filter((customer) => customer.loyaltyTier === tier).length;
+                const isActive = loyaltyFilter === tier;
+
+                return (
+                  <button
+                    key={`filter-${tier}`}
+                    onClick={() => setLoyaltyFilter(tier)}
+                    className={cn(
+                      'rounded-full px-4 py-2 text-sm font-medium border transition-colors',
+                      isActive
+                        ? `${config.adminBadgeClassName} shadow-sm`
+                        : 'bg-white text-[var(--color-cozy-text)] border-gray-200 hover:bg-gray-50'
+                    )}
+                  >
+                    {config.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
             
             {/* Search bar */}
             <div className="relative mb-2">
@@ -1479,15 +1543,18 @@ export const BusinessPage: React.FC = () => {
             {/* Customer list */}
             {(() => {
               const q = searchQuery.trim().toLowerCase();
+              const tierFiltered = loyaltyFilter === 'all'
+                ? sortedCustomers
+                : sortedCustomers.filter((customer) => customer.loyaltyTier === loyaltyFilter);
               const filtered = q
-                ? customers.filter(c =>
+                ? tierFiltered.filter(c =>
                     c.name.toLowerCase().includes(q) ||
                     (c.email || '').toLowerCase().includes(q)
                   )
-                : customers;
+                : tierFiltered;
               if (filtered.length === 0) return (
                 <p className="text-center text-gray-400 text-sm py-10">
-                  Geen klanten gevonden voor &ldquo;{searchQuery}&rdquo;
+                  Geen klanten gevonden{searchQuery ? ` voor "${searchQuery}"` : ''}{loyaltyFilter !== 'all' ? ` binnen ${LOYALTY_TIER_CONFIG[loyaltyFilter].label}` : ''}
                 </p>
               );
               return filtered.map(customer => {
@@ -1508,9 +1575,13 @@ export const BusinessPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h3 className="font-serif font-semibold text-base md:text-lg leading-tight truncate">{customer.name}</h3>
-                          {loyaltyBadge(stats.loyaltyStatus)}
+                          {loyaltyBadge(stats.loyaltyTier)}
                         </div>
                         <p className="text-xs text-gray-400 truncate mt-0.5">{customer.email}</p>
+                        <p className="text-[11px] text-[var(--color-cozy-text)]/65 mt-1">
+                          {stats.loyaltyPoints} punten
+                          {stats.loyaltyProgress.nextTier ? ` • nog ${stats.loyaltyProgress.pointsNeeded} tot ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : ' • hoogste level bereikt'}
+                        </p>
                       </div>
                       {/* Desktop: stamp counters inline */}
                       <div className="hidden md:flex items-center gap-3 flex-shrink-0">
@@ -1583,13 +1654,27 @@ export const BusinessPage: React.FC = () => {
                           <div className="grid grid-cols-2 gap-2 mb-4">
                             <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
                               <Award size={16} className="text-[var(--color-cozy-olive)] mb-1" />
-                              {loyaltyBadge(stats.loyaltyStatus)}
-                              <span className="text-[10px] text-gray-400 mt-1">status</span>
+                              {loyaltyBadge(stats.loyaltyTier)}
+                              <span className="text-[10px] text-gray-400 mt-1">level</span>
+                            </div>
+                            <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
+                              <TrendingUp size={16} className="text-[var(--color-cozy-olive)] mb-1" />
+                              <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{stats.loyaltyPoints}</span>
+                              <span className="text-[10px] text-gray-400">punten</span>
                             </div>
                             <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
                               <Star size={16} className="text-[var(--color-cozy-olive)] mb-1" />
                               <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{stats.hasFavorite ? cardTypeLabels[stats.favorite] : '—'}</span>
                               <span className="text-[10px] text-gray-400">favoriet</span>
+                            </div>
+                            <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
+                              <Award size={16} className="text-[var(--color-cozy-olive)] mb-1" />
+                              <span className="font-mono text-center text-sm font-bold text-[var(--color-cozy-text)]">
+                                {stats.loyaltyProgress.nextTier ? `Nog ${stats.loyaltyProgress.pointsNeeded}` : 'Max'}
+                              </span>
+                              <span className="text-[10px] text-gray-400">
+                                {stats.loyaltyProgress.nextTier ? `tot ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : 'VIP-status'}
+                              </span>
                             </div>
                             <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
                               <TrendingUp size={16} className="text-[var(--color-cozy-olive)] mb-1" />
@@ -1614,6 +1699,26 @@ export const BusinessPage: React.FC = () => {
                                   : '—'}
                               </span>
                               <span className="text-[10px] text-gray-400">laatste bezoek</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl px-4 py-3 mb-4 border border-gray-100">
+                            <div className="flex items-center justify-between gap-3 mb-2">
+                              <span className="text-xs text-gray-500">Voortgang binnen level</span>
+                              <span className="text-xs font-medium text-[var(--color-cozy-text)]">
+                                {stats.loyaltyProgress.nextTier ? `${stats.loyaltyProgress.progressPercent}% naar ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : 'VIP bereikt'}
+                              </span>
+                            </div>
+                            <div className="h-2 rounded-full bg-white overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${stats.loyaltyProgress.progressPercent}%`,
+                                  background: stats.loyaltyProgress.nextTier
+                                    ? `linear-gradient(90deg, ${LOYALTY_TIER_CONFIG[stats.loyaltyTier].accentColor}, ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].accentColor})`
+                                    : LOYALTY_TIER_CONFIG[stats.loyaltyTier].accentColor,
+                                }}
+                              />
                             </div>
                           </div>
 

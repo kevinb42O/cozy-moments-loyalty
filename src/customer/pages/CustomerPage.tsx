@@ -144,14 +144,13 @@ export const CustomerPage: React.FC = () => {
 
     /* --- Gyroscope handler (Android + iOS) --- */
     const onOrientation = (e: DeviceOrientationEvent) => {
-      // gamma = left/right tilt (-90..90), beta = front/back tilt (-180..180)
-      // When phone is held portrait, gamma is the side-tilt we want for liquid.
+      // gamma = left/right tilt (-90..90).
+      // Positive gamma = phone tilted right → liquid pools right → rotate clockwise.
       const gamma = typeof e.gamma === 'number' ? e.gamma : 0;
 
-      // Map gamma directly to tilt degrees.
-      // gamma of ±45 should give max tilt. Clamp so we never exceed MAX.
-      targetTiltDeg = clamp(-gamma * (MAX_TILT_DEG / 45), -MAX_TILT_DEG, MAX_TILT_DEG);
-      targetShiftPct = clamp(-gamma * (MAX_SHIFT_PCT / 45), -MAX_SHIFT_PCT, MAX_SHIFT_PCT);
+      // Map gamma of ±45° to max tilt/shift. Beyond 45° clamp.
+      targetTiltDeg = clamp(gamma * (MAX_TILT_DEG / 45), -MAX_TILT_DEG, MAX_TILT_DEG);
+      targetShiftPct = clamp(gamma * (MAX_SHIFT_PCT / 45), -MAX_SHIFT_PCT, MAX_SHIFT_PCT);
     };
 
     /* --- Pointer / touch fallback (desktop & when gyro unavailable) --- */
@@ -212,12 +211,23 @@ export const CustomerPage: React.FC = () => {
     const tick = () => {
       if (!active) return;
 
-      currentTiltDeg += (targetTiltDeg - currentTiltDeg) * SMOOTHING;
-      currentShiftPct += (targetShiftPct - currentShiftPct) * SMOOTHING;
+      // Idle slosh — a gentle sine oscillation so liquid always looks alive.
+      // When gyro is active the user's hand tremor already provides motion,
+      // so we reduce the idle amount.
+      const t = performance.now() / 1000;
+      const idleFactor = gyroActive ? 0.25 : 1.0;
+      const idleTilt = Math.sin(t * 1.1) * 2.2 * idleFactor;
+      const idleShift = Math.sin(t * 0.85 + 0.7) * 2.8 * idleFactor;
+
+      const goalTilt = targetTiltDeg + idleTilt;
+      const goalShift = targetShiftPct + idleShift;
+
+      currentTiltDeg += (goalTilt - currentTiltDeg) * SMOOTHING;
+      currentShiftPct += (goalShift - currentShiftPct) * SMOOTHING;
 
       // Snap to zero when very small to avoid sub-pixel jitter
-      const tilt = Math.abs(currentTiltDeg) < 0.08 ? 0 : currentTiltDeg;
-      const shift = Math.abs(currentShiftPct) < 0.08 ? 0 : currentShiftPct;
+      const tilt = Math.abs(currentTiltDeg) < 0.05 ? 0 : currentTiltDeg;
+      const shift = Math.abs(currentShiftPct) < 0.05 ? 0 : currentShiftPct;
 
       host.style.setProperty('--cozy-liquid-tilt-deg', `${tilt.toFixed(2)}deg`);
       host.style.setProperty('--cozy-liquid-shift-pct', `${shift.toFixed(2)}%`);

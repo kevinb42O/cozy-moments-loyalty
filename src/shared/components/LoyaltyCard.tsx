@@ -1,13 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Coffee, Wine, Beer, GlassWater, Check, Gift } from 'lucide-react';
 import { CardType } from '../store/LoyaltyContext';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { motion } from 'framer-motion';
-
-export function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
 
 interface LoyaltyCardProps {
   type: CardType;
@@ -98,7 +92,6 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
   const [displayCount, setDisplayCount] = useState(shouldAnimateFromPrevious ? clampedFromCount : clampedCount);
   const [slowFillMode, setSlowFillMode] = useState(false);
   const playedInitialTransitionRef = useRef(false);
-  const hasLiquid = displayCount > 0;
 
   useEffect(() => {
     if (shouldAnimateFromPrevious && !playedInitialTransitionRef.current) {
@@ -152,25 +145,27 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
         border: '1px solid rgba(255,255,255,0.9)',
       }}
     >
-      {/* Liquid fill layer (background only) */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div
-          className="absolute inset-x-0 bottom-0 overflow-hidden transition-[height] loyalty-liquid-fill"
-          style={{
-            height: `${fillPercent}%`,
-            transitionDuration: slowFillMode ? '1650ms' : '450ms',
-            transitionTimingFunction: slowFillMode ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'ease-out',
-            background: `linear-gradient(180deg, ${config.accent}30 0%, ${config.accent}52 100%)`,
-          }}
-        >
-          {/* Inner surface layer — gyro tilts and shifts the wave surface, NOT the fill container */}
+      {/* ── Liquid fill layer ──
+       *  The liquid body is intentionally oversized (180% wide, extends 50%
+       *  below the card) so that when it rotates via gyro, no gaps appear.
+       *  The card's own overflow:hidden clips everything to the rounded shape.
+       *  transform-origin: center top → rotation pivots at the water SURFACE.
+       */}
+      {fillPercent > 0 && (
+        <div className="absolute inset-0 pointer-events-none z-0">
           <div
-            className={cn('absolute inset-0 loyalty-liquid-surface', hasLiquid && 'loyalty-liquid-slosh')}
+            className="absolute loyalty-liquid-body"
             style={{
-              transform: [
-                'rotate(var(--cozy-liquid-tilt-deg, 0deg))',
-                'translateX(var(--cozy-liquid-shift-pct, 0%))',
-              ].join(' '),
+              left: '-40%',
+              width: '180%',
+              top: `${100 - fillPercent}%`,
+              bottom: '-50%',
+              transitionProperty: 'top',
+              transitionDuration: slowFillMode ? '1650ms' : '450ms',
+              transitionTimingFunction: slowFillMode ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'ease-out',
+              transform: 'rotate(var(--cozy-liquid-tilt-deg, 0deg)) translateX(var(--cozy-liquid-shift-pct, 0%))',
+              transformOrigin: 'center top',
+              background: `linear-gradient(to bottom, ${config.accent}30 0%, ${config.accent}52 100%)`,
             }}
           >
             <div
@@ -183,7 +178,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
             />
           </div>
         </div>
-      </div>
+      )}
 
       {/* Top-right light sheen */}
       <div

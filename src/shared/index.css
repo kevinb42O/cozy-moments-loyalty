@@ -108,21 +108,16 @@ h1, h2, h3, h4, h5, h6, .font-display {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32) !important;
 }
 
-.loyalty-liquid-fill {
-  will-change: height;
-}
-
-.loyalty-liquid-surface {
-  transform-origin: center top;
-  will-change: transform;
+.loyalty-liquid-body {
+  will-change: transform, top;
 }
 
 .loyalty-liquid-wave {
   position: absolute;
-  left: -35%;
-  width: 170%;
-  height: 28px;
-  top: -16px;
+  left: 0;
+  width: 100%;
+  height: 32px;
+  top: -18px;
   border-radius: 44%;
   will-change: transform;
   transform: translate3d(0, 0, 0);
@@ -136,54 +131,30 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .loyalty-liquid-wave-b {
   animation: loyaltyWaveDrift 9s ease-in-out infinite reverse;
   opacity: 0.6;
-  top: -18px;
-}
-
-.loyalty-liquid-slosh {
-  animation: loyaltyLiquidSlosh 4s ease-in-out infinite;
-  will-change: transform;
+  top: -22px;
 }
 
 @keyframes loyaltyWaveDrift {
   0% {
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(-3%, 0, 0);
   }
   25% {
-    transform: translate3d(5%, 2px, 0);
+    transform: translate3d(2%, 2px, 0);
   }
   50% {
-    transform: translate3d(10%, 0, 0);
+    transform: translate3d(5%, 0, 0);
   }
   75% {
-    transform: translate3d(5%, -2px, 0);
+    transform: translate3d(2%, -2px, 0);
   }
   100% {
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes loyaltyLiquidSlosh {
-  0% {
-    transform: rotate(0deg) translateX(0%);
-  }
-  25% {
-    transform: rotate(1.5deg) translateX(3%);
-  }
-  50% {
-    transform: rotate(0deg) translateX(0%);
-  }
-  75% {
-    transform: rotate(-1.5deg) translateX(-3%);
-  }
-  100% {
-    transform: rotate(0deg) translateX(0%);
+    transform: translate3d(-3%, 0, 0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .loyalty-liquid-wave-a,
-  .loyalty-liquid-wave-b,
-  .loyalty-liquid-slosh {
+  .loyalty-liquid-wave-b {
     animation: none;
   }
 }

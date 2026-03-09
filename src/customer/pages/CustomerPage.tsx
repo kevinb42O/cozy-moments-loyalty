@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, LogOut, Gift, ChevronRight, Megaphone, X, Mail, Award, TrendingUp, CalendarDays, Crown } from 'lucide-react';
+import { QrCode, LogOut, Gift, ChevronRight, Megaphone, X, Mail, Award, TrendingUp, CalendarDays } from 'lucide-react';
 import { useLoyalty, CardType } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
@@ -182,7 +182,7 @@ export const CustomerPage: React.FC = () => {
               onClick={() => setShowProfileSheet(true)}
               className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
               title={`${displayName} - ${loyaltyConfig.label}`}
-              aria-label="Open profielstatus"
+              aria-label="Open accountinformatie"
             >
               {showProfilePhoto ? (
                 <div
@@ -334,15 +334,15 @@ export const CustomerPage: React.FC = () => {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 pr-2">
-                    <p className="text-[11px] font-medium tracking-[0.24em] uppercase text-[var(--color-cozy-text)]/45 mb-2">Profielstatus</p>
+                    <p className="text-[11px] font-medium tracking-[0.24em] uppercase text-[var(--color-cozy-text)]/45 mb-2">Mijn account</p>
                     <h2 className="font-display font-bold text-2xl text-[var(--color-cozy-text)] leading-tight">{displayName}</h2>
-                    <p className="text-sm text-[var(--color-cozy-text)]/60 mt-1">Alles over je loyalty-status op één plek.</p>
+                    <p className="text-sm text-[var(--color-cozy-text)]/60 mt-1">Je account, punten en spaarkaartgegevens in één overzicht.</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowProfileSheet(false)}
                     className="w-10 h-10 rounded-full bg-white/85 border border-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors shrink-0"
-                    aria-label="Sluit profielstatus"
+                    aria-label="Sluit accountinformatie"
                   >
                     <X size={18} />
                   </button>
@@ -371,10 +371,10 @@ export const CustomerPage: React.FC = () => {
                       border: loyaltyConfig.customerBadgeStyle.border,
                       boxShadow: loyaltyConfig.customerBadgeStyle.boxShadow,
                     }}>
-                      <Crown size={13} />
-                      {loyaltyConfig.label}
+                      <Award size={13} />
+                      Status {loyaltyConfig.label}
                     </div>
-                    <p className="text-sm text-[var(--color-cozy-text)] mt-2 font-medium">{currentCustomer.loyaltyPoints} loyalty-punten</p>
+                    <p className="text-sm text-[var(--color-cozy-text)] mt-2 font-medium">{currentCustomer.loyaltyPoints} punten op je account</p>
                     <p className="text-xs text-[var(--color-cozy-text)]/55 mt-1">Lid sinds {memberSince}</p>
                   </div>
                 </div>
@@ -385,7 +385,7 @@ export const CustomerPage: React.FC = () => {
                   <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
                     <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
                       <Award size={16} />
-                      <span className="text-xs font-medium uppercase tracking-wide">Huidige tier</span>
+                      <span className="text-xs font-medium uppercase tracking-wide">Huidige status</span>
                     </div>
                     <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">{loyaltyConfig.label}</p>
                     <p className="text-xs text-gray-500 mt-1">Vanaf {loyaltyConfig.minPoints} punten</p>
@@ -393,21 +393,39 @@ export const CustomerPage: React.FC = () => {
 
                   <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
                     <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
-                      <TrendingUp size={16} />
-                      <span className="text-xs font-medium uppercase tracking-wide">Volgende stap</span>
+                      <Gift size={16} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Beschikbaar</span>
                     </div>
                     <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">
-                      {nextTierLabel ? `Nog ${loyaltyProgress.pointsNeeded}` : 'Max bereikt'}
+                      {totalRewards} gratis {totalRewards === 1 ? 'consumptie' : 'consumpties'}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">{nextTierLabel ? `Tot ${nextTierLabel}` : 'Je zit op het hoogste level'}</p>
+                    <p className="text-xs text-gray-500 mt-1">{totalRewards > 0 ? 'Klaar om te gebruiken aan de kassa' : 'Nog geen beloningen beschikbaar'}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
+                    <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
+                      <TrendingUp size={16} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Punten</span>
+                    </div>
+                    <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">{currentCustomer.loyaltyPoints}</p>
+                    <p className="text-xs text-gray-500 mt-1">Automatisch bijgewerkt bij geregistreerde bezoeken</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
+                    <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
+                      <CalendarDays size={16} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Bezoeken</span>
+                    </div>
+                    <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">{currentCustomer.totalVisits}</p>
+                    <p className="text-xs text-gray-500 mt-1">{lastVisitLabel}</p>
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-gray-100 bg-white shadow-sm px-4 py-4">
                   <div className="flex items-center justify-between gap-3 mb-2">
-                    <span className="text-sm font-medium text-[var(--color-cozy-text)]">Voortgang naar volgende tier</span>
+                    <span className="text-sm font-medium text-[var(--color-cozy-text)]">Voortgang naar volgende status</span>
                     <span className="text-xs text-gray-500">
-                      {nextTierLabel ? `${loyaltyProgress.progressPercent}% naar ${nextTierLabel}` : 'Hoogste tier bereikt'}
+                      {nextTierLabel ? `${loyaltyProgress.progressPercent}% naar ${nextTierLabel}` : 'Hoogste status bereikt'}
                     </span>
                   </div>
                   <div className="h-3 rounded-full bg-[#edf1f6] overflow-hidden">
@@ -416,15 +434,15 @@ export const CustomerPage: React.FC = () => {
                       style={{
                         width: `${loyaltyProgress.progressPercent}%`,
                         background: nextTierLabel
-                          ? `linear-gradient(90deg, ${loyaltyConfig.accentColor}, ${LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier!].accentColor})`
+                          ? `linear-gradient(90deg, ${loyaltyConfig.accentColor}, ${LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier].accentColor})`
                           : loyaltyConfig.customerBadgeStyle.background,
                       }}
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
                     {nextTierLabel
-                      ? `${currentCustomer.loyaltyPoints} van ${loyaltyProgress.nextTierMinPoints} punten voor ${nextTierLabel}`
-                      : 'Je hebt het hoogste loyalty-level bereikt.'}
+                      ? `${currentCustomer.loyaltyPoints} punten geregistreerd. Nog ${loyaltyProgress.pointsNeeded} punten tot ${nextTierLabel}.`
+                      : 'Je account zit momenteel op de hoogste status.'}
                   </p>
                 </div>
 
@@ -435,27 +453,46 @@ export const CustomerPage: React.FC = () => {
                       <span className="text-xs font-medium uppercase tracking-wide">Account</span>
                     </div>
                     <p className="text-sm font-medium text-[var(--color-cozy-text)] break-all">{currentCustomer.email || 'Geen e-mailadres beschikbaar'}</p>
+                    <p className="text-xs text-gray-500 mt-1">Hiermee is je spaarkaart gekoppeld.</p>
                   </div>
 
                   <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
                     <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
                       <CalendarDays size={16} />
-                      <span className="text-xs font-medium uppercase tracking-wide">Bezoeken</span>
+                      <span className="text-xs font-medium uppercase tracking-wide">Klant sinds</span>
                     </div>
-                    <p className="text-sm font-medium text-[var(--color-cozy-text)]">{currentCustomer.totalVisits} bezoeken</p>
-                    <p className="text-xs text-gray-500 mt-1">{lastVisitLabel}</p>
+                    <p className="text-sm font-medium text-[var(--color-cozy-text)]">{memberSince}</p>
+                    <p className="text-xs text-gray-500 mt-1">Je account werd toen voor het eerst geregistreerd.</p>
                   </div>
                 </div>
 
                 <div className="rounded-[24px] border border-gray-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fc_100%)] px-4 py-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Crown size={16} className="text-[var(--color-cozy-olive)]" />
-                    <h3 className="font-display font-bold text-[var(--color-cozy-text)]">Levelvolgorde</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Award size={16} className="text-[var(--color-cozy-olive)]" />
+                    <h3 className="font-display font-bold text-[var(--color-cozy-text)]">Statusoverzicht</h3>
                   </div>
+                  <p className="text-sm text-gray-500 leading-relaxed mb-3">
+                    Je status wordt automatisch bepaald op basis van je totale spaarkaartactiviteit. Hieronder zie je vanaf hoeveel punten elke status geldt.
+                  </p>
                   <div className="space-y-2">
                     {LOYALTY_TIER_ORDER.map((tier) => {
                       const config = LOYALTY_TIER_CONFIG[tier];
                       const isActiveTier = tier === currentCustomer.loyaltyTier;
+                      const isNextTier = tier === loyaltyProgress.nextTier;
+                      const isReachedTier = currentCustomer.loyaltyPoints >= config.minPoints;
+                      let statusToneClass = 'text-gray-400';
+                      let statusLabel = 'Beschikbaar vanaf deze grens';
+
+                      if (isActiveTier) {
+                        statusToneClass = 'opacity-80';
+                        statusLabel = 'Actueel';
+                      } else if (isNextTier) {
+                        statusToneClass = 'text-[var(--color-cozy-text)]';
+                        statusLabel = 'Volgende';
+                      } else if (isReachedTier) {
+                        statusLabel = 'Behaald';
+                      }
+
                       return (
                         <div
                           key={tier}
@@ -471,8 +508,8 @@ export const CustomerPage: React.FC = () => {
                             <p className="text-sm font-semibold">{config.label}</p>
                             <p className={`text-xs ${isActiveTier ? 'opacity-75' : 'text-gray-500'}`}>Vanaf {config.minPoints} punten</p>
                           </div>
-                          <span className={`text-[11px] font-medium ${isActiveTier ? 'opacity-80' : 'text-gray-400'}`}>
-                            {isActiveTier ? 'Jouw level' : 'Nog niet bereikt'}
+                          <span className={`text-[11px] font-medium ${statusToneClass}`}>
+                            {statusLabel}
                           </span>
                         </div>
                       );

@@ -145,37 +145,29 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
         border: '1px solid rgba(255,255,255,0.9)',
       }}
     >
-      {/* ── Liquid fill layer ──
-       *  The liquid body is intentionally oversized (180% wide, extends 50%
-       *  below the card) so that when it rotates via gyro, no gaps appear.
-       *  The card's own overflow:hidden clips everything to the rounded shape.
-       *  transform-origin: center top → rotation pivots at the water SURFACE.
-       */}
+      {/* Liquid fill layer */}
       {fillPercent > 0 && (
         <div className="absolute inset-0 pointer-events-none z-0">
           <div
-            className="absolute loyalty-liquid-body"
+            className="absolute inset-x-0 bottom-0 overflow-hidden loyalty-liquid-fill"
             style={{
-              left: '-40%',
-              width: '180%',
-              top: `${100 - fillPercent}%`,
-              bottom: '-50%',
-              transitionProperty: 'top',
+              height: `${fillPercent}%`,
+              transitionProperty: 'height',
               transitionDuration: slowFillMode ? '1650ms' : '450ms',
               transitionTimingFunction: slowFillMode ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'ease-out',
-              transform: 'rotate(var(--cozy-liquid-tilt-deg, 0deg)) translateX(var(--cozy-liquid-shift-pct, 0%))',
-              transformOrigin: 'center top',
-              background: `linear-gradient(to bottom, ${config.accent}30 0%, ${config.accent}52 100%)`,
+              background: `linear-gradient(180deg, ${config.accent}30 0%, ${config.accent}52 100%)`,
             }}
           >
-            <div
-              className="loyalty-liquid-wave loyalty-liquid-wave-a"
-              style={{ background: `linear-gradient(180deg, ${config.accent}75 0%, ${config.accent}3a 100%)` }}
-            />
-            <div
-              className="loyalty-liquid-wave loyalty-liquid-wave-b"
-              style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 100%)' }}
-            />
+            <div className="absolute inset-0 loyalty-liquid-slosh">
+              <div
+                className="loyalty-liquid-wave loyalty-liquid-wave-a"
+                style={{ background: `linear-gradient(180deg, ${config.accent}75 0%, ${config.accent}3a 100%)` }}
+              />
+              <div
+                className="loyalty-liquid-wave loyalty-liquid-wave-b"
+                style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 100%)' }}
+              />
+            </div>
           </div>
         </div>
       )}

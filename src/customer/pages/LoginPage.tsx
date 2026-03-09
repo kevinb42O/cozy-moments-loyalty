@@ -101,7 +101,7 @@ export const LoginPage: React.FC = () => {
       >
         {/* Logo */}
         <div className="mb-10 flex flex-col items-center text-center">
-          <a href="https://www.cozy-moments.be/" target="_blank" rel="noopener noreferrer">
+          <a href="https://cozy-moments-website.vercel.app" target="_blank" rel="noopener noreferrer">
             <img
               src="/cozylogo.png"
               alt="COZY Moments"
@@ -390,12 +390,17 @@ export const LoginPage: React.FC = () => {
         </p>
         <div className="text-center mt-4">
           <a
-            href="https://www.cozy-moments.be/"
+            href="https://cozy-moments-website.vercel.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-[var(--color-cozy-coffee)] hover:underline font-medium"
+            className="inline-flex flex-col items-center gap-1 rounded-2xl bg-white/70 px-5 py-4 text-xs text-[var(--color-cozy-coffee)] shadow-sm border border-white/80 hover:bg-white transition-colors"
           >
-            Bezoek onze website →
+            <span className="font-semibold tracking-[0.12em] uppercase text-[10px] opacity-70">Nieuw</span>
+            <span className="font-medium text-sm text-[var(--color-cozy-text)]">Ontdek onze nieuwe website</span>
+            <span className="max-w-[250px] leading-relaxed text-[var(--color-cozy-coffee)]/85">
+              Bekijk er de digitale menukaart, sfeerbeelden en alle info over Cozy Moments.
+            </span>
+            <span className="font-semibold">Ga naar de nieuwe site -&gt;</span>
           </a>
         </div>
       </motion.div>

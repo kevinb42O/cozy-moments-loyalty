@@ -1,6 +1,11 @@
 // Cozy Moments — Business/Admin Service Worker
-const CACHE_NAME = 'cozy-moments-admin-v4';
+const CACHE_NAME = 'cozy-moments-admin-v6';
+const RUNTIME_IMAGE_CACHE = 'cozy-moments-admin-screensaver-v1';
 const OFFLINE_URL = '/';
+
+function isSupabaseScreensaverAsset(url) {
+  return url.pathname.includes('/storage/v1/object/public/screensaver-assets/');
+}
 
 // Assets to pre-cache
 const PRE_CACHE = [
@@ -44,6 +49,26 @@ self.addEventListener('activate', (event) => {
 // Fetch — network-first, fallback to cache
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const requestUrl = new URL(event.request.url);
+
+  if (isSupabaseScreensaverAsset(requestUrl)) {
+    event.respondWith(
+      caches.open(RUNTIME_IMAGE_CACHE).then(async (cache) => {
+        const cached = await cache.match(event.request, { ignoreSearch: false });
+        const fetched = fetch(event.request).then((response) => {
+          if (response && response.ok) {
+            cache.put(event.request, response.clone());
+          }
+          return response;
+        }).catch(() => cached);
+
+        return cached || fetched;
+      })
+    );
+    return;
+  }
+
   if (!event.request.url.startsWith(self.location.origin)) return;
 
   if (event.request.mode === 'navigate') {

@@ -31,7 +31,7 @@ export const LOYALTY_TIER_ORDER: LoyaltyTier[] = ['bronze', 'silver', 'gold', 'v
 export const LOYALTY_TIER_CONFIG: Record<LoyaltyTier, LoyaltyTierConfig> = {
   bronze: {
     tier: 'bronze',
-    label: 'Bronze',
+    label: 'Brons',
     shortLabel: 'B',
     minPoints: 0,
     nextTier: 'silver',
@@ -48,7 +48,7 @@ export const LOYALTY_TIER_CONFIG: Record<LoyaltyTier, LoyaltyTierConfig> = {
   },
   silver: {
     tier: 'silver',
-    label: 'Silver',
+    label: 'Zilver',
     shortLabel: 'S',
     minPoints: 25,
     nextTier: 'gold',
@@ -65,7 +65,7 @@ export const LOYALTY_TIER_CONFIG: Record<LoyaltyTier, LoyaltyTierConfig> = {
   },
   gold: {
     tier: 'gold',
-    label: 'Gold',
+    label: 'Goud',
     shortLabel: 'G',
     minPoints: 75,
     nextTier: 'vip',

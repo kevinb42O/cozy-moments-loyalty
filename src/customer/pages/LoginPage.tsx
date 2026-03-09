@@ -388,19 +388,14 @@ export const LoginPage: React.FC = () => {
             voorwaarden
           </button>
         </p>
-        <div className="text-center mt-4">
+        <div className="text-center mt-5">
           <a
             href="https://cozy-moments-website.vercel.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex flex-col items-center gap-1 rounded-2xl bg-white/70 px-5 py-4 text-xs text-[var(--color-cozy-coffee)] shadow-sm border border-white/80 hover:bg-white transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-[var(--color-cozy-coffee)]/85 hover:text-[var(--color-cozy-coffee)] transition-colors"
           >
-            <span className="font-semibold tracking-[0.12em] uppercase text-[10px] opacity-70">Nieuw</span>
-            <span className="font-medium text-sm text-[var(--color-cozy-text)]">Ontdek onze nieuwe website</span>
-            <span className="max-w-[250px] leading-relaxed text-[var(--color-cozy-coffee)]/85">
-              Bekijk er de digitale menukaart, sfeerbeelden en alle info over Cozy Moments.
-            </span>
-            <span className="font-semibold">Ga naar de nieuwe site -&gt;</span>
+            <span className="font-medium">Bekijk onze website -&gt;</span>
           </a>
         </div>
       </motion.div>
@@ -474,7 +469,7 @@ export const LoginPage: React.FC = () => {
                     <li>Naam (voornaam en/of familienaam)</li>
                     <li>E-mailadres</li>
                     <li>Google-accountinformatie (enkel bij aanmelding via Google: profielnaam en e-mailadres)</li>
-                    <li>Spaarpunten en beloningshistoriek (koffie, wijn, bier)</li>
+                    <li>Spaarstempels en beloningshistoriek (koffie, wijn, bier)</li>
                     <li>Datum en tijdstip van aanmaak van het account</li>
                     <li>Technische gegevens: IP-adres, browsertype en sessie-informatie (verkregen via Supabase Auth)</li>
                   </ul>
@@ -515,7 +510,7 @@ export const LoginPage: React.FC = () => {
                   <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">4. Bewaartermijnen</h3>
                   <p>Uw persoonsgegevens worden niet langer bewaard dan noodzakelijk voor de doeleinden waarvoor ze zijn verzameld:</p>
                   <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li><strong>Accountgegevens en spaarpunten:</strong> zolang uw account actief is, en tot maximaal 3 jaar na uw laatste aanmelding.</li>
+                    <li><strong>Accountgegevens en spaarstempels:</strong> zolang uw account actief is, en tot maximaal 3 jaar na uw laatste aanmelding.</li>
                     <li><strong>Marketing-communicatie:</strong> tot u uw toestemming intrekt.</li>
                     <li><strong>Technische logingegevens:</strong> maximaal 12 maanden.</li>
                   </ul>

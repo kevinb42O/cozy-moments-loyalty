@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Betalingsbewijs Cozy Moments</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 16mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f5f5f0;
+        color: #1f2937;
+        font-family: "Segoe UI", Arial, sans-serif;
+      }
+
+      .page {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        padding: 12mm;
+        background: #ffffff;
+      }
+
+      .receipt {
+        border: 2px solid #7b5a2e;
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-bottom: 18px;
+      }
+
+      .receipt:last-child {
+        margin-bottom: 0;
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: 28px;
+        letter-spacing: 0.04em;
+      }
+
+      h2 {
+        margin: 0 0 16px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #7b5a2e;
+      }
+
+      .meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 18px;
+        margin-bottom: 18px;
+      }
+
+      .block {
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      .label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6b7280;
+        margin-bottom: 6px;
+      }
+
+      .value {
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      .amount {
+        display: grid;
+        grid-template-columns: 1fr 220px;
+        gap: 16px;
+        margin: 18px 0;
+      }
+
+      .amount-box {
+        border: 2px solid #7b5a2e;
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
+      }
+
+      .amount-box .big {
+        font-size: 34px;
+        font-weight: 800;
+        color: #111827;
+      }
+
+      .line {
+        border-bottom: 1px solid #9ca3af;
+        min-height: 24px;
+        margin-top: 10px;
+      }
+
+      .signatures {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-top: 22px;
+      }
+
+      .small {
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      .divider {
+        border-top: 2px dashed #9ca3af;
+        margin: 16px 0;
+      }
+
+      .print-note {
+        text-align: center;
+        color: #6b7280;
+        font-size: 12px;
+        margin-bottom: 14px;
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+        }
+
+        .page {
+          width: auto;
+          min-height: auto;
+          margin: 0;
+          padding: 0;
+        }
+
+        .print-note {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="print-note">Open dit bestand in je browser en druk af via Ctrl+P.</div>
+
+      <section class="receipt">
+        <h1>BETALINGSBEWIJS</h1>
+        <h2>Digitale loyaliteitsoplossing voor Cozy Moments</h2>
+
+        <div class="meta">
+          <div class="block">
+            <span class="label">Ontvangen door</span>
+            <div class="value">
+              <strong>WebAanZee</strong><br />
+              Kevin Bourguignon<br />
+              J. vande Puttelaan 34, 8370 Blankenberge<br />
+              kevin@webaanzee.be<br />
+              0494 81 67 14<br />
+              www.webaanzee.be
+            </div>
+          </div>
+
+          <div class="block">
+            <span class="label">Ontvangen van</span>
+            <div class="value">
+              <strong>Cozy Moments</strong><br />
+              Naam contactpersoon: ______________________<br />
+              Adres: _________________________________<br />
+              ______________________________________
+            </div>
+          </div>
+        </div>
+
+        <div class="amount">
+          <div class="block">
+            <span class="label">Omschrijving</span>
+            <div class="value">
+              Ontvangst van betaling voor opzet van het digitale loyaliteitssysteem,
+              inclusief volledig eerste jaar gebruik en basis technische ondersteuning.
+            </div>
+          </div>
+
+          <div class="amount-box">
+            <span class="label">Ontvangen bedrag</span>
+            <div class="big">€ 495,00</div>
+            <div class="small">contant betaald</div>
+          </div>
+        </div>
+
+        <div class="meta">
+          <div class="block">
+            <span class="label">Betaaldatum</span>
+            <div class="value">____ / ____ / ________</div>
+          </div>
+
+          <div class="block">
+            <span class="label">Plaats</span>
+            <div class="value">Blankenberge</div>
+          </div>
+
+          <div class="block">
+            <span class="label">Referentie</span>
+            <div class="value">Opstart Cozy Moments Loyalty</div>
+          </div>
+
+          <div class="block">
+            <span class="label">Betaalwijze</span>
+            <div class="value">Contant</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <span class="label">Opmerking</span>
+          <div class="value">
+            Dit document bevestigt dat bovenstaand bedrag contant werd ontvangen voor de opzet van het Cozy Moments Loyalty Systeem,
+            inclusief het eerste jaar gebruik zoals overeengekomen.
+          </div>
+        </div>
+
+        <div class="signatures">
+          <div class="block">
+            <span class="label">Handtekening ontvanger</span>
+            <div class="line"></div>
+            <div class="small">Kevin Bourguignon - WebAanZee</div>
+          </div>
+
+          <div class="block">
+            <span class="label">Handtekening betaler</span>
+            <div class="line"></div>
+            <div class="small">Namens Cozy Moments</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="receipt">
+        <h1>BETALINGSBEWIJS</h1>
+        <h2>Kopie voor klant</h2>
+
+        <div class="meta">
+          <div class="block">
+            <span class="label">Ontvangen door</span>
+            <div class="value">
+              <strong>WebAanZee</strong><br />
+              Kevin Bourguignon<br />
+              J. vande Puttelaan 34, 8370 Blankenberge<br />
+              kevin@webaanzee.be<br />
+              0494 81 67 14<br />
+              www.webaanzee.be
+            </div>
+          </div>
+
+          <div class="block">
+            <span class="label">Ontvangen van</span>
+            <div class="value">
+              <strong>Cozy Moments</strong><br />
+              Naam contactpersoon: ______________________<br />
+              Adres: _________________________________<br />
+              ______________________________________
+            </div>
+          </div>
+        </div>
+
+        <div class="amount">
+          <div class="block">
+            <span class="label">Omschrijving</span>
+            <div class="value">
+              Ontvangst van betaling voor opzet van het digitale loyaliteitssysteem,
+              inclusief volledig eerste jaar gebruik en basis technische ondersteuning.
+            </div>
+          </div>
+
+          <div class="amount-box">
+            <span class="label">Ontvangen bedrag</span>
+            <div class="big">€ 495,00</div>
+            <div class="small">contant betaald</div>
+          </div>
+        </div>
+
+        <div class="meta">
+          <div class="block">
+            <span class="label">Betaaldatum</span>
+            <div class="value">____ / ____ / ________</div>
+          </div>
+
+          <div class="block">
+            <span class="label">Plaats</span>
+            <div class="value">Blankenberge</div>
+          </div>
+
+          <div class="block">
+            <span class="label">Referentie</span>
+            <div class="value">Opstart Cozy Moments Loyalty</div>
+          </div>
+
+          <div class="block">
+            <span class="label">Betaalwijze</span>
+            <div class="value">Contant</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <span class="label">Opmerking</span>
+          <div class="value">
+            Dit document bevestigt dat bovenstaand bedrag contant werd ontvangen voor de opzet van het Cozy Moments Loyalty Systeem,
+            inclusief het eerste jaar gebruik zoals overeengekomen.
+          </div>
+        </div>
+
+        <div class="signatures">
+          <div class="block">
+            <span class="label">Handtekening ontvanger</span>
+            <div class="line"></div>
+            <div class="small">Kevin Bourguignon - WebAanZee</div>
+          </div>
+
+          <div class="block">
+            <span class="label">Handtekening betaler</span>
+            <div class="line"></div>
+            <div class="small">Namens Cozy Moments</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

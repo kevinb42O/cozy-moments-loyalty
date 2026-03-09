@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X, Gift, Clock3, History, Save } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X, Gift, Clock3, History, Save, Settings2, ArrowLeft, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { Screensaver } from '../components/Screensaver';
+import { ScreensaverEditor } from '../components/ScreensaverEditor';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
 import {
@@ -25,10 +26,39 @@ import {
 } from '../lib/transaction-history';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import {
+  MAX_SLIDE_DURATION_MS,
+  MAX_SCREENAVER_UPLOAD_FILE_SIZE_BYTES,
+  MAX_SCREENSAVER_UPLOAD_LONG_SIDE_PX,
+  MAX_SCREENSAVER_UPLOAD_TOTAL_PIXELS,
+  MIN_SLIDE_DURATION_MS,
+  MIN_SCREENSAVER_UPLOAD_SHORT_SIDE_PX,
+  SCREENSAVER_STORAGE_BUCKET,
+  createDefaultScreensaverSlides,
+  getScreensaverStoragePath,
+  normalizeScreensaverConfig,
+  reorderScreensaverSlides,
+  resetScreensaverSlidesToDefaults,
+  serializeScreensaverConfig,
+  type ScreensaverImageRole,
+  type ScreensaverSlideConfig,
+} from '../../shared/lib/screensaver-config';
+import {
+  loadCachedScreensaverSlides,
+  persistCachedScreensaverSlides,
+  warmScreensaverImageCache,
+} from '../../shared/lib/screensaver-cache';
 
 export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
+
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'open-bottles' | 'history' | 'screensaver'>; label: string }> = [
+  { view: 'customers', label: 'Klanten' },
+  { view: 'open-bottles', label: 'Open flessen' },
+  { view: 'history', label: 'Historiek' },
+  { view: 'screensaver', label: 'Screensaver' },
+];
 
 // ── Admin audio chime (same Web Audio approach as Scanner) ────────────────────
 let adminAudioCtx: AudioContext | null = null;
@@ -81,8 +111,10 @@ const PRICE_ESTIMATE: Record<CardType, number> = {
   soda: 3.00,
 };
 
-type BusinessView = 'create' | 'open-bottles' | 'customers' | 'history' | 'redeem';
+type BusinessView = 'create' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'redeem';
 type OpenBottleRisk = 'red' | 'orange';
+type OpenBottleFilter = 'all' | 'open' | 'expired' | 'promo';
+type HistoryPanelKey = 'correction' | 'filters';
 
 interface OpenBottleEntry {
   openedAt: string;
@@ -310,6 +342,68 @@ function formatDuration(ms: number) {
   return `${hours}u ${minutes.toString().padStart(2, '0')}m`;
 }
 
+async function compressScreensaverImage(file: File) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    throw new Error('Gebruik alleen JPG, PNG of WebP voor screensaverbeelden.');
+  }
+
+  if (file.size > MAX_SCREENAVER_UPLOAD_FILE_SIZE_BYTES) {
+    throw new Error(`Het bronbestand is te zwaar. Gebruik maximaal ${Math.round(MAX_SCREENAVER_UPLOAD_FILE_SIZE_BYTES / (1024 * 1024))} MB.`);
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('De afbeelding kon niet worden ingelezen.'));
+      element.src = objectUrl;
+    });
+
+    const shortSide = Math.min(image.naturalWidth, image.naturalHeight);
+    const longSide = Math.max(image.naturalWidth, image.naturalHeight);
+    const totalPixels = image.naturalWidth * image.naturalHeight;
+
+    if (shortSide < MIN_SCREENSAVER_UPLOAD_SHORT_SIDE_PX) {
+      throw new Error(`De afbeelding is te klein. De kortste zijde moet minstens ${MIN_SCREENSAVER_UPLOAD_SHORT_SIDE_PX}px zijn.`);
+    }
+
+    if (longSide > MAX_SCREENSAVER_UPLOAD_LONG_SIDE_PX) {
+      throw new Error(`De afbeelding is te groot. De langste zijde mag maximaal ${MAX_SCREENSAVER_UPLOAD_LONG_SIDE_PX}px zijn.`);
+    }
+
+    if (totalPixels > MAX_SCREENSAVER_UPLOAD_TOTAL_PIXELS) {
+      throw new Error(`De afbeelding bevat te veel pixels. Gebruik maximaal ${Math.round(MAX_SCREENSAVER_UPLOAD_TOTAL_PIXELS / 1_000_000)} megapixel.`);
+    }
+
+    const maxDimension = 1920;
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('Canvas is niet beschikbaar in deze browser.');
+    }
+
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('De afbeelding kon niet worden gecomprimeerd.'));
+          return;
+        }
+        resolve(blob);
+      }, 'image/webp', 0.82);
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext').Customer, nowMs: number) {
   const createdMs = new Date(customer.createdAt).getTime();
   const monthsActive = Math.max(1, (nowMs - createdMs) / MS_PER_MONTH);
@@ -386,6 +480,14 @@ export const BusinessPage: React.FC = () => {
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [qrScanned, setQrScanned] = useState(false);
   const [view, setView] = useState<BusinessView>('create');
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      return globalThis.localStorage.getItem('cozy-admin-dark-mode') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loyaltyFilter, setLoyaltyFilter] = useState<'all' | LoyaltyTier>('all');
@@ -397,12 +499,36 @@ export const BusinessPage: React.FC = () => {
   const [promoEditing, setPromoEditing] = useState(false);
   const [promoSaving, setPromoSaving] = useState(false);
   const [openBottles, setOpenBottles] = useState<Record<string, OpenBottleEntry>>({});
+  const [openBottleFilter, setOpenBottleFilter] = useState<OpenBottleFilter>('all');
+  const [collapsedInactiveBottleGroups, setCollapsedInactiveBottleGroups] = useState<Record<OpenBottleRisk, boolean>>({
+    red: true,
+    orange: true,
+  });
+  const [screensaverSlides, setScreensaverSlides] = useState<ScreensaverSlideConfig[]>(() => loadCachedScreensaverSlides());
+  const [screensaverDraft, setScreensaverDraft] = useState<ScreensaverSlideConfig[]>(() => loadCachedScreensaverSlides());
+  const [screensaverEditing, setScreensaverEditing] = useState(false);
+  const [screensaverSaving, setScreensaverSaving] = useState(false);
+  const [screensaverUploadingTarget, setScreensaverUploadingTarget] = useState<string | null>(null);
+  const [screensaverError, setScreensaverError] = useState<string | null>(null);
+  const [screensaverSuccess, setScreensaverSuccess] = useState<string | null>(null);
+  const [screensaverPreviewSlides, setScreensaverPreviewSlides] = useState<ScreensaverSlideConfig[] | null>(null);
+  const [screensaverPreviewRequest, setScreensaverPreviewRequest] = useState(0);
   const [clockNow, setClockNow] = useState(Date.now());
   const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
   const [historyFilter, setHistoryFilter] = useState<'all' | TransactionEventType>('all');
   const [historySearch, setHistorySearch] = useState('');
+  const [historyPanelsOpen, setHistoryPanelsOpen] = useState<Record<HistoryPanelKey, boolean>>({
+    correction: false,
+    filters: true,
+  });
+  const [collapsedHistoryGroups, setCollapsedHistoryGroups] = useState<Record<string, boolean>>({
+    today: false,
+    yesterday: false,
+    thisWeek: true,
+    earlier: true,
+  });
   const [selectedCorrectionCustomerId, setSelectedCorrectionCustomerId] = useState('');
   const [correctionReason, setCorrectionReason] = useState('');
   const [correctionStamps, setCorrectionStamps] = useState<Record<CardType, number>>(emptyDeltaRecord);
@@ -414,6 +540,7 @@ export const BusinessPage: React.FC = () => {
   const [correctionSuccess, setCorrectionSuccess] = useState<string | null>(null);
   // Snapshot of customers when a QR is generated — used to detect when it gets scanned
   const customersSnapshotRef = useRef<string>('');
+  const adminMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Unlock AudioContext on first tap (needed on iOS/Android)
   useEffect(() => {
@@ -436,12 +563,57 @@ export const BusinessPage: React.FC = () => {
     return () => window.clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    try {
+      globalThis.localStorage.setItem('cozy-admin-dark-mode', isDarkMode ? '1' : '0');
+    } catch {
+      // ignore storage failures (private mode, etc.)
+    }
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    if (!showAdminMenu) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (adminMenuRef.current?.contains(target)) return;
+      setShowAdminMenu(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowAdminMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown, { passive: true });
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAdminMenu]);
+
+  const screensaverDirty = useMemo(
+    () => JSON.stringify(serializeScreensaverConfig(screensaverDraft)) !== JSON.stringify(serializeScreensaverConfig(screensaverSlides)),
+    [screensaverDraft, screensaverSlides]
+  );
+
+  useEffect(() => {
+    persistCachedScreensaverSlides(screensaverSlides);
+    void warmScreensaverImageCache(screensaverSlides);
+  }, [screensaverSlides]);
+
   const loadSiteSettings = useCallback(async () => {
     if (!supabase) return;
 
     const { data, error } = await supabase
       .from('site_settings')
-      .select('promo_message, open_bottles')
+      .select('promo_message, open_bottles, screensaver_config')
       .eq('id', 'default')
       .single();
 
@@ -454,7 +626,12 @@ export const BusinessPage: React.FC = () => {
     setPromoMessage(nextPromo);
     setPromoInput(current => promoEditing ? current : nextPromo);
     setOpenBottles(normalizeOpenBottleState((data as { open_bottles?: unknown } | null)?.open_bottles));
-  }, [promoEditing]);
+    const nextScreensaverSlides = normalizeScreensaverConfig((data as { screensaver_config?: unknown } | null)?.screensaver_config);
+    setScreensaverSlides(nextScreensaverSlides);
+    setScreensaverDraft(current => screensaverEditing ? current : nextScreensaverSlides);
+    persistCachedScreensaverSlides(nextScreensaverSlides);
+    void warmScreensaverImageCache(nextScreensaverSlides);
+  }, [promoEditing, screensaverEditing]);
 
   // Fetch promo message + open bottles and keep in sync across devices
   useEffect(() => {
@@ -476,23 +653,26 @@ export const BusinessPage: React.FC = () => {
 
   const persistSiteSettings = useCallback(async (
     nextPromoMessage: string,
-    nextOpenBottles: Record<string, OpenBottleEntry>
+    nextOpenBottles: Record<string, OpenBottleEntry>,
+    nextScreensaverSlides: ScreensaverSlideConfig[]
   ) => {
     setPromoMessage(nextPromoMessage);
     setOpenBottles(nextOpenBottles);
+    setScreensaverSlides(nextScreensaverSlides);
+    persistCachedScreensaverSlides(nextScreensaverSlides);
+    void warmScreensaverImageCache(nextScreensaverSlides);
 
     if (!supabase) return true;
 
-    setPromoSaving(true);
     const { error } = await supabase
       .from('site_settings')
       .update({
         promo_message: nextPromoMessage,
         open_bottles: nextOpenBottles,
+        screensaver_config: serializeScreensaverConfig(nextScreensaverSlides),
         updated_at: new Date().toISOString(),
       })
       .eq('id', 'default');
-    setPromoSaving(false);
 
     if (error) {
       console.error('Kon site_settings niet opslaan:', error);
@@ -503,11 +683,119 @@ export const BusinessPage: React.FC = () => {
   }, []);
 
   const savePromo = async (msg: string) => {
-    const ok = await persistSiteSettings(msg, openBottles);
+    setPromoSaving(true);
+    const ok = await persistSiteSettings(msg, openBottles, screensaverSlides);
+    setPromoSaving(false);
     if (!ok) return;
     setPromoInput(msg);
     setPromoEditing(false);
   };
+
+  const updateScreensaverDraft = useCallback((updater: (current: ScreensaverSlideConfig[]) => ScreensaverSlideConfig[]) => {
+    setScreensaverEditing(true);
+    setScreensaverError(null);
+    setScreensaverSuccess(null);
+    setScreensaverDraft((current) => normalizeScreensaverConfig(updater(current)));
+  }, []);
+
+  const handleScreensaverMove = useCallback((slideId: string, direction: -1 | 1) => {
+    updateScreensaverDraft((current) => reorderScreensaverSlides(current, slideId, direction));
+  }, [updateScreensaverDraft]);
+
+  const handleScreensaverDurationChange = useCallback((slideId: string, durationMs: number) => {
+    const clampedDuration = Math.max(MIN_SLIDE_DURATION_MS, Math.min(MAX_SLIDE_DURATION_MS, durationMs));
+    updateScreensaverDraft((current) => current.map((slide) => (
+      slide.id === slideId
+        ? { ...slide, durationMs: clampedDuration }
+        : slide
+    )));
+  }, [updateScreensaverDraft]);
+
+  const handleScreensaverResetImage = useCallback((slideId: string, role: ScreensaverImageRole) => {
+    updateScreensaverDraft((current) => current.map((slide) => {
+      if (slide.id !== slideId) return slide;
+      return role === 'primary'
+        ? { ...slide, customPrimaryImageUrl: null }
+        : { ...slide, customSecondaryImageUrl: null };
+    }));
+  }, [updateScreensaverDraft]);
+
+  const handleScreensaverResetAll = useCallback(() => {
+    setScreensaverEditing(true);
+    setScreensaverError(null);
+    setScreensaverSuccess(null);
+    setScreensaverDraft(resetScreensaverSlidesToDefaults());
+  }, []);
+
+  const handleScreensaverPreview = useCallback(() => {
+    const previewSlides = normalizeScreensaverConfig(screensaverDraft);
+    setScreensaverError(null);
+    setScreensaverSuccess(null);
+    setScreensaverPreviewSlides(previewSlides);
+    void warmScreensaverImageCache(previewSlides);
+    setScreensaverPreviewRequest((current) => current + 1);
+  }, [screensaverDraft]);
+
+  const handleScreensaverUpload = useCallback(async (slideId: string, role: ScreensaverImageRole, file: File) => {
+    if (!supabase) {
+      setScreensaverError('Supabase is niet geconfigureerd, dus uploads zijn nu niet beschikbaar.');
+      return;
+    }
+
+    setScreensaverError(null);
+    setScreensaverSuccess(null);
+    setScreensaverUploadingTarget(`${slideId}:${role}`);
+
+    try {
+      const compressedImage = await compressScreensaverImage(file);
+      const storagePath = getScreensaverStoragePath(slideId, role);
+      const bucket = supabase.storage.from(SCREENSAVER_STORAGE_BUCKET);
+      const { error } = await bucket.upload(storagePath, compressedImage, {
+        upsert: true,
+        contentType: 'image/webp',
+        cacheControl: '3600',
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const { data } = bucket.getPublicUrl(storagePath);
+      const imageUrl = `${data.publicUrl}?v=${Date.now()}`;
+
+      updateScreensaverDraft((current) => current.map((slide) => {
+        if (slide.id !== slideId) return slide;
+        return role === 'primary'
+          ? { ...slide, customPrimaryImageUrl: imageUrl }
+          : { ...slide, customSecondaryImageUrl: imageUrl };
+      }));
+
+      setScreensaverSuccess('Nieuwe afbeelding staat klaar. Gebruik eventueel eerst preview en klik daarna op opslaan om alles definitief vast te zetten.');
+    } catch (error) {
+      console.error('Kon screensaver-afbeelding niet uploaden:', error);
+      setScreensaverError(error instanceof Error ? error.message : 'Upload mislukt.');
+    } finally {
+      setScreensaverUploadingTarget(null);
+    }
+  }, [updateScreensaverDraft]);
+
+  const saveScreensaver = useCallback(async () => {
+    const normalizedDraft = normalizeScreensaverConfig(screensaverDraft);
+    setScreensaverSaving(true);
+    const ok = await persistSiteSettings(promoMessage, openBottles, normalizedDraft);
+    setScreensaverSaving(false);
+
+    if (!ok) {
+      setScreensaverError('De screensaver kon niet worden opgeslagen.');
+      return;
+    }
+
+    setScreensaverSlides(normalizedDraft);
+    setScreensaverDraft(normalizedDraft);
+    setScreensaverEditing(false);
+    setScreensaverError(null);
+    setScreensaverSuccess('Screensaver opgeslagen. De nieuwe volgorde en timing zijn meteen actief.');
+  }, [openBottles, persistSiteSettings, promoMessage, screensaverDraft]);
 
   const handleOpenBottle = async (productId: string) => {
     const product = OPEN_BOTTLE_PRODUCT_MAP[productId];
@@ -520,7 +808,7 @@ export const BusinessPage: React.FC = () => {
         remainingCount: product.maxRemainingCount,
       },
     };
-    await persistSiteSettings(promoMessage, nextOpenBottles);
+    await persistSiteSettings(promoMessage, nextOpenBottles, screensaverSlides);
   };
 
   const handleSoldUnit = async (productId: string) => {
@@ -544,7 +832,7 @@ export const BusinessPage: React.FC = () => {
       ? ''
       : promoMessage;
 
-    await persistSiteSettings(nextPromo, nextOpenBottles);
+    await persistSiteSettings(nextPromo, nextOpenBottles, screensaverSlides);
   };
 
   const handleClearBottle = async (productId: string) => {
@@ -555,17 +843,82 @@ export const BusinessPage: React.FC = () => {
       ? ''
       : promoMessage;
 
-    await persistSiteSettings(nextPromo, nextOpenBottles);
+    await persistSiteSettings(nextPromo, nextOpenBottles, screensaverSlides);
   };
 
   const handlePromoteBottle = async (product: OpenBottleProduct) => {
     if (!openBottles[product.id]) return;
     setPromoInput(product.promoMessage);
     setPromoEditing(false);
-    await persistSiteSettings(product.promoMessage, openBottles);
+    await persistSiteSettings(product.promoMessage, openBottles, screensaverSlides);
   };
 
   const activePromoProduct = OPEN_BOTTLE_PRODUCTS.find(product => product.promoMessage === promoMessage) ?? null;
+  const openBottleItems = OPEN_BOTTLE_PRODUCTS.map((product) => {
+    const entry = openBottles[product.id];
+    const openedAtMs = entry ? new Date(entry.openedAt).getTime() : null;
+    const expiresAtMs = openedAtMs ? openedAtMs + product.expiryHours * 60 * 60 * 1000 : null;
+    const remainingMs = expiresAtMs ? expiresAtMs - clockNow : null;
+    const isExpired = remainingMs !== null && remainingMs <= 0;
+    const isActive = Boolean(entry);
+    const isPromoActive = promoMessage === product.promoMessage;
+
+    return {
+      product,
+      entry,
+      openedAtMs,
+      expiresAtMs,
+      remainingMs,
+      isExpired,
+      isActive,
+      isPromoActive,
+      remainingLabel: entry
+        ? formatRemainingCount(product, entry.remainingCount)
+        : formatRemainingCount(product, product.maxRemainingCount),
+      remainingCountValue: entry ? entry.remainingCount : product.maxRemainingCount,
+      soldButtonLabel: 'Glas verkocht',
+    };
+  });
+  const activeOpenBottleItems = openBottleItems
+    .filter((item) => item.isActive)
+    .sort((left, right) => {
+      if (left.isExpired !== right.isExpired) return left.isExpired ? -1 : 1;
+      if (left.isPromoActive !== right.isPromoActive) return left.isPromoActive ? -1 : 1;
+      if (left.product.risk !== right.product.risk) return left.product.risk === 'red' ? -1 : 1;
+      return left.product.name.localeCompare(right.product.name);
+    });
+  const inactiveOpenBottleItems = openBottleItems.filter((item) => !item.isActive);
+  const expiredOpenBottleCount = activeOpenBottleItems.filter((item) => item.isExpired).length;
+  const promoOpenBottleCount = activeOpenBottleItems.filter((item) => item.isPromoActive).length;
+  const filteredActiveOpenBottleItems = activeOpenBottleItems.filter((item) => {
+    if (openBottleFilter === 'all' || openBottleFilter === 'open') return true;
+    if (openBottleFilter === 'expired') return item.isExpired;
+    if (openBottleFilter === 'promo') return item.isPromoActive;
+    return true;
+  });
+  const openBottleFilterMeta: Record<OpenBottleFilter, { title: string; note: string; empty: string }> = {
+    all: {
+      title: 'Nu open',
+      note: 'De flessen die nu echt aandacht vragen, staan hier bovenaan.',
+      empty: 'Er staat momenteel geen open fles actief. Open hieronder een nieuwe fles zodra iets wordt gestart.',
+    },
+    open: {
+      title: 'Alle open flessen',
+      note: 'Alle actieve flessen, ongeacht hun timerstatus.',
+      empty: 'Er staat momenteel geen open fles actief.',
+    },
+    expired: {
+      title: 'Alleen verlopen',
+      note: 'Deze flessen zijn over hun venster en vragen eerst aandacht.',
+      empty: 'Geen enkele open fles is momenteel over tijd.',
+    },
+    promo: {
+      title: 'Alleen promo',
+      note: 'Hier zie je enkel de open fles die nu actief gepromoot wordt.',
+      empty: 'Er staat momenteel geen open fles actief in promo.',
+    },
+  };
+  const showInactiveBottleInventory = openBottleFilter === 'all';
 
   const loadTransactions = useCallback(async () => {
     if (!supabase) {
@@ -723,10 +1076,93 @@ export const BusinessPage: React.FC = () => {
     });
   }, [historyFilter, historySearch, transactions]);
 
+  const historyFilterCards = useMemo(() => ([
+    { key: 'all', label: 'Alles', count: transactions.length },
+    { key: 'scan', label: 'Scans', count: transactions.filter(item => item.eventType === 'scan').length },
+    { key: 'redeem', label: 'Inwisselingen', count: transactions.filter(item => item.eventType === 'redeem').length },
+    { key: 'adjustment', label: 'Correcties', count: transactions.filter(item => item.eventType === 'adjustment').length },
+  ] as const), [transactions]);
+
+  const filteredAdjustmentCount = useMemo(
+    () => filteredTransactions.filter(transaction => transaction.eventType === 'adjustment').length,
+    [filteredTransactions],
+  );
+
+  const historyGroupedTransactions = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - 7);
+
+    const groups: Array<{ key: string; label: string; note: string; items: CustomerTransaction[] }> = [
+      { key: 'today', label: 'Vandaag', note: 'De meest recente scans, inwisselingen en correcties', items: [] },
+      { key: 'yesterday', label: 'Gisteren', note: 'Alles wat gisteren geregistreerd werd', items: [] },
+      { key: 'thisWeek', label: 'Afgelopen 7 dagen', note: 'Handig om recente verschillen of fouten na te kijken', items: [] },
+      { key: 'earlier', label: 'Ouder', note: 'Oudere historiek voor opzoekwerk en controle', items: [] },
+    ];
+
+    filteredTransactions.forEach((transaction) => {
+      const createdAt = new Date(transaction.createdAt);
+      const timestamp = createdAt.getTime();
+      if (!Number.isFinite(timestamp)) {
+        groups[3].items.push(transaction);
+        return;
+      }
+
+      if (createdAt >= startOfToday) {
+        groups[0].items.push(transaction);
+        return;
+      }
+
+      if (createdAt >= startOfYesterday) {
+        groups[1].items.push(transaction);
+        return;
+      }
+
+      if (createdAt >= startOfWeek) {
+        groups[2].items.push(transaction);
+        return;
+      }
+
+      groups[3].items.push(transaction);
+    });
+
+    return groups.filter(group => group.items.length > 0);
+  }, [filteredTransactions]);
+
   const selectedCorrectionCustomer = useMemo(
     () => customers.find(customer => customer.id === selectedCorrectionCustomerId) ?? null,
     [customers, selectedCorrectionCustomerId],
   );
+
+  useEffect(() => {
+    if (!selectedCorrectionCustomerId && !correctionError && !correctionSuccess && !correctionSaving) return;
+
+    setHistoryPanelsOpen(prev => (
+      prev.correction
+        ? prev
+        : { ...prev, correction: true }
+    ));
+  }, [correctionError, correctionSaving, correctionSuccess, selectedCorrectionCustomerId]);
+
+  useEffect(() => {
+    if (!historySearch.trim()) return;
+
+    setCollapsedHistoryGroups((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      historyGroupedTransactions.forEach((group) => {
+        if (!next[group.key]) return;
+        next[group.key] = false;
+        changed = true;
+      });
+
+      return changed ? next : prev;
+    });
+  }, [historyGroupedTransactions, historySearch]);
 
   const correctionControlEnabled = selectedCorrectionCustomer !== null;
 
@@ -815,88 +1251,223 @@ export const BusinessPage: React.FC = () => {
   }, [qrPayload]);
 
   const totalConsumptions = consumptions.coffee + consumptions.wine + consumptions.beer + consumptions.soda;
+  const activeHiddenAdminView = HIDDEN_ADMIN_VIEWS.find((item) => item.view === view) ?? null;
+  const isCounterMode = view === 'create' || view === 'redeem';
+  const brandLogoSrc = isDarkMode ? '/cozy_logo_wit.png' : '/cozylogo.png';
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] pb-24">
+    <div className={cn('min-h-screen pb-32', isDarkMode ? 'admin-theme-dark bg-[#111315]' : 'bg-[#f5f5f0]')}>
       {/* Screensaver — activates after 60s idle, disappears on touch */}
-      <Screensaver onWake={() => { /* admin is back */ }} />
+      <Screensaver
+        onWake={() => {
+          setScreensaverPreviewSlides(null);
+        }}
+        slides={screensaverPreviewSlides ?? screensaverSlides}
+        previewRequest={screensaverPreviewRequest}
+      />
 
-      {/* WebaanZee credit — fixed bottom right, all tabs */}
-      <a
-        href="https://www.webaanzee.be"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-4 right-5 flex items-center gap-1 opacity-50 hover:opacity-100 transition-opacity z-50"
-        style={{ fontSize: '10px', letterSpacing: '0.04em', textDecoration: 'none' }}
-      >
-        <span style={{ color: '#111', fontWeight: 500 }}>realisatie door </span>
-        <span style={{ fontWeight: 700 }}>
-          <span style={{ color: '#111' }}>Web</span><span style={{ color: '#f59e0b' }}>aan</span><span style={{ color: '#111' }}>Zee</span>
-        </span>
-      </a>
-
-      <header className="bg-white px-6 py-2 rounded-b-[28px] shadow-sm mb-6 sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <div className="w-10" />
+      <header className={cn('px-5 py-1.5 rounded-b-[24px] shadow-sm mb-5 sticky top-0 z-10', isDarkMode ? 'bg-[#121722] border-b border-white/10' : 'bg-white')}>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <div className="flex items-center">
-            <img src="/cozylogo.png" alt="COZY Moments" className="w-20 h-20 object-contain" />
+            {activeHiddenAdminView ? (
+              <button
+                onClick={() => {
+                  reset();
+                  setView('create');
+                  setShowAdminMenu(false);
+                }}
+                className="ios-frosted inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold text-[var(--color-cozy-text)] transition-all hover:bg-white/80"
+              >
+                <ArrowLeft size={14} />
+                Terug naar kassa
+              </button>
+            ) : (
+              <div className="h-9 w-9" />
+            )}
           </div>
-          <button
-            onClick={logout}
-            title="Uitloggen"
-            className="w-10 h-10 bg-gray-100 hover:bg-red-50 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 transition-all"
-          >
-            <LogOut size={18} />
-          </button>
+          <div className="flex items-center justify-center">
+            <img
+              src={brandLogoSrc}
+              alt="COZY Moments"
+              className="w-[60px] h-[60px] object-contain"
+            />
+          </div>
+          <div className="flex items-center justify-end">
+            <div ref={adminMenuRef} className="relative flex items-center gap-2">
+            <button
+              onClick={() => setShowAdminMenu((current) => !current)}
+              title="Beheer"
+              aria-label="Beheer"
+              className={cn(
+                "ios-frosted h-9 w-9 rounded-full flex items-center justify-center transition-all",
+                activeHiddenAdminView || showAdminMenu
+                  ? "text-[var(--color-cozy-text)] shadow-sm ring-1 ring-white/35 bg-white/70"
+                  : "text-gray-600 hover:bg-white/75"
+              )}
+            >
+              <motion.span animate={{ rotate: showAdminMenu ? 30 : 0 }} transition={{ duration: 0.2 }}>
+                <Settings2 size={17} />
+              </motion.span>
+            </button>
+
+            <AnimatePresence>
+              {showAdminMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
+                  className="ios-frosted-strong absolute right-0 top-full z-30 mt-2 w-60 rounded-[24px] border border-gray-100/80 p-2 shadow-xl"
+                >
+                  {HIDDEN_ADMIN_VIEWS.map((item) => (
+                    <button
+                      key={item.view}
+                      onClick={() => {
+                        reset();
+                        setView(item.view);
+                        setShowAdminMenu(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition-colors",
+                        view === item.view
+                          ? "bg-white/70 text-[var(--color-cozy-text)] shadow-sm"
+                          : "text-gray-700 hover:bg-white/50"
+                      )}
+                    >
+                      <span>{item.label}</span>
+                      {view === item.view && <span className="text-xs text-[var(--color-cozy-olive)]">Open</span>}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={() => setIsDarkMode((current) => !current)}
+                    className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold text-gray-700 transition-colors hover:bg-white/50"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                      {isDarkMode ? 'Lichte modus' : 'Donkere modus'}
+                    </span>
+                    <span className="text-xs text-[var(--color-cozy-olive)]">{isDarkMode ? 'Aan' : 'Uit'}</span>
+                  </button>
+
+                  <div className="mx-2 my-2 h-px bg-gray-200/70" />
+
+                  <button
+                    onClick={() => {
+                      setShowAdminMenu(false);
+                      logout();
+                    }}
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-50/80"
+                  >
+                    <LogOut size={16} />
+                    <span>Uitloggen</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            </div>
+          </div>
         </div>
-        
-        <div className="grid grid-cols-5 gap-1 bg-gray-100 p-1 rounded-[22px] mb-1">
-          <button
-            onClick={() => { reset(); setView('create'); }}
-            className={cn(
-              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
-              view === 'create' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
-            )}
-          >
-            Nieuwe QR
-          </button>
-          <button
-            onClick={() => { reset(); setView('open-bottles'); }}
-            className={cn(
-              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
-              view === 'open-bottles' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
-            )}
-          >
-            Open flessen
-          </button>
-          <button
-            onClick={() => { reset(); setView('customers'); }}
-            className={cn(
-              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
-              view === 'customers' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
-            )}
-          >
-            Klanten
-          </button>
-          <button
-            onClick={() => { reset(); setView('history'); }}
-            className={cn(
-              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
-              view === 'history' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
-            )}
-          >
-            Historiek
-          </button>
-          <button
-            onClick={() => { reset(); setView('redeem'); }}
-            className={cn(
-              "py-2 px-2 rounded-full text-xs md:text-sm font-display font-bold transition-all",
-              view === 'redeem' ? "bg-white shadow text-[var(--color-cozy-olive)]" : "text-gray-500"
-            )}
-          >
-            Inwisselen
-          </button>
-        </div>
+
+        {isCounterMode && (
+          <div className={cn('mt-2 grid grid-cols-2 gap-2 rounded-[26px] p-2', isDarkMode ? 'bg-[#171d29] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'ios-frosted')}>
+            <motion.button
+              whileTap={{ scale: 0.985 }}
+              animate={view === 'create' ? { y: -1 } : { y: 0 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+              onClick={() => { reset(); setView('create'); setShowAdminMenu(false); }}
+              className={cn(
+                "relative overflow-hidden rounded-[22px] px-3 py-3 text-center transition-all",
+                isDarkMode
+                  ? (view === 'create'
+                    ? 'bg-[#212a39] shadow-[0_8px_18px_rgba(0,0,0,0.32)] ring-1 ring-white/10'
+                    : 'bg-[#171f2d] hover:bg-[#1d2736] border border-white/8')
+                  : (view === 'create'
+                    ? "bg-white/90 shadow-[0_12px_28px_rgba(70,62,48,0.14)] ring-1 ring-white/45"
+                    : "bg-white/25 hover:bg-[#ebe4d7]/55 hover:shadow-[0_8px_18px_rgba(70,62,48,0.08)]")
+              )}
+            >
+              <div className={cn('pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent to-transparent', isDarkMode ? 'via-white/20' : 'via-white/85')} />
+              <div className={cn(
+                "pointer-events-none absolute inset-x-4 top-1 h-8 rounded-full blur-xl transition-opacity",
+                isDarkMode
+                  ? (view === 'create' ? 'bg-white/10 opacity-70' : 'bg-white/5 opacity-40')
+                  : (view === 'create' ? "bg-white/70 opacity-100" : "bg-white/35 opacity-70")
+              )} />
+              <div className="relative flex flex-col items-center justify-center gap-1.5">
+                <div className={cn(
+                  "flex h-12 w-12 items-center justify-center rounded-full transition-colors",
+                  isDarkMode
+                    ? (view === 'create' ? 'bg-[#d8c9a8] text-[#4d3a1b] shadow-sm' : 'bg-[#d8c9a8]/75 text-[#4d3a1b]')
+                    : (view === 'create' ? "bg-[#ebe4d7] text-[var(--color-cozy-olive)] shadow-sm" : "bg-[#ebe4d7]/70 text-[var(--color-cozy-olive)]")
+                )}>
+                  <QrCode size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className={cn(
+                    "font-display text-[15px] font-bold leading-tight",
+                    isDarkMode
+                      ? (view === 'create' ? 'text-[#f2f5fa]' : 'text-[#d6dde8]')
+                      : (view === 'create' ? "text-[var(--color-cozy-text)]" : "text-gray-700")
+                  )}>
+                    Nieuwe QR
+                  </p>
+                  <p className={cn('mt-0.5 text-[11px] leading-tight', isDarkMode ? 'text-[#aeb9c9]' : 'text-gray-400')}>
+                    Punten toevoegen
+                  </p>
+                </div>
+              </div>
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.985 }}
+              animate={view === 'redeem' ? { y: -1 } : { y: 0 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+              onClick={() => { reset(); setView('redeem'); setShowAdminMenu(false); }}
+              className={cn(
+                "relative overflow-hidden rounded-[22px] px-3 py-3 text-center transition-all",
+                isDarkMode
+                  ? (view === 'redeem'
+                    ? 'bg-[#212a39] shadow-[0_8px_18px_rgba(0,0,0,0.32)] ring-1 ring-white/10'
+                    : 'bg-[#171f2d] hover:bg-[#1d2736] border border-white/8')
+                  : (view === 'redeem'
+                    ? "bg-white/90 shadow-[0_12px_28px_rgba(70,62,48,0.14)] ring-1 ring-white/45"
+                    : "bg-white/25 hover:bg-[#ebe4d7]/55 hover:shadow-[0_8px_18px_rgba(70,62,48,0.08)]")
+              )}
+            >
+              <div className={cn('pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent to-transparent', isDarkMode ? 'via-white/20' : 'via-white/85')} />
+              <div className={cn(
+                "pointer-events-none absolute inset-x-4 top-1 h-8 rounded-full blur-xl transition-opacity",
+                isDarkMode
+                  ? (view === 'redeem' ? 'bg-white/10 opacity-70' : 'bg-white/5 opacity-40')
+                  : (view === 'redeem' ? "bg-white/70 opacity-100" : "bg-white/35 opacity-70")
+              )} />
+              <div className="relative flex flex-col items-center justify-center gap-1.5">
+                <div className={cn(
+                  "flex h-12 w-12 items-center justify-center rounded-full transition-colors",
+                  isDarkMode
+                    ? (view === 'redeem' ? 'bg-[#d8c9a8] text-[#4d3a1b] shadow-sm' : 'bg-[#d8c9a8]/75 text-[#4d3a1b]')
+                    : (view === 'redeem' ? "bg-[#ebe4d7] text-[var(--color-cozy-olive)] shadow-sm" : "bg-[#ebe4d7]/70 text-[var(--color-cozy-olive)]")
+                )}>
+                  <Gift size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className={cn(
+                    "font-display text-[15px] font-bold leading-tight",
+                    isDarkMode
+                      ? (view === 'redeem' ? 'text-[#f2f5fa]' : 'text-[#d6dde8]')
+                      : (view === 'redeem' ? "text-[var(--color-cozy-text)]" : "text-gray-700")
+                  )}>
+                    Inwisselen
+                  </p>
+                  <p className={cn('mt-0.5 text-[11px] leading-tight', isDarkMode ? 'text-[#aeb9c9]' : 'text-gray-400')}>
+                    Gratis drankje geven
+                  </p>
+                </div>
+              </div>
+            </motion.button>
+          </div>
+        )}
       </header>
 
       <main className="px-6">
@@ -904,7 +1475,7 @@ export const BusinessPage: React.FC = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {!qrPayload ? (
               <div className="space-y-6">
-                <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)] mb-8">
+                <h2 className={cn('text-3xl font-display font-bold text-[var(--color-cozy-text)] mb-8', isDarkMode && 'text-[#f4f2ea]')}>
                   Selecteer Consumpties
                 </h2>
                 
@@ -918,6 +1489,7 @@ export const BusinessPage: React.FC = () => {
                   color="text-[var(--color-cozy-coffee)]"
                   bg="bg-[#e8dcc8]"
                   index={0}
+                  isDarkMode={isDarkMode}
                 />
                 
                 <ConsumptionRow 
@@ -930,6 +1502,7 @@ export const BusinessPage: React.FC = () => {
                   color="text-[var(--color-cozy-wine)]"
                   bg="bg-[#f0d8dc]"
                   index={1}
+                  isDarkMode={isDarkMode}
                 />
                 
                 <ConsumptionRow 
@@ -942,6 +1515,7 @@ export const BusinessPage: React.FC = () => {
                   color="text-[var(--color-cozy-beer)]"
                   bg="bg-[#fcf4d9]"
                   index={2}
+                  isDarkMode={isDarkMode}
                 />
 
                 <ConsumptionRow 
@@ -954,6 +1528,7 @@ export const BusinessPage: React.FC = () => {
                   color="text-[var(--color-cozy-soda)]"
                   bg="bg-[#fce4f0]"
                   index={3}
+                  isDarkMode={isDarkMode}
                 />
 
                 <motion.button
@@ -963,9 +1538,13 @@ export const BusinessPage: React.FC = () => {
                   transition={{ duration: 0.35 }}
                   className={cn(
                     "w-full mt-8 rounded-full py-4 px-6 flex items-center justify-center gap-3 transition-all duration-300",
-                    totalConsumptions > 0 
-                      ? "bg-gradient-to-r from-[#f0ebe0] to-[#e4dccf] border border-[var(--color-cozy-olive)]/25 text-[var(--color-cozy-text)] shadow-md active:scale-[0.98]" 
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed border border-transparent"
+                    totalConsumptions > 0
+                      ? (isDarkMode
+                        ? 'bg-gradient-to-r from-[#d9c9ab] to-[#cdb995] border border-[#e8dcc9]/45 text-[#2e2210] shadow-[0_10px_24px_rgba(0,0,0,0.34)] active:scale-[0.98]'
+                        : 'bg-gradient-to-r from-[#f0ebe0] to-[#e4dccf] border border-[var(--color-cozy-olive)]/25 text-[var(--color-cozy-text)] shadow-md active:scale-[0.98]')
+                      : (isDarkMode
+                        ? 'bg-[#2c3340] text-[#7f8da2] cursor-not-allowed border border-white/10'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-transparent')
                   )}
                 >
                   <QrCode size={24} />
@@ -984,7 +1563,7 @@ export const BusinessPage: React.FC = () => {
 
                 {/* Watermark in whitespace */}
                 <div className="flex justify-center pt-16 pb-4 pointer-events-none select-none">
-                  <img src="/cozylogo.png" alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
+                  <img src={brandLogoSrc} alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
                 </div>
               </div>
             ) : qrScanned ? (
@@ -1003,13 +1582,13 @@ export const BusinessPage: React.FC = () => {
             ) : (
               <div className="relative flex flex-col items-center justify-center py-8">
                 <img
-                  src="/cozylogo.png"
+                  src={brandLogoSrc}
                   alt=""
                   aria-hidden="true"
                   className="pointer-events-none select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 object-contain opacity-10"
                 />
-                <div className="relative bg-white p-8 rounded-[40px] shadow-xl mb-8">
-                  <QRCodeSVG value={qrPayload} size={240} level="H" />
+                <div className="relative bg-white p-6 md:p-8 rounded-[40px] shadow-xl mb-8">
+                  <QRCodeSVG value={qrPayload} size={300} level="H" />
                 </div>
                 <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">
                   Laat de klant scannen
@@ -1027,7 +1606,7 @@ export const BusinessPage: React.FC = () => {
                   Nieuwe Transactie
                 </button>
                 <div className="flex justify-center pt-16 pb-4 pointer-events-none select-none">
-                  <img src="/cozylogo.png" alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
+                  <img src={brandLogoSrc} alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
                 </div>
               </div>
             )}
@@ -1036,50 +1615,70 @@ export const BusinessPage: React.FC = () => {
 
         {view === 'open-bottles' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <div className="flex items-start justify-between gap-4 mb-2">
-              <div>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-2">
+              <div className="min-w-0">
                 <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)]">
                   Open flessen
                 </h2>
-                <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-                  Hier staan enkel de risico-items: de 12 wijnen per glas plus lactosevrije melk. Open iets, volg de timer en zet het met 1 tik in de kijker voor klanten.
-                </p>
               </div>
-              <div className="hidden md:grid grid-cols-3 gap-2 min-w-[320px]">
-                <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400">Open nu</p>
-                  <p className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{Object.keys(openBottles).length}</p>
-                </div>
-                <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400">Over tijd</p>
-                  <p className="font-mono text-2xl font-bold text-red-500">
-                    {
-                      OPEN_BOTTLE_PRODUCTS.filter(product => {
-                        const entry = openBottles[product.id];
-                        if (!entry) return false;
-                        return new Date(entry.openedAt).getTime() + product.expiryHours * 60 * 60 * 1000 <= clockNow;
-                      }).length
-                    }
-                  </p>
-                </div>
-                <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400">In promo</p>
-                  <p className="font-mono text-2xl font-bold text-[var(--color-cozy-olive)]">{activePromoProduct ? '1' : '0'}</p>
-                </div>
+
+              <div className="rounded-[24px] border border-white/70 bg-white/45 p-1.5 shadow-sm backdrop-blur-xl flex flex-wrap gap-1.5 md:flex-nowrap md:justify-end md:shrink-0">
+                {([
+                  { key: 'all', label: 'Alles', count: OPEN_BOTTLE_PRODUCTS.length },
+                  { key: 'open', label: 'Open', count: activeOpenBottleItems.length },
+                  { key: 'expired', label: 'Verlopen', count: expiredOpenBottleCount },
+                  { key: 'promo', label: 'Promo', count: promoOpenBottleCount },
+                ] as const).map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setOpenBottleFilter(item.key)}
+                    className={cn(
+                      'inline-flex min-h-10 items-center gap-2 rounded-[16px] border px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-all',
+                      openBottleFilter === item.key
+                        ? 'bg-white border-[var(--color-cozy-olive)]/20 text-[var(--color-cozy-text)] shadow-[0_4px_14px_rgba(70,62,48,0.12)]'
+                        : 'border-transparent text-gray-500 hover:bg-white/70'
+                    )}
+                  >
+                    <span>{item.label}</span>
+                    <span className={cn(
+                      'inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                      openBottleFilter === item.key
+                        ? 'bg-[var(--color-cozy-olive)]/10 text-[var(--color-cozy-olive)]'
+                        : 'bg-white/70 text-gray-500'
+                    )}>
+                      {item.count}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="bg-white rounded-[24px] shadow-sm p-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
+                <p className="text-[10px] uppercase tracking-wider text-gray-400">Open nu</p>
+                <p className="font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{activeOpenBottleItems.length}</p>
+              </div>
+              <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
+                <p className="text-[10px] uppercase tracking-wider text-gray-400">Over tijd</p>
+                <p className="font-mono text-2xl font-bold text-red-500">{expiredOpenBottleCount}</p>
+              </div>
+              <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
+                <p className="text-[10px] uppercase tracking-wider text-gray-400">In promo</p>
+                <p className="font-mono text-2xl font-bold text-[var(--color-cozy-olive)]">{activePromoProduct ? '1' : '0'}</p>
+              </div>
+            </div>
+
+            <div className="ios-frosted-amber rounded-[24px] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Megaphone size={16} className="text-[var(--color-cozy-olive)]" />
-                <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">Wat klanten nu zien</span>
+                <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">Wat klanten nu zien</span>
               </div>
               {promoMessage ? (
-                <div className="rounded-2xl border border-[var(--color-cozy-olive)]/15 bg-[var(--color-cozy-olive)]/8 px-4 py-3">
+                <div className="rounded-2xl border border-amber-200/50 bg-white/45 px-4 py-3">
                   <p className="text-sm text-[var(--color-cozy-text)]/85 leading-snug">{promoMessage}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {activePromoProduct && (
-                      <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-[var(--color-cozy-olive)] shadow-sm">
+                      <span className="inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-[var(--color-cozy-olive)] shadow-sm">
                         Actieve fles: {activePromoProduct.name}
                       </span>
                     )}
@@ -1093,119 +1692,58 @@ export const BusinessPage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-400">
+                <div className="rounded-2xl border border-dashed border-amber-200/60 bg-white/40 px-4 py-3 text-sm text-gray-500">
                   Er staat momenteel geen banner live voor klanten.
                 </div>
               )}
             </div>
 
-            {(['red', 'orange'] as OpenBottleRisk[]).map(risk => {
-              const products = OPEN_BOTTLE_PRODUCTS.filter(product => product.risk === risk);
-              const riskConfig = risk === 'red'
-                ? {
-                    title: 'Code rood: absolute prioriteit',
-                    note: 'Absolute prioriteit. Open flessen in deze groep moeten actief verkocht worden.',
-                    badge: 'bg-red-50 text-red-600 border-red-200',
-                  }
-                : {
-                    title: 'Code oranje: huiswijnen',
-                    note: 'Minder kritiek, maar wel opvolgen zodra laat op de week een nieuwe fles open gaat.',
-                    badge: 'bg-amber-50 text-amber-700 border-amber-200',
-                  };
+            {filteredActiveOpenBottleItems.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 pt-1">
+                  <span className="inline-flex items-center rounded-full border border-[var(--color-cozy-olive)]/20 bg-[var(--color-cozy-olive)]/8 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-cozy-olive)]">
+                    {openBottleFilterMeta[openBottleFilter].title}
+                  </span>
+                  <p className="text-sm text-gray-500">{openBottleFilterMeta[openBottleFilter].note}</p>
+                </div>
 
-              return (
-                <div key={risk} className="space-y-3">
-                  <div className="flex items-center gap-3 pt-2">
-                    <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider', riskConfig.badge)}>
-                      {riskConfig.title}
-                    </span>
-                    <p className="text-sm text-gray-500">{riskConfig.note}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                    {products.map(product => {
-                      const entry = openBottles[product.id];
-                      const openedAtMs = entry ? new Date(entry.openedAt).getTime() : null;
-                      const expiresAtMs = openedAtMs ? openedAtMs + product.expiryHours * 60 * 60 * 1000 : null;
-                      const remainingMs = expiresAtMs ? expiresAtMs - clockNow : null;
-                      const isExpired = remainingMs !== null && remainingMs <= 0;
-                      const isActive = Boolean(entry);
-                      const isPromoActive = promoMessage === product.promoMessage;
-                      const remainingLabel = entry
-                        ? formatRemainingCount(product, entry.remainingCount)
-                        : formatRemainingCount(product, product.maxRemainingCount);
-                      const soldButtonLabel = product.id === 'lactosevrije-melk'
-                        ? '1 koffie verkocht'
-                        : '1 glas verkocht';
-
-                      return (
-                        <div
-                          key={product.id}
-                          className={cn(
-                            'rounded-[24px] border p-4 shadow-sm transition-colors',
-                            isPromoActive
-                              ? 'bg-[var(--color-cozy-olive)]/5 border-[var(--color-cozy-olive)]/20'
-                              : isActive
-                                ? 'bg-white border-gray-200'
-                                : 'bg-white/70 border-gray-100'
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <span className={cn(
-                                  'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider',
-                                  product.risk === 'red'
-                                    ? 'bg-red-50 text-red-600 border-red-200'
-                                    : 'bg-amber-50 text-amber-700 border-amber-200'
-                                )}>
-                                  {product.risk === 'red' ? 'Code rood' : 'Code oranje'}
-                                </span>
-                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
-                                  {product.priceLabel}
-                                </span>
-                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
-                                  {remainingLabel}
-                                </span>
-                              </div>
-                              <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)] leading-tight">
-                                {product.name}
-                              </h3>
-                              <p className="text-sm text-gray-500 mt-2 leading-relaxed">{product.reason}</p>
-                            </div>
-
-                            <div className={cn(
-                              'min-w-[120px] rounded-2xl border px-3 py-2 text-center',
-                              !isActive
-                                ? 'bg-gray-50 border-gray-100 text-gray-400'
-                                : isExpired
-                                  ? 'bg-red-50 border-red-200 text-red-600'
-                                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                  {filteredActiveOpenBottleItems.map((item) => (
+                    <div
+                      key={item.product.id}
+                      className={cn(
+                        'rounded-[24px] border p-4 shadow-sm transition-colors',
+                        item.isPromoActive
+                          ? 'bg-[var(--color-cozy-olive)]/5 border-[var(--color-cozy-olive)]/20'
+                          : 'bg-white border-gray-200'
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span className={cn(
+                              'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider',
+                              item.product.risk === 'red'
+                                ? 'bg-red-50 text-red-600 border-red-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
                             )}>
-                              <div className="flex items-center justify-center gap-1 mb-1">
-                                <Clock3 size={14} />
-                                <span className="text-[10px] uppercase tracking-wider font-semibold">Timer</span>
-                              </div>
-                              <p className="font-mono text-sm font-bold">
-                                {!isActive
-                                  ? 'Niet open'
-                                  : isExpired
-                                    ? `${formatDuration(Math.abs(remainingMs ?? 0))} te laat`
-                                    : formatDuration(remainingMs ?? 0)}
-                              </p>
-                              <p className="text-[10px] mt-1 opacity-80">
-                                {!isActive
-                                  ? `${product.expiryHours}u venster`
-                                  : isExpired
-                                    ? 'Tijd om te duwen of af te sluiten'
-                                    : 'Tijd resterend'}
-                              </p>
-                            </div>
+                              Opvolgen
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
+                              {item.product.priceLabel}
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
+                              {item.remainingLabel}
+                            </span>
                           </div>
+                          <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)] leading-tight">
+                            {item.product.name}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-2 leading-relaxed">{item.product.reason}</p>
 
-                          {entry && (
+                          {item.entry && (
                             <p className="text-xs text-gray-400 mt-3">
-                              Open sinds {new Date(entry.openedAt).toLocaleString('nl-BE', {
+                              Open sinds {new Date(item.entry.openedAt).toLocaleString('nl-BE', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 hour: '2-digit',
@@ -1214,50 +1752,186 @@ export const BusinessPage: React.FC = () => {
                             </p>
                           )}
 
-                          <div className="flex flex-wrap gap-2 mt-4">
-                            <button
-                              onClick={() => handleOpenBottle(product.id)}
-                              disabled={promoSaving}
-                              className="rounded-full bg-[var(--color-cozy-olive)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
-                            >
-                              {entry ? 'Timer herstarten' : '+ Nieuwe fles'}
-                            </button>
-                            <button
-                              onClick={() => handlePromoteBottle(product)}
-                              disabled={!entry || promoSaving}
-                              className={cn(
-                                'rounded-full px-4 py-2 text-sm font-medium transition-all',
-                                isPromoActive
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-white text-[var(--color-cozy-text)] border border-gray-200 hover:bg-gray-50',
-                                (!entry || promoSaving) && 'opacity-50 cursor-not-allowed'
-                              )}
-                            >
-                              {isPromoActive ? 'Nu in promo' : 'Zet in promo'}
-                            </button>
-                            {entry && (
-                              <button
-                                onClick={() => handleSoldUnit(product.id)}
-                                disabled={promoSaving}
-                                className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 active:scale-[0.98] transition-all disabled:opacity-50"
-                              >
-                                {soldButtonLabel}
-                              </button>
+                        </div>
+
+                        <div className="min-w-[248px] grid grid-cols-2 gap-2">
+                          <div
+                            className={cn(
+                              'rounded-2xl border px-3 py-2 text-center',
+                              item.remainingCountValue >= Math.ceil(item.product.maxRemainingCount * 0.66)
+                                ? 'bg-red-50 border-red-200 text-red-600'
+                                : item.remainingCountValue >= Math.ceil(item.product.maxRemainingCount * 0.34)
+                                  ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
                             )}
-                            {entry && (
-                              <button
-                                onClick={() => handleClearBottle(product.id)}
-                                disabled={promoSaving}
-                                className="rounded-full bg-red-50 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-100 active:scale-[0.98] transition-all disabled:opacity-50"
-                              >
-                                Fles weg
-                              </button>
-                            )}
+                          >
+                            <p className="text-[10px] uppercase tracking-wider font-semibold opacity-80">Nog over</p>
+                            <p className="font-mono text-2xl font-bold leading-tight">{item.remainingCountValue}</p>
+                            <p className="text-[11px] font-semibold opacity-90">
+                              {item.remainingCountValue === 1 ? item.product.unitSingular : item.product.unitPlural} over
+                            </p>
+                          </div>
+                          <div className={cn(
+                            'rounded-2xl border px-3 py-2 text-center',
+                            item.isExpired
+                              ? 'bg-red-50 border-red-200 text-red-600'
+                              : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                          )}>
+                            <div className="flex items-center justify-center gap-1 mb-1">
+                              <Clock3 size={14} />
+                              <span className="text-[10px] uppercase tracking-wider font-semibold">Timer</span>
+                            </div>
+                            <p className="font-mono text-sm font-bold">
+                              {item.isExpired
+                                ? `${formatDuration(Math.abs(item.remainingMs ?? 0))} te laat`
+                                : formatDuration(item.remainingMs ?? 0)}
+                            </p>
+                            <p className="text-[10px] mt-1 opacity-80">
+                              {item.isExpired ? 'Tijd om te duwen of af te sluiten' : 'Tijd resterend'}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4 w-full">
+                        <button
+                          onClick={() => handleOpenBottle(item.product.id)}
+                          disabled={promoSaving}
+                          className="ios-frosted w-full min-h-14 rounded-2xl border border-white/70 px-3 py-3 text-sm font-semibold text-[var(--color-cozy-text)] hover:bg-white/80 active:scale-[0.98] transition-all disabled:opacity-50"
+                        >
+                          Timer herstarten
+                        </button>
+                        <button
+                          onClick={() => handlePromoteBottle(item.product)}
+                          disabled={promoSaving}
+                          className={cn(
+                            'ios-frosted w-full min-h-14 rounded-2xl border border-white/70 px-3 py-3 text-sm font-semibold text-[var(--color-cozy-text)] transition-all hover:bg-white/80 active:scale-[0.98]',
+                            promoSaving && 'opacity-50 cursor-not-allowed'
+                          )}
+                        >
+                          {item.isPromoActive ? 'Nu in promo' : 'Zet in promo'}
+                        </button>
+                        <button
+                          onClick={() => handleSoldUnit(item.product.id)}
+                          disabled={promoSaving}
+                          className="ios-frosted w-full min-h-14 rounded-2xl border border-white/70 px-3 py-3 text-sm font-semibold text-[var(--color-cozy-text)] hover:bg-white/80 active:scale-[0.98] transition-all disabled:opacity-50"
+                        >
+                          {item.soldButtonLabel}
+                        </button>
+                        <button
+                          onClick={() => handleClearBottle(item.product.id)}
+                          disabled={promoSaving}
+                          className="ios-frosted w-full min-h-14 rounded-2xl border border-white/70 px-3 py-3 text-sm font-semibold text-[var(--color-cozy-text)] hover:bg-white/80 active:scale-[0.98] transition-all disabled:opacity-50"
+                        >
+                          Fles weg
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {showInactiveBottleInventory && (['red', 'orange'] as OpenBottleRisk[]).map(risk => {
+              const products = inactiveOpenBottleItems.filter(item => item.product.risk === risk);
+              const riskConfig = risk === 'red'
+                ? {
+                    title: 'Opvolgen: nog niet open',
+                    note: 'Zodra je hier iets opent, wil je het meteen kunnen opvolgen.',
+                    badge: 'bg-red-50 text-red-600 border-red-200',
+                  }
+                : {
+                    title: 'Opvolgen: nog niet open',
+                    note: 'Minder kritisch, maar nog altijd handig om per fles snel te starten.',
+                    badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                  };
+
+              if (products.length === 0) return null;
+
+              return (
+                <div key={risk} className="space-y-3">
+                  <button
+                    onClick={() => setCollapsedInactiveBottleGroups((current) => ({
+                      ...current,
+                      [risk]: !current[risk],
+                    }))}
+                    className="flex w-full items-center justify-between gap-3 rounded-[22px] bg-white px-4 py-3 text-left shadow-sm"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider', riskConfig.badge)}>
+                        {riskConfig.title}
+                      </span>
+                      <p className="text-sm text-gray-500">{riskConfig.note}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">
+                        {products.length}
+                      </span>
+                      <motion.span
+                        animate={{ rotate: collapsedInactiveBottleGroups[risk] ? 0 : 180 }}
+                        transition={{ duration: 0.2 }}
+                        className="text-gray-400"
+                      >
+                        <ChevronDown size={18} />
+                      </motion.span>
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {!collapsedInactiveBottleGroups[risk] && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 pt-1">
+                          {products.map((item) => {
+                            return (
+                              <div
+                                key={item.product.id}
+                                className="rounded-[24px] border border-gray-100 bg-white/80 p-4 shadow-sm transition-colors"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
+                                        {item.product.priceLabel}
+                                      </span>
+                                    </div>
+                                    <h3 className="text-base font-display font-bold text-[var(--color-cozy-text)] leading-tight">
+                                      {item.product.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 mt-2 leading-relaxed line-clamp-3">{item.product.reason}</p>
+                                  </div>
+
+                                  <div className="min-w-[108px] rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2 text-center text-gray-400">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                      <Clock3 size={14} />
+                                      <span className="text-[10px] uppercase tracking-wider font-semibold">Timer</span>
+                                    </div>
+                                    <p className="font-mono text-sm font-bold">Niet open</p>
+                                    <p className="text-[10px] mt-1 opacity-80">{item.product.expiryHours}u venster</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 mt-4">
+                                  <button
+                                    onClick={() => handleOpenBottle(item.product.id)}
+                                    disabled={promoSaving}
+                                    className="ios-frosted min-h-11 rounded-2xl border border-white/70 px-4 py-2.5 text-sm font-semibold text-[var(--color-cozy-text)] hover:bg-white/80 active:scale-[0.98] transition-all disabled:opacity-50"
+                                  >
+                                    + Nieuwe fles
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
@@ -1877,15 +2551,12 @@ export const BusinessPage: React.FC = () => {
 
         {view === 'history' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)] flex items-center gap-3">
                   <History size={28} className="text-[var(--color-cozy-olive)]" />
                   Historiek & correcties
                 </h2>
-                <p className="text-sm text-gray-500 mt-1 max-w-3xl">
-                  Bekijk de laatste scans, inwisselingen en manuele correcties. Corrigeer fouten altijd met een reden en een medewerker in de audittrail.
-                </p>
               </div>
               <div className="bg-white rounded-2xl px-4 py-3 shadow-sm min-w-[220px]">
                 <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Actieve medewerker</p>
@@ -1894,196 +2565,265 @@ export const BusinessPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1.4fr] gap-4 items-start">
-              <div className="bg-white rounded-[28px] shadow-sm p-5 space-y-4">
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Manuele correctie</p>
-                  <h3 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">Nieuwe correctie registreren</h3>
-                </div>
+              <div className="bg-white rounded-[28px] shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setHistoryPanelsOpen(prev => ({ ...prev, correction: !prev.correction }))}
+                  className="w-full px-5 py-5 flex items-start justify-between gap-4 text-left"
+                >
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Manuele correctie</p>
+                    <h3 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">Nieuwe correctie registreren</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {selectedCorrectionCustomer
+                        ? `Je corrigeert momenteel ${selectedCorrectionCustomer.name}`
+                        : 'Tap om open te klappen en een correctie te starten.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {selectedCorrectionCustomer && (
+                      <span className="rounded-full bg-[var(--color-cozy-olive)]/10 px-3 py-1 text-[11px] font-medium text-[var(--color-cozy-olive)]">
+                        Klant gekozen
+                      </span>
+                    )}
+                    <motion.span
+                      animate={{ rotate: historyPanelsOpen.correction ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500"
+                    >
+                      <ChevronDown size={18} />
+                    </motion.span>
+                  </div>
+                </button>
 
-                <div>
-                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Klant</label>
-                  <select
-                    value={selectedCorrectionCustomerId}
-                    onChange={(event) => {
-                      setSelectedCorrectionCustomerId(event.target.value);
-                      setCorrectionError(null);
-                      setCorrectionSuccess(null);
-                    }}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)]"
-                  >
-                    <option value="">Kies een klant…</option>
-                    {sortedCustomers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name} {customer.email ? `(${customer.email})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedCorrectionCustomer && (
-                  <div className="rounded-[24px] border border-[var(--color-cozy-olive)]/15 bg-[var(--color-cozy-olive)]/5 px-4 py-4 space-y-3">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Huidige klantstatus</p>
-                      <p className="text-base font-display font-bold text-[var(--color-cozy-text)]">{selectedCorrectionCustomer.name}</p>
-                      <p className="text-sm text-gray-500">{selectedCorrectionCustomer.email || 'Geen e-mail'} • {selectedCorrectionCustomer.totalVisits} bezoeken</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 sm:grid-cols-4">
-                      {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
-                        <div key={`current-status-${type}`} className="rounded-2xl bg-white/80 px-3 py-2">
-                          <p className="font-medium text-[var(--color-cozy-text)]">{cardTypeLabels[type]}</p>
-                          <p>Kaart: {selectedCorrectionCustomer.cards[type]}</p>
-                          <p>Beloningen: {selectedCorrectionCustomer.rewards[type]}</p>
-                          <p>Ingewisseld: {selectedCorrectionCustomer.claimedRewards[type]}</p>
+                <AnimatePresence initial={false}>
+                  {historyPanelsOpen.correction && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.24, ease: 'easeInOut' }}
+                      className="overflow-hidden border-t border-gray-100"
+                    >
+                      <div className="p-5 space-y-4">
+                        <div>
+                          <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Klant</label>
+                          <select
+                            value={selectedCorrectionCustomerId}
+                            onChange={(event) => {
+                              setSelectedCorrectionCustomerId(event.target.value);
+                              setCorrectionError(null);
+                              setCorrectionSuccess(null);
+                            }}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)]"
+                          >
+                            <option value="">Kies een klant…</option>
+                            {sortedCustomers.map(customer => (
+                              <option key={customer.id} value={customer.id}>
+                                {customer.name} {customer.email ? `(${customer.email})` : ''}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
-                <div>
-                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Reden</label>
-                  <textarea
-                    value={correctionReason}
-                    onChange={(event) => setCorrectionReason(event.target.value)}
-                    rows={3}
-                    placeholder="bv. verkeerde scan gecompenseerd aan de toog"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)] resize-none"
-                  />
-                </div>
+                        {selectedCorrectionCustomer && (
+                          <div className="rounded-[24px] border border-[var(--color-cozy-olive)]/15 bg-[var(--color-cozy-olive)]/5 px-4 py-4 space-y-3">
+                            <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Huidige klantstatus</p>
+                              <p className="text-base font-display font-bold text-[var(--color-cozy-text)]">{selectedCorrectionCustomer.name}</p>
+                              <p className="text-sm text-gray-500">{selectedCorrectionCustomer.email || 'Geen e-mail'} • {selectedCorrectionCustomer.totalVisits} bezoeken</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 sm:grid-cols-4">
+                              {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
+                                <div key={`current-status-${type}`} className="rounded-2xl bg-white/80 px-3 py-2">
+                                  <p className="font-medium text-[var(--color-cozy-text)]">{cardTypeLabels[type]}</p>
+                                  <p>Kaart: {selectedCorrectionCustomer.cards[type]}</p>
+                                  <p>Beloningen: {selectedCorrectionCustomer.rewards[type]}</p>
+                                  <p>Ingewisseld: {selectedCorrectionCustomer.claimedRewards[type]}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider">Stempels huidige kaart</p>
-                    <span className="text-[11px] text-gray-400">Moet tussen 0 en 9 uitkomen</span>
-                  </div>
-                  {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
-                    <DeltaControl
-                      key={`stamp-${type}`}
-                      label={cardTypeLabels[type]}
-                      value={correctionStamps[type]}
-                      baseValue={selectedCorrectionCustomer?.cards[type] ?? 0}
-                      onChange={(value) => changeCorrectionRecord('stamps', type, value)}
-                      accent="olive"
-                      minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.cards[type] : undefined}
-                      maxValue={selectedCorrectionCustomer ? 9 - selectedCorrectionCustomer.cards[type] : undefined}
-                      disabled={!correctionControlEnabled}
-                    />
-                  ))}
-                </div>
+                        <div>
+                          <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Reden</label>
+                          <textarea
+                            value={correctionReason}
+                            onChange={(event) => setCorrectionReason(event.target.value)}
+                            rows={3}
+                            placeholder="bv. verkeerde scan gecompenseerd aan de toog"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)] resize-none"
+                          />
+                        </div>
 
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider">Beschikbare beloningen</p>
-                  {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
-                    <DeltaControl
-                      key={`reward-${type}`}
-                      label={cardTypeLabels[type]}
-                      value={correctionRewards[type]}
-                      baseValue={selectedCorrectionCustomer?.rewards[type] ?? 0}
-                      onChange={(value) => changeCorrectionRecord('rewards', type, value)}
-                      accent="amber"
-                      minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.rewards[type] : undefined}
-                      disabled={!correctionControlEnabled}
-                    />
-                  ))}
-                </div>
+                        <div className="space-y-3 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-gray-400 uppercase tracking-wider">Stempels huidige kaart</p>
+                            <span className="text-[11px] text-gray-400">Moet tussen 0 en 9 uitkomen</span>
+                          </div>
+                          {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
+                            <DeltaControl
+                              key={`stamp-${type}`}
+                              label={cardTypeLabels[type]}
+                              value={correctionStamps[type]}
+                              baseValue={selectedCorrectionCustomer?.cards[type] ?? 0}
+                              onChange={(value) => changeCorrectionRecord('stamps', type, value)}
+                              accent="olive"
+                              minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.cards[type] : undefined}
+                              maxValue={selectedCorrectionCustomer ? 9 - selectedCorrectionCustomer.cards[type] : undefined}
+                              disabled={!correctionControlEnabled}
+                            />
+                          ))}
+                        </div>
 
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider">Ingewisselde beloningen</p>
-                  {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
-                    <DeltaControl
-                      key={`claimed-${type}`}
-                      label={cardTypeLabels[type]}
-                      value={correctionClaimed[type]}
-                      baseValue={selectedCorrectionCustomer?.claimedRewards[type] ?? 0}
-                      onChange={(value) => changeCorrectionRecord('claimed', type, value)}
-                      accent="rose"
-                      minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.claimedRewards[type] : undefined}
-                      disabled={!correctionControlEnabled}
-                    />
-                  ))}
-                </div>
+                        <div className="space-y-3 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
+                          <p className="text-xs text-gray-400 uppercase tracking-wider">Beschikbare beloningen</p>
+                          {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
+                            <DeltaControl
+                              key={`reward-${type}`}
+                              label={cardTypeLabels[type]}
+                              value={correctionRewards[type]}
+                              baseValue={selectedCorrectionCustomer?.rewards[type] ?? 0}
+                              onChange={(value) => changeCorrectionRecord('rewards', type, value)}
+                              accent="amber"
+                              minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.rewards[type] : undefined}
+                              disabled={!correctionControlEnabled}
+                            />
+                          ))}
+                        </div>
 
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider">Bezoeken</p>
-                  <DeltaControl
-                    label="Totaal bezoeken"
-                    value={correctionVisitDelta}
-                    baseValue={selectedCorrectionCustomer?.totalVisits ?? 0}
-                    onChange={setCorrectionVisitDelta}
-                    accent="blue"
-                    minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.totalVisits : undefined}
-                    disabled={!correctionControlEnabled}
-                  />
-                </div>
+                        <div className="space-y-3 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
+                          <p className="text-xs text-gray-400 uppercase tracking-wider">Ingewisselde beloningen</p>
+                          {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
+                            <DeltaControl
+                              key={`claimed-${type}`}
+                              label={cardTypeLabels[type]}
+                              value={correctionClaimed[type]}
+                              baseValue={selectedCorrectionCustomer?.claimedRewards[type] ?? 0}
+                              onChange={(value) => changeCorrectionRecord('claimed', type, value)}
+                              accent="rose"
+                              minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.claimedRewards[type] : undefined}
+                              disabled={!correctionControlEnabled}
+                            />
+                          ))}
+                        </div>
 
-                {correctionError && (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                    {correctionError}
-                  </div>
-                )}
-                {correctionSuccess && (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    {correctionSuccess}
-                  </div>
-                )}
+                        <div className="space-y-2 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
+                          <p className="text-xs text-gray-400 uppercase tracking-wider">Bezoeken</p>
+                          <DeltaControl
+                            label="Totaal bezoeken"
+                            value={correctionVisitDelta}
+                            baseValue={selectedCorrectionCustomer?.totalVisits ?? 0}
+                            onChange={setCorrectionVisitDelta}
+                            accent="blue"
+                            minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.totalVisits : undefined}
+                            disabled={!correctionControlEnabled}
+                          />
+                        </div>
 
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <button
-                    onClick={submitManualCorrection}
-                    disabled={correctionSaving}
-                    className="rounded-full bg-[var(--color-cozy-olive)] px-5 py-3 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
-                  >
-                    <Save size={16} />
-                    {correctionSaving ? 'Opslaan…' : 'Correctie opslaan'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCorrectionError(null);
-                      setCorrectionSuccess(null);
-                      resetCorrectionForm();
-                    }}
-                    disabled={correctionSaving}
-                    className="rounded-full bg-gray-100 px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gray-200 active:scale-[0.98] transition-all disabled:opacity-50"
-                  >
-                    Formulier leegmaken
-                  </button>
-                </div>
+                        {correctionError && (
+                          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                            {correctionError}
+                          </div>
+                        )}
+                        {correctionSuccess && (
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                            {correctionSuccess}
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          <button
+                            onClick={submitManualCorrection}
+                            disabled={correctionSaving}
+                            className="rounded-full bg-[var(--color-cozy-olive)] px-5 py-3 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+                          >
+                            <Save size={16} />
+                            {correctionSaving ? 'Opslaan…' : 'Correctie opslaan'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCorrectionError(null);
+                              setCorrectionSuccess(null);
+                              resetCorrectionForm();
+                            }}
+                            disabled={correctionSaving}
+                            className="rounded-full bg-gray-100 px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gray-200 active:scale-[0.98] transition-all disabled:opacity-50"
+                          >
+                            Formulier leegmaken
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="space-y-4">
-                <div className="bg-white rounded-[28px] shadow-sm p-5 space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {([
-                      { key: 'all', label: 'Alles', count: transactions.length },
-                      { key: 'scan', label: 'Scans', count: transactions.filter(item => item.eventType === 'scan').length },
-                      { key: 'redeem', label: 'Inwisselingen', count: transactions.filter(item => item.eventType === 'redeem').length },
-                      { key: 'adjustment', label: 'Correcties', count: transactions.filter(item => item.eventType === 'adjustment').length },
-                    ] as const).map((item) => (
-                      <button
-                        key={item.key}
-                        onClick={() => setHistoryFilter(item.key as 'all' | TransactionEventType)}
-                        className={cn(
-                          'rounded-2xl border px-4 py-3 text-left transition-all',
-                          historyFilter === item.key
-                            ? 'bg-[var(--color-cozy-olive)]/8 border-[var(--color-cozy-olive)]/20 text-[var(--color-cozy-text)]'
-                            : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'
-                        )}
-                      >
-                        <p className="text-[10px] uppercase tracking-wider">{item.label}</p>
-                        <p className="font-mono text-2xl font-bold mt-1">{item.count}</p>
-                      </button>
-                    ))}
-                  </div>
+                <div className="bg-white rounded-[28px] shadow-sm overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPanelsOpen(prev => ({ ...prev, filters: !prev.filters }))}
+                    className="w-full px-5 py-5 flex items-start justify-between gap-4 text-left"
+                  >
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Auditfilter</p>
+                      <h3 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">Zoeken & snel filteren</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {filteredTransactions.length} zichtbare registraties, waarvan {filteredAdjustmentCount} correcties.
+                      </p>
+                    </div>
+                    <motion.span
+                      animate={{ rotate: historyPanelsOpen.filters ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 flex-shrink-0"
+                    >
+                      <ChevronDown size={18} />
+                    </motion.span>
+                  </button>
 
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={historySearch}
-                      onChange={(event) => setHistorySearch(event.target.value)}
-                      placeholder="Zoek op klant, medewerker of reden..."
-                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)]"
-                    />
-                  </div>
+                  <AnimatePresence initial={false}>
+                    {historyPanelsOpen.filters && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.24, ease: 'easeInOut' }}
+                        className="overflow-hidden border-t border-gray-100"
+                      >
+                        <div className="p-5 space-y-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {historyFilterCards.map((item) => (
+                              <button
+                                key={item.key}
+                                onClick={() => setHistoryFilter(item.key as 'all' | TransactionEventType)}
+                                className={cn(
+                                  'rounded-2xl border px-4 py-3 text-left transition-all',
+                                  historyFilter === item.key
+                                    ? 'bg-[var(--color-cozy-olive)]/8 border-[var(--color-cozy-olive)]/20 text-[var(--color-cozy-text)]'
+                                    : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'
+                                )}
+                              >
+                                <p className="text-[10px] uppercase tracking-wider">{item.label}</p>
+                                <p className="font-mono text-2xl font-bold mt-1">{item.count}</p>
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={historySearch}
+                              onChange={(event) => setHistorySearch(event.target.value)}
+                              placeholder="Zoek op klant, medewerker of reden..."
+                              className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)]"
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="space-y-3">
@@ -2097,68 +2837,130 @@ export const BusinessPage: React.FC = () => {
                     <div className="bg-white rounded-[28px] shadow-sm p-6 text-sm text-gray-400">Geen transacties gevonden voor deze filter.</div>
                   )}
 
-                  {!transactionsLoading && !transactionsError && filteredTransactions.map((transaction) => {
-                    const summaryParts = buildTransactionSummaryParts(transaction);
-                    const badgeClasses = transaction.eventType === 'scan'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : transaction.eventType === 'redeem'
-                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                        : 'bg-blue-50 text-blue-700 border-blue-200';
-
-                    return (
-                      <div key={transaction.id} className="bg-white rounded-[28px] shadow-sm p-5 space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider', badgeClasses)}>
-                                {getTransactionLabel(transaction.eventType)}
-                              </span>
-                              <span className="text-xs text-gray-400">
-                                {new Date(transaction.createdAt).toLocaleString('nl-BE', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            </div>
-                            <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)] mt-2">{transaction.customerName}</h3>
-                            <p className="text-sm text-gray-400">{transaction.customerEmail || 'Geen e-mail'}</p>
+                  {!transactionsLoading && !transactionsError && historyGroupedTransactions.map((group) => (
+                    <div key={group.key} className="bg-white rounded-[28px] shadow-sm overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setCollapsedHistoryGroups(prev => ({ ...prev, [group.key]: !prev[group.key] }))}
+                        className="w-full px-5 py-4 flex items-start justify-between gap-4 text-left"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)]">{group.label}</h3>
+                            <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-medium text-gray-500">
+                              {group.items.length} item{group.items.length === 1 ? '' : 's'}
+                            </span>
                           </div>
-                          <div className="text-right">
-                            <p className="text-[10px] uppercase tracking-wider text-gray-400">Medewerker</p>
-                            <p className="font-mono text-sm font-bold text-[var(--color-cozy-text)] break-all max-w-[200px]">
-                              {transaction.staffEmail ?? 'Onbekend'}
-                            </p>
-                          </div>
+                          <p className="text-sm text-gray-500 mt-1">{group.note}</p>
                         </div>
+                        <motion.span
+                          animate={{ rotate: collapsedHistoryGroups[group.key] ? 0 : 180 }}
+                          transition={{ duration: 0.2 }}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 flex-shrink-0"
+                        >
+                          <ChevronDown size={18} />
+                        </motion.span>
+                      </button>
 
-                        {summaryParts.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {summaryParts.map((part) => (
-                              <span key={part} className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                                {part}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                      <AnimatePresence initial={false}>
+                        {!collapsedHistoryGroups[group.key] && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.24, ease: 'easeInOut' }}
+                            className="overflow-hidden border-t border-gray-100"
+                          >
+                            <div className="p-4 space-y-3">
+                              {group.items.map((transaction) => {
+                                const summaryParts = buildTransactionSummaryParts(transaction);
+                                const badgeClasses = transaction.eventType === 'scan'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : transaction.eventType === 'redeem'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200';
 
-                        {transaction.reason && (
-                          <div className="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                            <span className="text-gray-400">Reden:</span> {transaction.reason}
-                          </div>
-                        )}
+                                return (
+                                  <div key={transaction.id} className="rounded-[24px] border border-gray-100 bg-gray-50/70 p-5 space-y-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider', badgeClasses)}>
+                                            {getTransactionLabel(transaction.eventType)}
+                                          </span>
+                                          <span className="text-xs text-gray-400">
+                                            {new Date(transaction.createdAt).toLocaleString('nl-BE', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: 'numeric',
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                            })}
+                                          </span>
+                                        </div>
+                                        <h3 className="text-lg font-display font-bold text-[var(--color-cozy-text)] mt-2">{transaction.customerName}</h3>
+                                        <p className="text-sm text-gray-400">{transaction.customerEmail || 'Geen e-mail'}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-[10px] uppercase tracking-wider text-gray-400">Medewerker</p>
+                                        <p className="font-mono text-sm font-bold text-[var(--color-cozy-text)] break-all max-w-[200px]">
+                                          {transaction.staffEmail ?? 'Onbekend'}
+                                        </p>
+                                      </div>
+                                    </div>
 
-                        {transaction.txId && (
-                          <p className="text-[11px] text-gray-400">QR transactie-ID: {transaction.txId}</p>
+                                    {summaryParts.length > 0 && (
+                                      <div className="flex flex-wrap gap-2">
+                                        {summaryParts.map((part) => (
+                                          <span key={part} className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-600 border border-gray-100">
+                                            {part}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {transaction.reason && (
+                                      <div className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-600 border border-gray-100">
+                                        <span className="text-gray-400">Reden:</span> {transaction.reason}
+                                      </div>
+                                    )}
+
+                                    {transaction.txId && (
+                                      <p className="text-[11px] text-gray-400">QR transactie-ID: {transaction.txId}</p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
                         )}
-                      </div>
-                    );
-                  })}
+                      </AnimatePresence>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {view === 'screensaver' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <ScreensaverEditor
+              isDarkMode={isDarkMode}
+              slides={screensaverDraft}
+              dirty={screensaverDirty}
+              saving={screensaverSaving}
+              uploadingTarget={screensaverUploadingTarget}
+              error={screensaverError}
+              success={screensaverSuccess}
+              onMoveSlide={handleScreensaverMove}
+              onDurationChange={handleScreensaverDurationChange}
+              onUploadImage={handleScreensaverUpload}
+              onResetImage={handleScreensaverResetImage}
+              onResetAll={handleScreensaverResetAll}
+              onPreview={handleScreensaverPreview}
+              onSave={saveScreensaver}
+            />
           </motion.div>
         )}
 
@@ -2219,7 +3021,7 @@ export const BusinessPage: React.FC = () => {
 
                 {/* Watermark in whitespace */}
                 <div className="flex justify-center pt-16 pb-4 pointer-events-none select-none">
-                  <img src="/cozylogo.png" alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
+                  <img src={brandLogoSrc} alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
                 </div>
               </div>
             ) : qrScanned ? (
@@ -2238,13 +3040,13 @@ export const BusinessPage: React.FC = () => {
             ) : (
               <div className="relative flex flex-col items-center justify-center py-8">
                 <img
-                  src="/cozylogo.png"
+                  src={brandLogoSrc}
                   alt=""
                   aria-hidden="true"
                   className="pointer-events-none select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 object-contain opacity-10"
                 />
-                <div className="relative bg-white p-8 rounded-[40px] shadow-xl mb-8">
-                  <QRCodeSVG value={qrPayload} size={240} level="H" />
+                <div className="relative bg-white p-6 md:p-8 rounded-[40px] shadow-xl mb-8">
+                  <QRCodeSVG value={qrPayload} size={300} level="H" />
                 </div>
                 <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">
                   Laat de klant scannen
@@ -2259,13 +3061,33 @@ export const BusinessPage: React.FC = () => {
                   Nieuwe Transactie
                 </button>
                 <div className="flex justify-center pt-16 pb-4 pointer-events-none select-none">
-                  <img src="/cozylogo.png" alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
+                  <img src={brandLogoSrc} alt="" aria-hidden="true" className="w-48 h-48 object-contain opacity-10" />
                 </div>
               </div>
             )}
           </motion.div>
         )}
       </main>
+
+      <div className="pointer-events-none flex justify-end px-6 pb-2">
+        <div className="h-9 w-[142px] max-w-full rounded-full" />
+      </div>
+
+      <a
+        href="https://www.webaanzee.be"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          'ios-frosted fixed bottom-[calc(env(safe-area-inset-bottom)+0.9rem)] right-4 z-20 inline-flex max-w-[calc(100vw-2rem)] items-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-medium opacity-80 transition-all hover:-translate-y-0.5 hover:opacity-100 hover:bg-white/80',
+          isDarkMode ? 'text-[#e8ecf2]' : 'text-[#1f1f1f]/90'
+        )}
+        style={{ letterSpacing: '0.04em', textDecoration: 'none' }}
+      >
+        <span className={cn('whitespace-nowrap', isDarkMode ? 'text-[#d2d9e3]' : 'text-black/55')}>realisatie door</span>
+        <span className="whitespace-nowrap font-semibold">
+          <span style={{ color: isDarkMode ? '#f3f5f8' : '#111' }}>Web</span><span style={{ color: '#f59e0b' }}>aan</span><span style={{ color: isDarkMode ? '#f3f5f8' : '#111' }}>Zee</span>
+        </span>
+      </a>
 
       {/* Delete confirmation modal */}
       <AnimatePresence>
@@ -2343,6 +3165,7 @@ interface ConsumptionRowProps {
   color: string;
   bg: string;
   index: number; // for staggered slide-in delay
+  isDarkMode: boolean;
 }
 
 interface DeltaControlProps {
@@ -2438,7 +3261,7 @@ const DeltaControl: React.FC<DeltaControlProps> = ({
   );
 };
 
-const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, count, onInc, onDec, color, bg, index }) => {
+const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, count, onInc, onDec, color, bg, index, isDarkMode }) => {
   const countControls = useAnimationControls();
 
   const handleInc = () => {
@@ -2464,7 +3287,7 @@ const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, coun
   };
 
   return (
-    <div className="bg-white rounded-[24px] p-4 shadow-sm flex items-center justify-between overflow-hidden">
+    <div className={cn('rounded-[24px] p-4 shadow-sm flex items-center justify-between overflow-hidden', isDarkMode ? 'bg-[#171c24] border border-white/10' : 'bg-white')}>
       <div className="flex items-center gap-4">
         {/* Icon — slides in from right with stagger */}
         <motion.div
@@ -2478,7 +3301,7 @@ const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, coun
 
         {/* Title — slides in from right slightly after icon */}
         <motion.span
-          className="font-display font-bold text-xl"
+          className={cn('font-display font-bold text-xl', isDarkMode ? 'text-[#f4f2ea]' : 'text-[var(--color-cozy-text)]')}
           initial={{ x: 60, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.55, delay: index * 0.08 + 0.07, ease: [0.22, 1, 0.36, 1] }}
@@ -2491,7 +3314,7 @@ const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, coun
         <button
           onClick={handleDec}
           disabled={count === 0}
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 disabled:opacity-50 active:scale-90 transition-transform"
+          className={cn('w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 active:scale-90 transition-transform', isDarkMode ? 'bg-[#8f98a6] text-[#1a202a]' : 'bg-gray-100 text-gray-600')}
         >
           <Minus size={20} />
         </button>
@@ -2499,14 +3322,14 @@ const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, coun
         {/* Animated count */}
         <motion.span
           animate={countControls}
-          className="font-mono text-xl font-medium w-6 text-center inline-block"
+          className={cn('font-mono text-xl font-medium w-6 text-center inline-block', isDarkMode ? 'text-[#f6f8fb]' : 'text-[var(--color-cozy-text)]')}
         >
           {count}
         </motion.span>
 
         <button
           onClick={handleInc}
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:scale-90 transition-transform"
+          className={cn('w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-transform', isDarkMode ? 'bg-[#edf1f7] text-[#1a202a]' : 'bg-gray-100 text-gray-600')}
         >
           <Plus size={20} />
         </button>

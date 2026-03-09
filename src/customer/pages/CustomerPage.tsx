@@ -18,6 +18,7 @@ export const CustomerPage: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   const [loadTimeout, setLoadTimeout] = useState(false);
   const [promoMessage, setPromoMessage] = useState('');
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
@@ -58,6 +59,20 @@ export const CustomerPage: React.FC = () => {
     return () => clearTimeout(t);
   }, [currentCustomer]);
 
+  const displayName = user?.name || currentCustomer?.name || 'Gebruiker';
+  const profilePhoto = user?.avatar?.trim() || '';
+  const showProfilePhoto = Boolean(profilePhoto) && !avatarLoadFailed;
+  const profileInitials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'G';
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [profilePhoto]);
+
   if (!currentCustomer) {
     if (!loadTimeout) return <LoadingScreen variant="customer" />;
     return (
@@ -82,7 +97,6 @@ export const CustomerPage: React.FC = () => {
     );
   }
 
-  const displayName = user?.name || currentCustomer.name;
   const totalRewards = (currentCustomer.rewards?.coffee || 0) + (currentCustomer.rewards?.wine || 0) + (currentCustomer.rewards?.beer || 0) + (currentCustomer.rewards?.soda || 0);
   const loyaltyConfig = LOYALTY_TIER_CONFIG[currentCustomer.loyaltyTier];
   const loyaltyProgress = getLoyaltyProgress(currentCustomer.loyaltyPoints);
@@ -94,29 +108,50 @@ export const CustomerPage: React.FC = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="sticky top-0 z-50 mb-5 px-5 py-4"
+        className="sticky top-0 z-50 mb-4 px-4 py-2.5"
         style={{
           background: 'rgba(245,245,240,0.42)',
           backdropFilter: 'blur(12px) saturate(140%)',
           WebkitBackdropFilter: 'blur(12px) saturate(140%)',
           borderBottom: '1px solid rgba(255,255,255,0.45)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)',
-          borderRadius: '0 0 32px 32px',
+          boxShadow: '0 6px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9)',
+          borderRadius: '0 0 26px 26px',
         }}
       >
-        <div className="flex items-center justify-between">
-          <button onClick={logout} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 transition-colors" title="Uitloggen">
-            <LogOut size={20} />
-          </button>
-          <a href="https://www.cozy-moments.be/" target="_blank" rel="noopener noreferrer">
-            <img src="/cozylogo.png" alt="COZY Moments" className="w-20 h-20 object-contain -my-2" />
-          </a>
-          <div
-            className="min-w-11 h-11 rounded-full flex items-center justify-center px-2 text-[11px] font-bold shadow-sm"
-            style={loyaltyConfig.customerBadgeStyle}
-            title={`${loyaltyConfig.label} status`}
-          >
-            {loyaltyConfig.shortLabel}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="flex items-center">
+            <button onClick={logout} className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="Uitloggen">
+              <LogOut size={18} />
+            </button>
+          </div>
+          <div className="flex items-center justify-center">
+            <a href="https://www.cozy-moments.be/" target="_blank" rel="noopener noreferrer">
+              <img src="/cozylogo.png" alt="COZY Moments" className="w-[60px] h-[60px] object-contain" />
+            </a>
+          </div>
+          <div className="flex items-center justify-end">
+            {showProfilePhoto ? (
+              <div
+                className="h-10 w-10 rounded-full p-[2px] shadow-sm"
+                style={{ background: loyaltyConfig.accentColor }}
+                title={`${displayName} - ${loyaltyConfig.label}`}
+              >
+                <img
+                  src={profilePhoto}
+                  alt={`Profielfoto van ${displayName}`}
+                  className="h-full w-full rounded-full object-cover bg-white"
+                  onError={() => setAvatarLoadFailed(true)}
+                />
+              </div>
+            ) : (
+              <div
+                className="min-w-10 h-10 rounded-full flex items-center justify-center px-2 text-[12px] font-bold shadow-sm"
+                style={loyaltyConfig.customerBadgeStyle}
+                title={`${displayName} - ${loyaltyConfig.label}`}
+              >
+                {profileInitials}
+              </div>
+            )}
           </div>
         </div>
         <AnimatePresence>
@@ -125,10 +160,10 @@ export const CustomerPage: React.FC = () => {
               initial={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0, marginTop: 0 }}
               transition={{ duration: 0.4, ease: 'easeInOut' }}
-              className="mt-4 overflow-hidden"
+              className="mt-2 overflow-hidden"
             >
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Welkom terug,</p>
-              <h2 className="text-2xl font-display font-bold text-[var(--color-cozy-text)]">
+              <h2 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">
                 {displayName}
               </h2>
             </motion.div>
@@ -156,7 +191,7 @@ export const CustomerPage: React.FC = () => {
                 <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold border ${loyaltyConfig.customerBadgeClassName}`}>
                   {loyaltyConfig.label}
                 </span>
-                <span className="text-sm text-[var(--color-cozy-text)]/70">{currentCustomer.loyaltyPoints} punten</span>
+                <span className="text-sm text-[var(--color-cozy-text)]/70">{currentCustomer.loyaltyPoints} stempels</span>
               </div>
             </div>
             <div
@@ -181,7 +216,7 @@ export const CustomerPage: React.FC = () => {
 
           <p className="text-sm text-[var(--color-cozy-text)]/75 leading-snug">
             {loyaltyProgress.nextTier
-              ? `Nog ${loyaltyProgress.pointsNeeded} punten tot ${LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier].label}.`
+              ? `Nog ${loyaltyProgress.pointsNeeded} stempels tot ${LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier].label}.`
               : 'Je hebt het hoogste niveau bereikt. Tijd voor extra verwennerij bij Cozy Moments.'}
           </p>
         </motion.div>

@@ -19,19 +19,9 @@ const AdminGuard: React.FC = () => {
   );
 };
 
-const TestWatermark = () => (
-  <div
-    className="fixed top-0 left-0 right-0 z-[9999] bg-yellow-400 text-black text-center py-1 text-xs font-bold tracking-wide shadow-md"
-    style={{ letterSpacing: '0.08em' }}
-  >
-    Testversie — Ontwikkeld door WebAanZee
-  </div>
-);
-
 export default function App() {
   return (
     <BusinessAuthProvider>
-      <TestWatermark />
       <AdminGuard />
     </BusinessAuthProvider>
   );

@@ -1,5 +1,5 @@
 // Cozy Moments — Customer Service Worker
-const CACHE_NAME = 'cozy-moments-customer-v1';
+const CACHE_NAME = 'cozy-moments-customer-v2';
 const OFFLINE_URL = '/';
 
 // Assets to pre-cache

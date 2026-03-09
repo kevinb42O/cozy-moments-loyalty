@@ -166,6 +166,9 @@ CREATE TABLE IF NOT EXISTS public.site_settings (
 ALTER TABLE public.site_settings
   ADD COLUMN IF NOT EXISTS open_bottles JSONB NOT NULL DEFAULT '{}'::jsonb;
 
+ALTER TABLE public.site_settings
+  ADD COLUMN IF NOT EXISTS screensaver_config JSONB NOT NULL DEFAULT '[]'::jsonb;
+
 -- Insert the single default row
 INSERT INTO public.site_settings (id) VALUES ('default') ON CONFLICT DO NOTHING;
 
@@ -182,6 +185,10 @@ DROP POLICY IF EXISTS "Settings: admin can update" ON public.site_settings;
 CREATE POLICY "Settings: admin can update"
   ON public.site_settings FOR UPDATE
   USING (is_admin());
+
+-- Optional but recommended for the admin screensaver editor:
+-- create storage bucket `screensaver-assets` as a public bucket in Supabase Storage.
+-- The app overwrites fixed filenames per slide slot, so storage use stays bounded.
 
 -- 5. Loyalty tier helpers (Bronze / Silver / Gold / VIP)
 CREATE OR REPLACE FUNCTION public.calculate_customer_loyalty_points(

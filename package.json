@@ -12,6 +12,8 @@
     "build:customer": "vite build --config vite.config.customer.ts",
     "build:business": "vite build --config vite.config.business.ts",
     "docs:manual-pdf": "node ./generate-manual-pdf.mjs",
+    "docs:payment-pdfs": "node ./generate-payment-receipts-pdf.mjs",
+    "docs:terms-pdf": "node ./generate-terms-pdf.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",

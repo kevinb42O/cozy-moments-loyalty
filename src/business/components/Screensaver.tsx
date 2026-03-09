@@ -1,30 +1,16 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-// ── Image paths ──────────────────────────────────────────────────────────────
-const IMAGES = {
-  cozy1: '/cozy1.jpg',
-  cozy2: '/cozy2.png',
-  cozy3: '/cozy3.png',
-  cozy4: '/cozy4.webp',
-  cozy5: '/cozy5.png',
-  cozy6: '/cozy6.png',
-  cozy7: '/cozy7.png',
-  cozy8: '/cozy8.png',
-  cozy9: '/cozy9.png',
-  cozy10: '/cozy10.jpg',
-  cozy11: '/cozy11.jpg',
-  cozy12: '/cozy12.jpg',
-  cozy13: '/cozy13.jpg',
-};
-
-// ── Config ───────────────────────────────────────────────────────────────────
-const IDLE_TIMEOUT = 60_000;       // 60s before screensaver activates
-const SCENE_DURATION = 18_000;     // 18s per scene
-const TOTAL_SCENES = 9;
+import {
+  IDLE_TIMEOUT_MS,
+  createDefaultScreensaverSlides,
+  normalizeScreensaverConfig,
+  resolvePrimarySlideImage,
+  resolveSecondarySlideImage,
+  type ScreensaverSlideConfig,
+} from '../../shared/lib/screensaver-config';
 
 // ── Ken Burns keyframes (random-ish per render to avoid burn-in) ─────────────
-const kenBurnsVariants = (seed: number) => {
+const kenBurnsVariants = (seed: number, durationMs: number) => {
   const origins = ['center', 'top left', 'top right', 'bottom left', 'bottom right'];
   const origin = origins[seed % origins.length];
   return {
@@ -32,7 +18,7 @@ const kenBurnsVariants = (seed: number) => {
     animate: {
       scale: [1, 1.15],
       transformOrigin: origin,
-      transition: { duration: SCENE_DURATION / 1000, ease: 'linear' as const },
+      transition: { duration: durationMs / 1000, ease: 'linear' as const },
     },
   };
 };
@@ -42,12 +28,14 @@ const DualSlideScene: React.FC<{
   leftImg: string;
   rightImg: string;
   idx: number;
-}> = ({ leftImg, rightImg, idx }) => {
-  const kbL = kenBurnsVariants(idx + 2);
-  const kbR = kenBurnsVariants(idx + 5);
+  durationMs: number;
+}> = ({ leftImg, rightImg, idx, durationMs }) => {
+  const kbL = kenBurnsVariants(idx + 2, durationMs);
+  const kbR = kenBurnsVariants(idx + 5, durationMs);
+  const durationSeconds = durationMs / 1000;
 
   // Timings: slide-in ~1.4s, then at 5s the back image comes to front
-  const SWAP_DELAY = 5; // seconds
+  const SWAP_DELAY = Math.min(5, Math.max(3.2, durationSeconds * 0.35));
   const SWAP_DUR = 1.2; // smooth transition duration
 
   return (
@@ -65,8 +53,8 @@ const DualSlideScene: React.FC<{
         transition={{
           x: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
           rotate: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
-          zIndex: { times: [0, SWAP_DELAY / 18, (SWAP_DELAY + 0.1) / 18], duration: 18, ease: 'linear' },
-          scale: { times: [0, SWAP_DELAY / 18, (SWAP_DELAY + SWAP_DUR) / 18], duration: 18, ease: 'easeInOut' },
+          zIndex: { times: [0, SWAP_DELAY / durationSeconds, (SWAP_DELAY + 0.1) / durationSeconds], duration: durationSeconds, ease: 'linear' },
+          scale: { times: [0, SWAP_DELAY / durationSeconds, (SWAP_DELAY + SWAP_DUR) / durationSeconds], duration: durationSeconds, ease: 'easeInOut' },
         }}
       >
         <motion.img
@@ -90,8 +78,8 @@ const DualSlideScene: React.FC<{
         transition={{
           x: { duration: 1.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] },
           rotate: { duration: 1.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] },
-          zIndex: { times: [0, SWAP_DELAY / 18, (SWAP_DELAY + 0.1) / 18], duration: 18, ease: 'linear' },
-          scale: { times: [0, SWAP_DELAY / 18, (SWAP_DELAY + SWAP_DUR) / 18], duration: 18, ease: 'easeInOut' },
+          zIndex: { times: [0, SWAP_DELAY / durationSeconds, (SWAP_DELAY + 0.1) / durationSeconds], duration: durationSeconds, ease: 'linear' },
+          scale: { times: [0, SWAP_DELAY / durationSeconds, (SWAP_DELAY + SWAP_DUR) / durationSeconds], duration: durationSeconds, ease: 'easeInOut' },
         }}
       >
         <motion.img
@@ -110,7 +98,7 @@ const DualSlideScene: React.FC<{
 
 // ── Single-image scene: blurred background fill + contained hero with Ken Burns
 // Dynamically handles any aspect ratio — portrait, landscape, square — perfectly.
-const SingleScrollScene: React.FC<{ img: string; idx: number }> = ({ img, idx }) => {
+const SingleScrollScene: React.FC<{ img: string; idx: number; durationMs: number }> = ({ img, idx, durationMs }) => {
   // Vary pan direction per slide so all 5 single-image slides feel different
   const panVariants = [
     { x: ['3%', '-3%'],   y: ['2%', '-2%']  },  // idx 0: right→left, down→up
@@ -144,7 +132,7 @@ const SingleScrollScene: React.FC<{ img: string; idx: number }> = ({ img, idx })
         style={{ padding: '4vh 4vw' }}
         initial={{ scale: 1, x: pan.x[0], y: pan.y[0] }}
         animate={{ scale: 1.07, x: pan.x[1], y: pan.y[1] }}
-        transition={{ duration: SCENE_DURATION / 1000, ease: 'linear' }}
+        transition={{ duration: durationMs / 1000, ease: 'linear' }}
       >
         <img
           src={img}
@@ -164,43 +152,41 @@ const SingleScrollScene: React.FC<{ img: string; idx: number }> = ({ img, idx })
   );
 };
 
-// ── Scene list: correct product description + product photo pairs ────────────
-const SCENES: React.FC<{ idx: number }>[] = [
-  // Scene 0: cozy1 (description) + cozy2 (photo)
-  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy1} rightImg={IMAGES.cozy2} idx={idx} />,
-  // Scene 1: cozy3 — single image scroll
-  ({ idx }) => <SingleScrollScene img={IMAGES.cozy3} idx={idx} />,
-  // Scene 2: cozy4 (description) + cozy5 (photo)
-  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy4} rightImg={IMAGES.cozy5} idx={idx} />,
-  // Scene 3: cozy6 (description) + cozy7 (photo)
-  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy6} rightImg={IMAGES.cozy7} idx={idx} />,
-  // Scene 4: cozy8 (description) + cozy9 (photo)
-  ({ idx }) => <DualSlideScene leftImg={IMAGES.cozy8} rightImg={IMAGES.cozy9} idx={idx} />,
-  // Scene 5: cozy10 — single image scroll
-  ({ idx }) => <SingleScrollScene img={IMAGES.cozy10} idx={idx} />,
-  // Scene 6: cozy11 — single image scroll
-  ({ idx }) => <SingleScrollScene img={IMAGES.cozy11} idx={idx} />,
-  // Scene 7: cozy12 — single image scroll
-  ({ idx }) => <SingleScrollScene img={IMAGES.cozy12} idx={idx} />,
-  // Scene 8: cozy13 — single image scroll
-  ({ idx }) => <SingleScrollScene img={IMAGES.cozy13} idx={idx} />,
-];
+const SceneRenderer: React.FC<{
+  sceneIndex: number;
+  loopCount: number;
+  slides: ScreensaverSlideConfig[];
+}> = ({ sceneIndex, loopCount, slides }) => {
+  const totalScenes = slides.length;
+  const slide = slides[sceneIndex % totalScenes];
+  const idx = loopCount * totalScenes + sceneIndex;
+  const primaryImage = resolvePrimarySlideImage(slide);
+  const secondaryImage = resolveSecondarySlideImage(slide);
 
-// ── Scene renderer ───────────────────────────────────────────────────────────
+  if (slide.mode === 'dual' && secondaryImage) {
+    return <DualSlideScene leftImg={primaryImage} rightImg={secondaryImage} idx={idx} durationMs={slide.durationMs} />;
+  }
 
-const SceneRenderer: React.FC<{ sceneIndex: number; loopCount: number }> = ({ sceneIndex, loopCount }) => {
-  const SceneComponent = SCENES[sceneIndex % TOTAL_SCENES];
-  const idx = loopCount * TOTAL_SCENES + sceneIndex; // unique seed per iteration
-  return <SceneComponent idx={idx} />;
+  return <SingleScrollScene img={primaryImage} idx={idx} durationMs={slide.durationMs} />;
 };
 
 // ── Main Screensaver Component ───────────────────────────────────────────────
-export const Screensaver: React.FC<{ onWake: () => void }> = ({ onWake }) => {
+export const Screensaver: React.FC<{
+  onWake: () => void;
+  slides?: ScreensaverSlideConfig[];
+  previewRequest?: number;
+}> = ({ onWake, slides, previewRequest }) => {
   const [active, setActive] = useState(false);
   const [sceneIndex, setSceneIndex] = useState(0);
   const [loopCount, setLoopCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sceneTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sceneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const orderedSlides = useMemo(
+    () => normalizeScreensaverConfig(slides ?? createDefaultScreensaverSlides()),
+    [slides]
+  );
+  const currentSlide = orderedSlides[sceneIndex] ?? orderedSlides[0];
+  const totalScenes = orderedSlides.length;
 
   // ── Reset idle timer ───────────────────────────────────────────────────────
   const resetIdleTimer = useCallback(() => {
@@ -209,14 +195,14 @@ export const Screensaver: React.FC<{ onWake: () => void }> = ({ onWake }) => {
       setActive(true);
       setSceneIndex(0);
       setLoopCount(prev => prev + 1);
-    }, IDLE_TIMEOUT);
+    }, IDLE_TIMEOUT_MS);
   }, []);
 
   // ── Wake handler ───────────────────────────────────────────────────────────
   const wake = useCallback(() => {
     if (active) {
       setActive(false);
-      if (sceneTimerRef.current) clearInterval(sceneTimerRef.current);
+      if (sceneTimerRef.current) clearTimeout(sceneTimerRef.current);
       onWake();
     }
     resetIdleTimer();
@@ -236,32 +222,53 @@ export const Screensaver: React.FC<{ onWake: () => void }> = ({ onWake }) => {
     };
   }, [wake, resetIdleTimer]);
 
+  useEffect(() => {
+    if (!previewRequest) return;
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (sceneTimerRef.current) clearTimeout(sceneTimerRef.current);
+
+    setActive(true);
+    setSceneIndex(0);
+    setLoopCount(prev => prev + 1);
+  }, [previewRequest]);
+
   // ── Scene rotation ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!active) return;
-    sceneTimerRef.current = setInterval(() => {
+    if (!active || !currentSlide) return;
+    sceneTimerRef.current = setTimeout(() => {
       setSceneIndex(prev => {
         const next = prev + 1;
-        if (next >= TOTAL_SCENES) {
+        if (next >= totalScenes) {
           setLoopCount(lc => lc + 1);
           return 0;
         }
         return next;
       });
-    }, SCENE_DURATION);
+    }, currentSlide.durationMs);
 
     return () => {
-      if (sceneTimerRef.current) clearInterval(sceneTimerRef.current);
+      if (sceneTimerRef.current) clearTimeout(sceneTimerRef.current);
     };
-  }, [active]);
+  }, [active, currentSlide, totalScenes]);
+
+  useEffect(() => {
+    if (sceneIndex < totalScenes) return;
+    setSceneIndex(0);
+  }, [sceneIndex, totalScenes]);
 
   // ── Preload images on mount ────────────────────────────────────────────────
   useEffect(() => {
-    Object.values(IMAGES).forEach(src => {
+    orderedSlides.flatMap((slide) => {
+      const urls = [resolvePrimarySlideImage(slide)];
+      const secondaryImage = resolveSecondarySlideImage(slide);
+      if (secondaryImage) urls.push(secondaryImage);
+      return urls;
+    }).forEach(src => {
       const img = new Image();
       img.src = src;
     });
-  }, []);
+  }, [orderedSlides]);
 
   return (
     <AnimatePresence>
@@ -286,7 +293,7 @@ export const Screensaver: React.FC<{ onWake: () => void }> = ({ onWake }) => {
               transition={{ duration: 1.0 }}
               className="absolute inset-0"
             >
-              <SceneRenderer sceneIndex={sceneIndex} loopCount={loopCount} />
+              <SceneRenderer sceneIndex={sceneIndex} loopCount={loopCount} slides={orderedSlides} />
             </motion.div>
           </AnimatePresence>
 

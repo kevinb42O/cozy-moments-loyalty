@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Betalingsbewijs Bundeldeal Cozy Moments</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 14mm;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f5f5f0;
+        color: #1f2937;
+        font-family: "Segoe UI", Arial, sans-serif;
+      }
+
+      .page {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        padding: 10mm;
+        background: #fff;
+      }
+
+      .note {
+        text-align: center;
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 10px;
+      }
+
+      .receipt {
+        border: 2px solid #7b5a2e;
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 16px;
+      }
+
+      .receipt:last-child {
+        margin-bottom: 0;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 27px;
+        letter-spacing: 0.04em;
+      }
+
+      h2 {
+        margin: 4px 0 14px;
+        font-size: 16px;
+        color: #7b5a2e;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f6efe3;
+        color: #7b5a2e;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .card {
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      .label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6b7280;
+      }
+
+      .value {
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0 14px;
+      }
+
+      th, td {
+        border: 1px solid #d1d5db;
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+        font-size: 13px;
+      }
+
+      th {
+        background: #f9fafb;
+      }
+
+      .totals {
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .price-box {
+        border: 2px solid #7b5a2e;
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
+      }
+
+      .price-box .small {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6b7280;
+      }
+
+      .price-box .big {
+        margin-top: 6px;
+        font-size: 36px;
+        font-weight: 800;
+        color: #111827;
+      }
+
+      .deal {
+        background: #faf7f2;
+      }
+
+      .line {
+        border-bottom: 1px solid #9ca3af;
+        min-height: 24px;
+        margin-top: 10px;
+      }
+
+      .signatures {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .divider {
+        border-top: 2px dashed #9ca3af;
+        margin: 16px 0;
+      }
+
+      .muted {
+        color: #6b7280;
+        font-size: 12px;
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+
+        .page {
+          width: auto;
+          min-height: auto;
+          margin: 0;
+          padding: 0;
+        }
+
+        .note {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="note">Open dit bestand in je browser en druk af via Ctrl+P.</div>
+
+      <section class="receipt">
+        <div class="badge">Bundeldeal - Loyaliteit + Website</div>
+        <h1>BETALINGSBEWIJS</h1>
+        <h2>Cozy Moments totaalpakket</h2>
+
+        <div class="grid">
+          <div class="card">
+            <span class="label">Ontvangen door</span>
+            <div class="value">
+              <strong>WebAanZee</strong><br />
+              Kevin Bourguignon<br />
+              J. vande Puttelaan 34, 8370 Blankenberge<br />
+              kevin@webaanzee.be<br />
+              0494 81 67 14<br />
+              www.webaanzee.be
+            </div>
+          </div>
+
+          <div class="card">
+            <span class="label">Ontvangen van</span>
+            <div class="value">
+              <strong>Cozy Moments</strong><br />
+              Naam contactpersoon: ______________________<br />
+              Adres: _________________________________<br />
+              ______________________________________
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Onderdeel</th>
+              <th>Normale prijs</th>
+              <th>Deal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Loyaliteitssysteem inclusief volledig eerste jaar</td>
+              <td>€ 495,00</td>
+              <td>€ 495,00</td>
+            </tr>
+            <tr>
+              <td>Website</td>
+              <td>€ 450,00</td>
+              <td>€ 400,00</td>
+            </tr>
+            <tr>
+              <td>Website service / onderhoud eerste jaar</td>
+              <td>€ 20,00 per maand x 12 = € 240,00</td>
+              <td>€ 0,00 in het eerste jaar</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <div class="card deal">
+            <span class="label">Dealvoordeel</span>
+            <div class="value">
+              Bij aankoop van het loyaliteitssysteem en de website in één pakket krijgt Cozy Moments:
+              <br /><br />
+              - € 50,00 korting op de website<br />
+              - volledige kwijtschelding van € 20,00 per maand websitekost gedurende het eerste jaar<br /><br />
+              <strong>Totale commerciële meerwaarde eerste jaar: € 290,00</strong>
+            </div>
+          </div>
+
+          <div class="price-box">
+            <div class="small">Ontvangen bedrag</div>
+            <div class="big">€ 895,00</div>
+            <div class="muted">contant betaald</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <span class="label">Betaaldatum</span>
+            <div class="value">____ / ____ / ________</div>
+          </div>
+
+          <div class="card">
+            <span class="label">Plaats</span>
+            <div class="value">Blankenberge</div>
+          </div>
+
+          <div class="card">
+            <span class="label">Referentie</span>
+            <div class="value">Bundeldeal Cozy Moments - loyaliteitssysteem + website</div>
+          </div>
+
+          <div class="card">
+            <span class="label">Betaalwijze</span>
+            <div class="value">Contant</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <span class="label">Opmerking</span>
+          <div class="value">
+            Dit document bevestigt de ontvangst van de contante betaling voor het totaalpakket van Cozy Moments,
+            bestaande uit het loyaliteitssysteem inclusief volledig eerste jaar en de website aan bundelprijs.
+            De normale websitekost van € 20,00 per maand wordt volledig kwijtgescholden voor het eerste jaar.
+            Vanaf het tweede jaar gelden opnieuw de standaard verlengings- en onderhoudstarieven, tenzij later anders schriftelijk overeengekomen.
+          </div>
+        </div>
+
+        <div class="signatures">
+          <div class="card">
+            <span class="label">Handtekening ontvanger</span>
+            <div class="line"></div>
+            <div class="muted">Kevin Bourguignon - WebAanZee</div>
+          </div>
+
+          <div class="card">
+            <span class="label">Handtekening betaler</span>
+            <div class="line"></div>
+            <div class="muted">Namens Cozy Moments</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="receipt">
+        <div class="badge">Kopie voor klant</div>
+        <h1>BETALINGSBEWIJS</h1>
+        <h2>Cozy Moments totaalpakket</h2>
+
+        <div class="grid">
+          <div class="card">
+            <span class="label">Ontvangen door</span>
+            <div class="value">
+              <strong>WebAanZee</strong><br />
+              Kevin Bourguignon<br />
+              J. vande Puttelaan 34, 8370 Blankenberge<br />
+              kevin@webaanzee.be<br />
+              0494 81 67 14<br />
+              www.webaanzee.be
+            </div>
+          </div>
+
+          <div class="card">
+            <span class="label">Ontvangen van</span>
+            <div class="value">
+              <strong>Cozy Moments</strong><br />
+              Naam contactpersoon: ______________________<br />
+              Adres: _________________________________<br />
+              ______________________________________
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Onderdeel</th>
+              <th>Normale prijs</th>
+              <th>Deal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Loyaliteitssysteem inclusief volledig eerste jaar</td>
+              <td>€ 495,00</td>
+              <td>€ 495,00</td>
+            </tr>
+            <tr>
+              <td>Website</td>
+              <td>€ 450,00</td>
+              <td>€ 400,00</td>
+            </tr>
+            <tr>
+              <td>Website service / onderhoud eerste jaar</td>
+              <td>€ 20,00 per maand x 12 = € 240,00</td>
+              <td>€ 0,00 in het eerste jaar</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <div class="card deal">
+            <span class="label">Dealvoordeel</span>
+            <div class="value">
+              Bundelvoordeel voor Cozy Moments:
+              <br /><br />
+              - € 50,00 directe korting op de website<br />
+              - € 240,00 websitekost kwijtgescholden in het eerste jaar<br /><br />
+              <strong>Totaal voordeel: € 290,00</strong>
+            </div>
+          </div>
+
+          <div class="price-box">
+            <div class="small">Ontvangen bedrag</div>
+            <div class="big">€ 895,00</div>
+            <div class="muted">contant betaald</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <span class="label">Betaaldatum</span>
+            <div class="value">____ / ____ / ________</div>
+          </div>
+
+          <div class="card">
+            <span class="label">Plaats</span>
+            <div class="value">Blankenberge</div>
+          </div>
+
+          <div class="card">
+            <span class="label">Referentie</span>
+            <div class="value">Bundeldeal Cozy Moments - loyaliteitssysteem + website</div>
+          </div>
+
+          <div class="card">
+            <span class="label">Betaalwijze</span>
+            <div class="value">Contant</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <span class="label">Opmerking</span>
+          <div class="value">
+            Dit betalingsbewijs bevestigt de ontvangst van de bundelbetaling voor het loyaliteitssysteem en de website.
+            Het eerste jaar websitekost van € 20,00 per maand wordt volledig kwijtgescholden binnen deze deal.
+          </div>
+        </div>
+
+        <div class="signatures">
+          <div class="card">
+            <span class="label">Handtekening ontvanger</span>
+            <div class="line"></div>
+            <div class="muted">Kevin Bourguignon - WebAanZee</div>
+          </div>
+
+          <div class="card">
+            <span class="label">Handtekening betaler</span>
+            <div class="line"></div>
+            <div class="muted">Namens Cozy Moments</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

@@ -102,132 +102,143 @@ export const CustomerPage: React.FC = () => {
     }
   }, [currentCustomer]);
 
+  /* ─── Liquid gyro / tilt engine ───
+   *
+   * Outputs two CSS custom properties on the dashboard container:
+   *   --cozy-liquid-tilt-deg   → rotation of the liquid surface (max ±14deg)
+   *   --cozy-liquid-shift-pct  → horizontal displacement of the surface (max ±18%)
+   *
+   * On Android the DeviceOrientationEvent fires automatically (no permission prompt).
+   * On iOS 13+ we request permission on the first user gesture.
+   * Desktop/fallback: pointer/touch position maps to tilt.
+   */
   useEffect(() => {
     if (!dashboardRef.current) return;
     const host = dashboardRef.current;
 
-    // Default CSS vars keep the liquid stable when motion sensors are unavailable.
-    host.style.setProperty('--cozy-liquid-gyro-x', '0px');
-    host.style.setProperty('--cozy-liquid-gyro-y', '0px');
+    // Sane defaults — no movement
+    host.style.setProperty('--cozy-liquid-tilt-deg', '0deg');
+    host.style.setProperty('--cozy-liquid-shift-pct', '0%');
 
     if (typeof window === 'undefined') return;
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
 
     let active = true;
-    let listening = false;
+    let gyroActive = false;
     let rafId = 0;
 
-    let targetX = 0;
-    let targetY = 0;
-    let currentX = 0;
-    let currentY = 0;
+    // Target = where sensor says we should be. Current = smoothed value.
+    let targetTiltDeg = 0;   // rotation in degrees
+    let targetShiftPct = 0;  // horizontal shift in %
+    let currentTiltDeg = 0;
+    let currentShiftPct = 0;
 
-    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+    // Smoothing factor — higher = snappier, lower = smoother. 0.08 is ~60fps smooth.
+    const SMOOTHING = 0.1;
 
-    const onOrientation = (event: DeviceOrientationEvent) => {
-      const gamma = typeof event.gamma === 'number' ? event.gamma : 0;
-      const beta = typeof event.beta === 'number' ? event.beta : 0;
+    // How much the liquid reacts: max 14° tilt, max 18% horizontal shift.
+    const MAX_TILT_DEG = 14;
+    const MAX_SHIFT_PCT = 18;
 
-      const normalizedX = clamp(gamma / 34, -1, 1);
-      const normalizedY = clamp(beta / 48, -1, 1);
-      targetX = normalizedX * 10;
-      targetY = normalizedY * 6;
+    const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+    /* --- Gyroscope handler (Android + iOS) --- */
+    const onOrientation = (e: DeviceOrientationEvent) => {
+      // gamma = left/right tilt (-90..90), beta = front/back tilt (-180..180)
+      // When phone is held portrait, gamma is the side-tilt we want for liquid.
+      const gamma = typeof e.gamma === 'number' ? e.gamma : 0;
+
+      // Map gamma directly to tilt degrees.
+      // gamma of ±45 should give max tilt. Clamp so we never exceed MAX.
+      targetTiltDeg = clamp(-gamma * (MAX_TILT_DEG / 45), -MAX_TILT_DEG, MAX_TILT_DEG);
+      targetShiftPct = clamp(-gamma * (MAX_SHIFT_PCT / 45), -MAX_SHIFT_PCT, MAX_SHIFT_PCT);
     };
 
-    const applyPointerTilt = (clientX: number, clientY: number) => {
+    /* --- Pointer / touch fallback (desktop & when gyro unavailable) --- */
+    const applyPointerTilt = (clientX: number, _clientY: number) => {
+      if (gyroActive) return; // gyro takes priority
       const rect = host.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-
-      const relX = (clientX - rect.left) / rect.width;
-      const relY = (clientY - rect.top) / rect.height;
-      const normX = clamp((relX - 0.5) * 2, -1, 1);
-      const normY = clamp((relY - 0.5) * 2, -1, 1);
-
-      targetX = normX * 8;
-      targetY = normY * 4;
+      if (!rect.width) return;
+      // -1 (left edge) to +1 (right edge)
+      const norm = clamp(((clientX - rect.left) / rect.width - 0.5) * 2, -1, 1);
+      targetTiltDeg = norm * MAX_TILT_DEG * 0.7;
+      targetShiftPct = norm * MAX_SHIFT_PCT * 0.7;
     };
 
-    const onPointerMove = (event: PointerEvent) => {
-      applyPointerTilt(event.clientX, event.clientY);
+    const onPointerMove = (e: PointerEvent) => applyPointerTilt(e.clientX, e.clientY);
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (t) applyPointerTilt(t.clientX, t.clientY);
     };
+    const resetTilt = () => { targetTiltDeg = 0; targetShiftPct = 0; };
 
-    const onTouchMove = (event: TouchEvent) => {
-      const touch = event.touches?.[0];
-      if (!touch) return;
-      applyPointerTilt(touch.clientX, touch.clientY);
-    };
-
-    const resetTilt = () => {
-      targetX = 0;
-      targetY = 0;
-    };
-
-    const startListening = () => {
-      if (listening || !active) return;
+    /* --- Start gyro listener --- */
+    const startGyro = () => {
+      if (gyroActive || !active) return;
       window.addEventListener('deviceorientation', onOrientation, true);
-      listening = true;
+      gyroActive = true;
     };
 
-    const requestMotionPermissionIfNeeded = async () => {
+    const requestGyroPermission = async () => {
       try {
-        const OrientationCtor = window.DeviceOrientationEvent as any;
-        if (!OrientationCtor) return;
-        if (typeof OrientationCtor?.requestPermission === 'function') {
-          const permission = await OrientationCtor.requestPermission();
-          if (permission === 'granted') startListening();
+        const Ctor = window.DeviceOrientationEvent as any;
+        if (!Ctor) return;
+        if (typeof Ctor.requestPermission === 'function') {
+          // iOS 13+ — needs user gesture
+          const perm = await Ctor.requestPermission();
+          if (perm === 'granted') startGyro();
           return;
         }
-        startListening();
-      } catch {
-        // Silent fallback: leave gyro disabled, no crashes/no UI errors.
-      }
+        // Android / non-iOS — just start
+        startGyro();
+      } catch { /* silent fail */ }
     };
 
-    // Non-iOS usually starts immediately; iOS will prompt on first user gesture.
-    void requestMotionPermissionIfNeeded();
+    // Try immediately (works on Android); iOS will catch up on gesture.
+    void requestGyroPermission();
 
-    const enableOnGesture = () => {
-      void requestMotionPermissionIfNeeded();
-    };
+    const onGesture = () => void requestGyroPermission();
+    window.addEventListener('pointerdown', onGesture, { passive: true });
+    window.addEventListener('touchstart', onGesture, { passive: true });
 
-    window.addEventListener('pointerdown', enableOnGesture, { passive: true });
-    window.addEventListener('touchstart', enableOnGesture, { passive: true });
+    // Pointer/touch fallback listeners
     host.addEventListener('pointermove', onPointerMove, { passive: true });
     host.addEventListener('touchmove', onTouchMove, { passive: true });
     host.addEventListener('pointerleave', resetTilt, { passive: true });
     host.addEventListener('touchend', resetTilt, { passive: true });
     host.addEventListener('touchcancel', resetTilt, { passive: true });
 
+    /* --- 60fps render loop --- */
     const tick = () => {
       if (!active) return;
 
-      currentX += (targetX - currentX) * 0.12;
-      currentY += (targetY - currentY) * 0.12;
+      currentTiltDeg += (targetTiltDeg - currentTiltDeg) * SMOOTHING;
+      currentShiftPct += (targetShiftPct - currentShiftPct) * SMOOTHING;
 
-      const x = Math.abs(currentX) < 0.05 ? 0 : currentX;
-      const y = Math.abs(currentY) < 0.05 ? 0 : currentY;
+      // Snap to zero when very small to avoid sub-pixel jitter
+      const tilt = Math.abs(currentTiltDeg) < 0.08 ? 0 : currentTiltDeg;
+      const shift = Math.abs(currentShiftPct) < 0.08 ? 0 : currentShiftPct;
 
-      host.style.setProperty('--cozy-liquid-gyro-x', `${x.toFixed(2)}px`);
-      host.style.setProperty('--cozy-liquid-gyro-y', `${y.toFixed(2)}px`);
+      host.style.setProperty('--cozy-liquid-tilt-deg', `${tilt.toFixed(2)}deg`);
+      host.style.setProperty('--cozy-liquid-shift-pct', `${shift.toFixed(2)}%`);
 
-      rafId = window.requestAnimationFrame(tick);
+      rafId = requestAnimationFrame(tick);
     };
-
-    rafId = window.requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
 
     return () => {
       active = false;
-      if (rafId) window.cancelAnimationFrame(rafId);
-      if (listening) window.removeEventListener('deviceorientation', onOrientation, true);
-      window.removeEventListener('pointerdown', enableOnGesture);
-      window.removeEventListener('touchstart', enableOnGesture);
+      cancelAnimationFrame(rafId);
+      if (gyroActive) window.removeEventListener('deviceorientation', onOrientation, true);
+      window.removeEventListener('pointerdown', onGesture);
+      window.removeEventListener('touchstart', onGesture);
       host.removeEventListener('pointermove', onPointerMove);
       host.removeEventListener('touchmove', onTouchMove);
       host.removeEventListener('pointerleave', resetTilt);
       host.removeEventListener('touchend', resetTilt);
       host.removeEventListener('touchcancel', resetTilt);
-      host.style.setProperty('--cozy-liquid-gyro-x', '0px');
-      host.style.setProperty('--cozy-liquid-gyro-y', '0px');
+      host.style.setProperty('--cozy-liquid-tilt-deg', '0deg');
+      host.style.setProperty('--cozy-liquid-shift-pct', '0%');
     };
   }, []);
 

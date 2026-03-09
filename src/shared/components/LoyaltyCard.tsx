@@ -160,11 +160,19 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
             height: `${fillPercent}%`,
             transitionDuration: slowFillMode ? '1650ms' : '450ms',
             transitionTimingFunction: slowFillMode ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'ease-out',
-            transform: 'translate3d(var(--cozy-liquid-gyro-x, 0px), calc(var(--cozy-liquid-gyro-y, 0px) * -0.45), 0)',
             background: `linear-gradient(180deg, ${config.accent}30 0%, ${config.accent}52 100%)`,
           }}
         >
-          <div className={cn('absolute inset-0', hasLiquid && 'loyalty-liquid-slosh')}>
+          {/* Inner surface layer — gyro tilts and shifts the wave surface, NOT the fill container */}
+          <div
+            className={cn('absolute inset-0 loyalty-liquid-surface', hasLiquid && 'loyalty-liquid-slosh')}
+            style={{
+              transform: [
+                'rotate(var(--cozy-liquid-tilt-deg, 0deg))',
+                'translateX(var(--cozy-liquid-shift-pct, 0%))',
+              ].join(' '),
+            }}
+          >
             <div
               className="loyalty-liquid-wave loyalty-liquid-wave-a"
               style={{ background: `linear-gradient(180deg, ${config.accent}75 0%, ${config.accent}3a 100%)` }}

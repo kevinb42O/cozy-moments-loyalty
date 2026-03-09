@@ -723,6 +723,13 @@ export const BusinessPage: React.FC = () => {
     });
   }, [historyFilter, historySearch, transactions]);
 
+  const selectedCorrectionCustomer = useMemo(
+    () => customers.find(customer => customer.id === selectedCorrectionCustomerId) ?? null,
+    [customers, selectedCorrectionCustomerId],
+  );
+
+  const correctionControlEnabled = selectedCorrectionCustomer !== null;
+
   const sortedCustomers = useMemo(
     () => [...customers].sort((left, right) => {
       const tierRankDelta = getLoyaltyTierRank(right.loyaltyTier) - getLoyaltyTierRank(left.loyaltyTier);
@@ -1897,7 +1904,11 @@ export const BusinessPage: React.FC = () => {
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Klant</label>
                   <select
                     value={selectedCorrectionCustomerId}
-                    onChange={(event) => setSelectedCorrectionCustomerId(event.target.value)}
+                    onChange={(event) => {
+                      setSelectedCorrectionCustomerId(event.target.value);
+                      setCorrectionError(null);
+                      setCorrectionSuccess(null);
+                    }}
                     className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm text-[var(--color-cozy-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)]"
                   >
                     <option value="">Kies een klant…</option>
@@ -1908,6 +1919,26 @@ export const BusinessPage: React.FC = () => {
                     ))}
                   </select>
                 </div>
+
+                {selectedCorrectionCustomer && (
+                  <div className="rounded-[24px] border border-[var(--color-cozy-olive)]/15 bg-[var(--color-cozy-olive)]/5 px-4 py-4 space-y-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Huidige klantstatus</p>
+                      <p className="text-base font-display font-bold text-[var(--color-cozy-text)]">{selectedCorrectionCustomer.name}</p>
+                      <p className="text-sm text-gray-500">{selectedCorrectionCustomer.email || 'Geen e-mail'} • {selectedCorrectionCustomer.totalVisits} bezoeken</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 sm:grid-cols-4">
+                      {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
+                        <div key={`current-status-${type}`} className="rounded-2xl bg-white/80 px-3 py-2">
+                          <p className="font-medium text-[var(--color-cozy-text)]">{cardTypeLabels[type]}</p>
+                          <p>Kaart: {selectedCorrectionCustomer.cards[type]}</p>
+                          <p>Beloningen: {selectedCorrectionCustomer.rewards[type]}</p>
+                          <p>Ingewisseld: {selectedCorrectionCustomer.claimedRewards[type]}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Reden</label>
@@ -1930,8 +1961,12 @@ export const BusinessPage: React.FC = () => {
                       key={`stamp-${type}`}
                       label={cardTypeLabels[type]}
                       value={correctionStamps[type]}
+                      baseValue={selectedCorrectionCustomer?.cards[type] ?? 0}
                       onChange={(value) => changeCorrectionRecord('stamps', type, value)}
                       accent="olive"
+                      minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.cards[type] : undefined}
+                      maxValue={selectedCorrectionCustomer ? 9 - selectedCorrectionCustomer.cards[type] : undefined}
+                      disabled={!correctionControlEnabled}
                     />
                   ))}
                 </div>
@@ -1943,8 +1978,11 @@ export const BusinessPage: React.FC = () => {
                       key={`reward-${type}`}
                       label={cardTypeLabels[type]}
                       value={correctionRewards[type]}
+                      baseValue={selectedCorrectionCustomer?.rewards[type] ?? 0}
                       onChange={(value) => changeCorrectionRecord('rewards', type, value)}
                       accent="amber"
+                      minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.rewards[type] : undefined}
+                      disabled={!correctionControlEnabled}
                     />
                   ))}
                 </div>
@@ -1956,8 +1994,11 @@ export const BusinessPage: React.FC = () => {
                       key={`claimed-${type}`}
                       label={cardTypeLabels[type]}
                       value={correctionClaimed[type]}
+                      baseValue={selectedCorrectionCustomer?.claimedRewards[type] ?? 0}
                       onChange={(value) => changeCorrectionRecord('claimed', type, value)}
                       accent="rose"
+                      minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.claimedRewards[type] : undefined}
+                      disabled={!correctionControlEnabled}
                     />
                   ))}
                 </div>
@@ -1967,8 +2008,11 @@ export const BusinessPage: React.FC = () => {
                   <DeltaControl
                     label="Totaal bezoeken"
                     value={correctionVisitDelta}
+                    baseValue={selectedCorrectionCustomer?.totalVisits ?? 0}
                     onChange={setCorrectionVisitDelta}
                     accent="blue"
+                    minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.totalVisits : undefined}
+                    disabled={!correctionControlEnabled}
                   />
                 </div>
 
@@ -2306,6 +2350,10 @@ interface DeltaControlProps {
   value: number;
   onChange: (value: number) => void;
   accent: 'olive' | 'amber' | 'rose' | 'blue';
+  baseValue?: number;
+  minValue?: number;
+  maxValue?: number;
+  disabled?: boolean;
 }
 
 const deltaAccentClass: Record<DeltaControlProps['accent'], string> = {
@@ -2315,28 +2363,73 @@ const deltaAccentClass: Record<DeltaControlProps['accent'], string> = {
   blue: 'bg-blue-50 text-blue-800',
 };
 
-const DeltaControl: React.FC<DeltaControlProps> = ({ label, value, onChange, accent }) => {
+const deltaAccentBorderClass: Record<DeltaControlProps['accent'], string> = {
+  olive: 'border-[var(--color-cozy-olive)]/15',
+  amber: 'border-amber-200/70',
+  rose: 'border-rose-200/70',
+  blue: 'border-blue-200/70',
+};
+
+const DeltaControl: React.FC<DeltaControlProps> = ({
+  label,
+  value,
+  onChange,
+  accent,
+  baseValue,
+  minValue,
+  maxValue,
+  disabled = false,
+}) => {
+  const displayValue = baseValue ?? value;
+  const effectiveValue = baseValue !== undefined ? baseValue + value : value;
+  const changeText = value === 0 ? 'Geen wijziging' : `Wijziging ${value > 0 ? `+${value}` : value}`;
+  const helperText = baseValue !== undefined ? 'Min = terugdraaien, plus = toevoegen' : 'Negatief = terugdraaien, positief = toevoegen';
+  const canDecrease = !disabled && (minValue === undefined || value > minValue);
+  const canIncrease = !disabled && (maxValue === undefined || value < maxValue);
+
+  const updateValue = (nextValue: number) => {
+    const clampedValue = Math.max(minValue ?? Number.NEGATIVE_INFINITY, Math.min(maxValue ?? Number.POSITIVE_INFINITY, nextValue));
+    onChange(clampedValue);
+  };
+
   return (
-    <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+    <div className={cn(
+      'bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between gap-3',
+      disabled && 'opacity-60'
+    )}>
       <div>
         <p className="text-sm font-medium text-[var(--color-cozy-text)]">{label}</p>
-        <p className="text-[11px] text-gray-400">Negatief = terugdraaien, positief = toevoegen</p>
+        <p className="text-[11px] text-gray-400">{helperText}</p>
       </div>
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => onChange(value - 1)}
-          className="w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-transform"
+          onClick={() => updateValue(value - 1)}
+          disabled={!canDecrease}
+          className="w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-transform disabled:opacity-40 disabled:hover:bg-white disabled:active:scale-100"
         >
           <Minus size={16} />
         </button>
-        <span className={cn('min-w-[68px] rounded-full px-3 py-1.5 text-center font-mono text-sm font-bold', deltaAccentClass[accent])}>
-          {value > 0 ? `+${value}` : value}
-        </span>
+        <div className="min-w-[110px] space-y-1 text-center">
+          <span className={cn(
+            'block rounded-full border bg-white px-3 py-1.5 font-mono text-sm font-bold text-[var(--color-cozy-text)]',
+            deltaAccentBorderClass[accent],
+          )}>
+            {effectiveValue}
+          </span>
+          <span className={cn(
+            'block rounded-full px-3 py-1 text-[11px] font-semibold',
+            deltaAccentClass[accent],
+            value === 0 && 'bg-gray-100 text-gray-500',
+          )}>
+            {changeText}
+          </span>
+        </div>
         <button
           type="button"
-          onClick={() => onChange(value + 1)}
-          className="w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-transform"
+          onClick={() => updateValue(value + 1)}
+          disabled={!canIncrease}
+          className="w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-transform disabled:opacity-40 disabled:hover:bg-white disabled:active:scale-100"
         >
           <Plus size={16} />
         </button>

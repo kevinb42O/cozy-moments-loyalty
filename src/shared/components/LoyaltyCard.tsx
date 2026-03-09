@@ -83,6 +83,7 @@ function getMotivationText(count: number, type: string): string {
 export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStampPositions }) => {
   const config = cardConfig[type];
   const Icon = config.icon;
+  const fillPercent = Math.max(0, Math.min(100, (count / 10) * 100));
 
   return (
     <div
@@ -94,10 +95,29 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
         border: '1px solid rgba(255,255,255,0.9)',
       }}
     >
+      {/* Liquid fill layer (background only) */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div
+          className="absolute inset-x-0 bottom-0 overflow-hidden transition-[height] duration-500 ease-out loyalty-liquid-fill"
+          style={{
+            height: `${fillPercent}%`,
+            background: `linear-gradient(180deg, ${config.accent}22 0%, ${config.accent}38 100%)`,
+          }}
+        >
+          <div
+            className="loyalty-liquid-wave loyalty-liquid-wave-a"
+            style={{ background: `linear-gradient(180deg, ${config.accent}4a 0%, ${config.accent}28 100%)` }}
+          />
+          <div
+            className="loyalty-liquid-wave loyalty-liquid-wave-b"
+            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 100%)' }}
+          />
+        </div>
+      </div>
 
       {/* Top-right light sheen */}
       <div
-        className="absolute -top-8 -right-8 w-36 h-36 rounded-full opacity-50 pointer-events-none"
+        className="absolute -top-8 -right-8 w-36 h-36 rounded-full opacity-50 pointer-events-none z-[1]"
         style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.85) 0%, transparent 70%)' }}
       />
 

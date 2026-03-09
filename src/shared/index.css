@@ -107,3 +107,48 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .admin-theme-dark [class*="shadow-"] {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32) !important;
 }
+
+.loyalty-liquid-fill {
+  will-change: height;
+}
+
+.loyalty-liquid-wave {
+  position: absolute;
+  left: -35%;
+  width: 170%;
+  height: 22px;
+  top: -12px;
+  border-radius: 44%;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+.loyalty-liquid-wave-a {
+  animation: loyaltyWaveDrift 8s linear infinite;
+  opacity: 0.85;
+}
+
+.loyalty-liquid-wave-b {
+  animation: loyaltyWaveDrift 11s linear infinite reverse;
+  opacity: 0.55;
+  top: -15px;
+}
+
+@keyframes loyaltyWaveDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(7%, 1px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loyalty-liquid-wave-a,
+  .loyalty-liquid-wave-b {
+    animation: none;
+  }
+}

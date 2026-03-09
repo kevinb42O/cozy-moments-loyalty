@@ -98,6 +98,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
   const [displayCount, setDisplayCount] = useState(shouldAnimateFromPrevious ? clampedFromCount : clampedCount);
   const [slowFillMode, setSlowFillMode] = useState(false);
   const playedInitialTransitionRef = useRef(false);
+  const hasLiquid = displayCount > 0;
 
   useEffect(() => {
     if (shouldAnimateFromPrevious && !playedInitialTransitionRef.current) {
@@ -163,14 +164,16 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
             background: `linear-gradient(180deg, ${config.accent}30 0%, ${config.accent}52 100%)`,
           }}
         >
-          <div
-            className="loyalty-liquid-wave loyalty-liquid-wave-a"
-            style={{ background: `linear-gradient(180deg, ${config.accent}75 0%, ${config.accent}3a 100%)` }}
-          />
-          <div
-            className="loyalty-liquid-wave loyalty-liquid-wave-b"
-            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 100%)' }}
-          />
+          <div className={cn('absolute inset-0', hasLiquid && 'loyalty-liquid-slosh')}>
+            <div
+              className="loyalty-liquid-wave loyalty-liquid-wave-a"
+              style={{ background: `linear-gradient(180deg, ${config.accent}75 0%, ${config.accent}3a 100%)` }}
+            />
+            <div
+              className="loyalty-liquid-wave loyalty-liquid-wave-b"
+              style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 100%)' }}
+            />
+          </div>
         </div>
       </div>
 

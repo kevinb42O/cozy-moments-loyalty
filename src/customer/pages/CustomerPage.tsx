@@ -110,7 +110,7 @@ export const CustomerPage: React.FC = () => {
     host.style.setProperty('--cozy-liquid-gyro-x', '0px');
     host.style.setProperty('--cozy-liquid-gyro-y', '0px');
 
-    if (typeof window === 'undefined' || !('DeviceOrientationEvent' in window)) return;
+    if (typeof window === 'undefined') return;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     let active = true;
@@ -128,11 +128,38 @@ export const CustomerPage: React.FC = () => {
       const gamma = typeof event.gamma === 'number' ? event.gamma : 0;
       const beta = typeof event.beta === 'number' ? event.beta : 0;
 
-      // Keep movement subtle so text/readability and FPS stay stable.
-      const normalizedX = clamp(gamma / 38, -1, 1);
-      const normalizedY = clamp(beta / 55, -1, 1);
-      targetX = normalizedX * 8;
-      targetY = normalizedY * 4;
+      const normalizedX = clamp(gamma / 34, -1, 1);
+      const normalizedY = clamp(beta / 48, -1, 1);
+      targetX = normalizedX * 10;
+      targetY = normalizedY * 6;
+    };
+
+    const applyPointerTilt = (clientX: number, clientY: number) => {
+      const rect = host.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const relX = (clientX - rect.left) / rect.width;
+      const relY = (clientY - rect.top) / rect.height;
+      const normX = clamp((relX - 0.5) * 2, -1, 1);
+      const normY = clamp((relY - 0.5) * 2, -1, 1);
+
+      targetX = normX * 8;
+      targetY = normY * 4;
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      applyPointerTilt(event.clientX, event.clientY);
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      const touch = event.touches?.[0];
+      if (!touch) return;
+      applyPointerTilt(touch.clientX, touch.clientY);
+    };
+
+    const resetTilt = () => {
+      targetX = 0;
+      targetY = 0;
     };
 
     const startListening = () => {
@@ -144,6 +171,7 @@ export const CustomerPage: React.FC = () => {
     const requestMotionPermissionIfNeeded = async () => {
       try {
         const OrientationCtor = window.DeviceOrientationEvent as any;
+        if (!OrientationCtor) return;
         if (typeof OrientationCtor?.requestPermission === 'function') {
           const permission = await OrientationCtor.requestPermission();
           if (permission === 'granted') startListening();
@@ -164,6 +192,11 @@ export const CustomerPage: React.FC = () => {
 
     window.addEventListener('pointerdown', enableOnGesture, { passive: true });
     window.addEventListener('touchstart', enableOnGesture, { passive: true });
+    host.addEventListener('pointermove', onPointerMove, { passive: true });
+    host.addEventListener('touchmove', onTouchMove, { passive: true });
+    host.addEventListener('pointerleave', resetTilt, { passive: true });
+    host.addEventListener('touchend', resetTilt, { passive: true });
+    host.addEventListener('touchcancel', resetTilt, { passive: true });
 
     const tick = () => {
       if (!active) return;
@@ -188,6 +221,11 @@ export const CustomerPage: React.FC = () => {
       if (listening) window.removeEventListener('deviceorientation', onOrientation, true);
       window.removeEventListener('pointerdown', enableOnGesture);
       window.removeEventListener('touchstart', enableOnGesture);
+      host.removeEventListener('pointermove', onPointerMove);
+      host.removeEventListener('touchmove', onTouchMove);
+      host.removeEventListener('pointerleave', resetTilt);
+      host.removeEventListener('touchend', resetTilt);
+      host.removeEventListener('touchcancel', resetTilt);
       host.style.setProperty('--cozy-liquid-gyro-x', '0px');
       host.style.setProperty('--cozy-liquid-gyro-y', '0px');
     };

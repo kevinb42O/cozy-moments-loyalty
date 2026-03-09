@@ -134,6 +134,12 @@ h1, h2, h3, h4, h5, h6, .font-display {
   top: -15px;
 }
 
+.loyalty-liquid-slosh {
+  animation: loyaltyLiquidSlosh 5.8s ease-in-out infinite;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
 @keyframes loyaltyWaveDrift {
   0% {
     transform: translate3d(0, 0, 0);
@@ -146,9 +152,28 @@ h1, h2, h3, h4, h5, h6, .font-display {
   }
 }
 
+@keyframes loyaltyLiquidSlosh {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate3d(0.6px, -0.2px, 0) rotate(0.22deg);
+  }
+  50% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  75% {
+    transform: translate3d(-0.6px, 0.2px, 0) rotate(-0.22deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .loyalty-liquid-wave-a,
-  .loyalty-liquid-wave-b {
+  .loyalty-liquid-wave-b,
+  .loyalty-liquid-slosh {
     animation: none;
   }
 }

@@ -1,120 +1,202 @@
-﻿# Cozy Moments — Digital Loyalty App
+# Cozy Moments Loyalty
 
-Two-sided SaaS loyalty app:
-- **Customer app** — customers collect stamps by scanning QR codes
-- **Admin panel** — password-protected, hidden from customers
+Digitale loyaliteitsapp voor Cozy Moments, opgesplitst in twee aparte webapps:
 
----
+- customer app voor klanten op smartphone
+- business app voor personeel op tablet of kassa
 
-## Run locally (works instantly, no Supabase needed)
+De actuele feature-set omvat:
+
+- QR-scans voor consumpties
+- QR-inwisselingen voor rewards
+- 4 spaarkaarten: koffie, wijn, bier en frisdrank
+- loyaliteitsniveaus: Bronze, Silver, Gold en VIP
+- automatische welkomstbonus
+- klantenoverzicht met filters, export en omzetinschatting
+- open-flessenbeheer met live promo-banner
+- transactielogboek en manuele correcties
+- PWA-installatie voor klant en beheer
+
+## Stack
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind 4
+- Supabase
+- Vercel
+
+## Workspace-overzicht
+
+- customer entry: [src/customer/App.tsx](src/customer/App.tsx)
+- business entry: [src/business/App.tsx](src/business/App.tsx)
+- loyalty store: [src/shared/store/LoyaltyContext.tsx](src/shared/store/LoyaltyContext.tsx)
+- auth store klant: [src/shared/store/AuthContext.tsx](src/shared/store/AuthContext.tsx)
+- auth store admin: [src/business/store/BusinessAuthContext.tsx](src/business/store/BusinessAuthContext.tsx)
+- database schema: [supabase-schema.sql](supabase-schema.sql)
+- handleiding bron: [HANDLEIDING-COZY-MOMENTS.md](HANDLEIDING-COZY-MOMENTS.md)
+- handleiding pdf: [HANDLEIDING-COZY-MOMENTS.pdf](HANDLEIDING-COZY-MOMENTS.pdf)
+
+## Lokale development
+
+Installeer dependencies:
 
 ```bash
 npm install
-npm run dev:customer   # https://localhost:3000
-npm run dev:business   # https://localhost:3001
 ```
 
-**Admin login:** Configure via `.env.local` — see "Admin setup" section below
+Start beide apps tegelijk:
 
-> Without Supabase keys in `.env.local`, the app uses localStorage automatically.
+```bash
+npm run dev
+```
 
----
+Of start ze apart:
 
-## Step 1 — Supabase setup (5 min)
+```bash
+npm run dev:customer
+npm run dev:business
+```
 
-1. Go to **https://supabase.com** → New project → name it `cozy-moments`
-2. Wait ~2 min for startup
-3. **SQL Editor** → New Query → paste `supabase-schema.sql` → Run
-4. **Settings → API** → copy Project URL + anon key
-5. Create `.env.local` in project root:
+Standaardpoorten:
+
+- customer: https://localhost:3000
+- business: https://localhost:3001
+
+## Belangrijke nuance over lokale fallback
+
+De authlaag heeft een beperkte fallback zonder Supabase, maar de loyalty-data zelf is Supabase-afhankelijk.  
+Praktisch betekent dit:
+
+- zonder Supabase kun je delen van de loginflow lokaal bekijken
+- zonder Supabase krijg je geen werkende klanten-, scan-, reward- en historiekdata
+- voor realistische lokale ontwikkeling is een werkende Supabase-configuratie nodig
+
+## Verplichte omgevingsvariabelen
+
+Maak een .env.local in de projectroot met minstens:
 
 ```env
-VITE_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_QR_SECRET=generate-a-long-random-secret
+VITE_ADMIN_EMAILS=admin@cozy-moments.be
 ```
 
-6. Restart dev server — data now lives in Supabase
+Alleen voor lokale admin-fallback zonder echte Supabase-auth:
 
----
-
-## Step 2 — Enable Google OAuth in Supabase
-
-1. **console.cloud.google.com** → New project → OAuth 2.0 credentials
-2. Authorized redirect URI: `https://<supabase-url>/auth/v1/callback`
-3. Supabase → **Authentication → Providers → Google** → paste Client ID + Secret → Save
-
----
-
-## Step 3 — Deploy to Vercel (2 separate projects)
-
-### Customer app
-- Build command: `npm run build:customer`
-- Output directory: `dist/customer`
-- Env vars: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`
-
-### Admin panel (secret URL — share only with admin)
-- Build command: `npm run build:business`
-- Output directory: `dist/business`
-- Same env vars
-
-### Supabase redirect URLs
-In Supabase → **Auth → URL Configuration**:
-```
-Site URL: https://your-customer-app.vercel.app
-Redirect URLs: https://your-customer-app.vercel.app/**
-```
-
----
-
-## Admin setup
-
-### With Supabase (production)
-1. Create a user in Supabase: **Authentication → Users → Add User** (email + password)
-2. Add the email to your `.env.local`:
-   ```env
-   VITE_ADMIN_EMAILS=admin@cozy-moments.be
-   ```
-3. Add the email to the `admin_users` table (SQL Editor):
-   ```sql
-   INSERT INTO admin_users (email) VALUES ('admin@cozy-moments.be');
-   ```
-
-### Without Supabase (local development)
-Add to `.env.local`:
 ```env
-VITE_ADMIN_PASSWORD=your-dev-password
+VITE_ADMIN_PASSWORD=local-dev-password
 ```
 
-### QR code security
-Generate a secret and add to `.env.local` (same key in both Vercel projects):
-```env
-VITE_QR_SECRET=$(openssl rand -hex 32)
+## Supabase setup
+
+1. Maak een nieuw Supabase-project aan.
+2. Open SQL Editor.
+3. Run volledig [supabase-schema.sql](supabase-schema.sql).
+4. Voeg minstens 1 admin toe in de tabel admin_users:
+
+```sql
+INSERT INTO admin_users (email) VALUES ('admin@cozy-moments.be');
 ```
 
----
+5. Maak dezelfde gebruiker ook aan in Supabase Auth.
 
-## How stamps flow
+## OAuth en wachtwoorden
 
+De klanten-app ondersteunt in de actuele UI:
+
+- Google login
+- e-mail/wachtwoord login
+- registratie
+- wachtwoord vergeten
+- reset via herstellink
+
+Voor Google login moet je de Google provider in Supabase configureren en de juiste redirect-URL's instellen.
+
+## Build en deploy
+
+Build beide apps:
+
+```bash
+npm run build
 ```
-Sixtine (admin panel)              Customer
-──────────────────────────────────────────────────
-Selects: 2 coffees, 1 wine
-Generates QR code ────────────▶ Customer scans QR
-                                 +2 coffee, +1 wine stamps saved
-10 stamps collected ──────────▶ Free drink reward unlocked
-Sixtine generates redeem QR ──▶ Customer scans → reward used
+
+Aparte buildtargets:
+
+- customer output: dist/customer
+- business output: dist/business
+
+Aanbevolen deployment:
+
+- 1 aparte Vercel-project voor customer
+- 1 aparte Vercel-project voor business
+
+Aanbevolen buildcommands:
+
+- customer: npm run build:customer
+- business: npm run build:business
+
+## Validatie
+
+Typecheck:
+
+```bash
+npm run lint
 ```
 
----
+Tests:
 
-## Checklist
+```bash
+npm test
+```
 
-- [x] Admin login (sixtine2026 / sixtine2026)
-- [x] Customer app with QR scanner
-- [x] Supabase-backed data (auto-fallback to localStorage)
-- [x] TypeScript: 0 errors
-- [x] Pushed to GitHub
-- [ ] YOU: Create Supabase project + run SQL schema
-- [ ] YOU: Add .env.local with Supabase keys
-- [ ] YOU: Enable Google OAuth in Supabase
-- [ ] YOU: Deploy 2 Vercel projects
+De huidige repo is in deze audit gevalideerd met:
+
+- 52 geslaagde tests
+- geslaagde TypeScript-check
+- geslaagde production builds voor customer en business
+
+## Handleiding en PDF
+
+De handleidingbron staat in [HANDLEIDING-COZY-MOMENTS.md](HANDLEIDING-COZY-MOMENTS.md).  
+De PDF moet inhoudelijk exact op die Markdown gebaseerd blijven.
+
+Om de PDF opnieuw op te bouwen vanuit de actuele Markdown:
+
+```bash
+npm run docs:manual-pdf
+```
+
+Dat script:
+
+- leest rechtstreeks de Markdown-handleiding in
+- rendert die naar print-HTML
+- exporteert daarna opnieuw naar [HANDLEIDING-COZY-MOMENTS.pdf](HANDLEIDING-COZY-MOMENTS.pdf)
+
+## Security-opmerkingen
+
+- Gebruik altijd een unieke, sterke waarde voor VITE_QR_SECRET.
+- Laat VITE_ADMIN_EMAILS in productie nooit leeg.
+- Deel de business-URL alleen intern.
+- Houd admin_users en VITE_ADMIN_EMAILS synchroon.
+
+## Belangrijkste functionele bestanden
+
+- business dashboard: [src/business/pages/BusinessPage.tsx](src/business/pages/BusinessPage.tsx)
+- klantdashboard: [src/customer/pages/CustomerPage.tsx](src/customer/pages/CustomerPage.tsx)
+- scanner: [src/customer/pages/Scanner.tsx](src/customer/pages/Scanner.tsx)
+- rewards: [src/customer/pages/RewardsPage.tsx](src/customer/pages/RewardsPage.tsx)
+- QR signing: [src/shared/lib/qr-crypto.ts](src/shared/lib/qr-crypto.ts)
+- loyalty tiers: [src/shared/lib/loyalty-tier.ts](src/shared/lib/loyalty-tier.ts)
+- transaction helpers: [src/business/lib/transaction-history.ts](src/business/lib/transaction-history.ts)
+
+## Documentatiebeleid
+
+De actuele bron van waarheid voor productwerking is:
+
+1. de code
+2. [supabase-schema.sql](supabase-schema.sql)
+3. [HANDLEIDING-COZY-MOMENTS.md](HANDLEIDING-COZY-MOMENTS.md)
+
+Als de handleiding aangepast wordt, moet de PDF opnieuw gegenereerd worden zodat beide exact gelijk blijven.

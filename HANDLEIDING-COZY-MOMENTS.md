@@ -1,546 +1,836 @@
-
----
-
-<div style="text-align: center; margin-top: 120px;">
-
 # COZY MOMENTS
 
 ## Digitaal Loyaliteitssysteem
 
 ### Gebruikershandleiding
 
----
-
-**Versie 1.0 — Maart 2026**
-
-**Een product van WebAanZee**
-
-www.webaanzee.be
-
-</div>
-
-<div style="page-break-after: always;"></div>
+Versie 2.0  
+Bijgewerkt op 9 maart 2026  
+Gebaseerd op de actuele codebasis, databasefuncties en build van dit project.
 
 ---
 
-# Inhoudsopgave
+# Inhoud
 
-1. [Wat is het Cozy Moments Loyaliteitssysteem?](#1-wat-is-het-cozy-moments-loyaliteitssysteem)
-2. [Hoe werkt het? — Overzicht](#2-hoe-werkt-het--overzicht)
-3. [Het Admin Paneel (voor de zaak)](#3-het-admin-paneel-voor-de-zaak)
-   - 3.1 Inloggen
-   - 3.2 Tab: Nieuwe QR
-   - 3.3 Tab: Klanten
-   - 3.3.1 VIP- en niveaustatus
-   - 3.4 Tab: Inwisselen
-   - 3.5 Screensaver
-   - 3.6 Uitloggen
-4. [De Klanten App (voor de klant)](#4-de-klanten-app-voor-de-klant)
-   - 4.1 Account aanmaken
-   - 4.2 Dashboard
-   - 4.2.1 Levels & status
-   - 4.3 QR Code scannen
-   - 4.4 Beloningen bekijken
-5. [Het Spaarsysteem — Spelregels](#5-het-spaarsysteem--spelregels)
-6. [Klantstatistieken — Wat meten we?](#6-klantstatistieken--wat-meten-we)
-7. [Data Exporteren (CSV & TXT)](#7-data-exporteren-csv--txt)
-8. [Veelgestelde Vragen (FAQ)](#8-veelgestelde-vragen-faq)
-9. [Technische Info & Support](#9-technische-info--support)
-
-<div style="page-break-after: always;"></div>
+1. Wat dit systeem exact doet
+2. Onderdelen van het platform
+3. Het beheerderspaneel
+4. De klanten-app
+5. Spaarregels en loyaliteitsniveaus
+6. Open flessen en live promo's
+7. Historiek, correcties en audittrail
+8. Exporten en klantinzichten
+9. Beveiliging, data en beheer
+10. PWA en installatie op toestel
+11. Praktische FAQ
+12. Technische bijlage voor beheer
 
 ---
 
-# 1. Wat is het Cozy Moments Loyaliteitssysteem?
+# 1. Wat dit systeem exact doet
 
-Het Cozy Moments Loyaliteitssysteem is een **digitale stempelkaart** die de traditionele papieren stempelkaart volledig vervangt. Uw klanten sparen stempels via hun smartphone en worden beloond met gratis consumpties.
+Het Cozy Moments Loyaliteitssysteem is een digitale spaarkaart met twee aparte webapps:
 
-### Voordelen voor uw zaak:
+- een klanten-app voor smartphonegebruik
+- een beheerderspaneel voor tablet of kassa
 
-- **Geen papieren kaarten meer** — klanten verliezen hun kaart nooit
-- **Volledig overzicht** van al uw klanten en hun consumptiegedrag
-- **Inzicht in klantentrouw** — zie wie uw trouwste klanten zijn
-- **Geschatte omzet per klant** — weet hoeveel elke klant waard is
-- **Data export** — download klantenlijsten voor nieuwsbrieven of analyses
-- **Professionele uitstraling** — een modern, digitaal systeem toont dat u meegaat met de tijd
+Klanten sparen stempels via QR-codes. Het systeem verwerkt vier dranktypes:
 
-### Vier spaarkaarten:
+- koffie
+- wijn
+- bier
+- frisdrank
 
-| Kaart | Kleur | Beschrijving |
-|-------|-------|-------------|
-| ☕ **Koffie** | Oker/bruin | Alle warme dranken |
-| 🍷 **Wijn** | Bordeaux | Alle wijnen per glas |
-| 🍺 **Bier** | Goud | Vat- en flesbier |
-| 🧃 **Frisdrank** | Roze | Alle frisdranken |
+Per 10 stempels op 1 kaart krijgt de klant 1 gratis consumptie van datzelfde type.
 
-<div style="page-break-after: always;"></div>
+Daarnaast kent het systeem ook een algemeen loyaliteitsniveau toe:
 
----
+- Bronze
+- Silver
+- Gold
+- VIP
 
-# 2. Hoe werkt het? — Overzicht
+Het platform doet vandaag meer dan alleen stempels bijhouden. De actuele build ondersteunt ook:
 
-Het systeem bestaat uit twee onderdelen:
-
-```
-┌─────────────────────────┐         ┌─────────────────────────┐
-│                         │         │                         │
-│   ADMIN PANEEL          │   QR    │   KLANTEN APP           │
-│   (tablet aan de kassa) │ ──────► │   (smartphone klant)    │
-│                         │  scan   │                         │
-│   • QR codes genereren  │         │   • QR code scannen     │
-│   • Klanten beheren     │         │   • Stempels bekijken   │
-│   • Beloningen inwisselen│        │   • Beloningen claimen  │
-│                         │         │                         │
-└─────────────────────────┘         └─────────────────────────┘
-```
-
-### De basisstappen:
-
-1. **Klant bestelt** een consumptie aan de kassa
-2. **U selecteert** op het admin paneel welke drankjes de klant heeft besteld
-3. **U genereert** een QR code (1 druk op de knop)
-4. **Klant scant** de QR code met de Cozy Moments app op zijn/haar smartphone
-5. **Stempels worden automatisch** toegevoegd aan de juiste kaart
-6. **Bij 10 stempels** → 1 gratis consumptie!
-
-> **Belangrijk:** QR codes zijn beveiligd met een digitale handtekening en verlopen na 5 minuten. Klanten kunnen geen nep-QR codes aanmaken.
-
-<div style="page-break-after: always;"></div>
+- automatische welkomstbonus op de eerste geldige scan
+- live promo-berichten voor klanten
+- open-flessenopvolging met timers
+- transactielogboek voor scans, inwisselingen en manuele correcties
+- manuele correcties met reden en medewerker
+- klantfilters op level en zoekterm
+- klantexport in CSV en TXT
+- accountverwijdering door admin
+- wachtwoord reset voor klanten
+- PWA-installatie op smartphone en tablet
 
 ---
 
-# 3. Het Admin Paneel (voor de zaak)
+# 2. Onderdelen van het platform
 
-Het admin paneel is bedoeld om op een **tablet** aan de kassa te draaien. Zet de tablet in een standaard en laat het systeem de hele dag open staan.
+## 2.1 Klanten-app
+
+De klanten-app is bedoeld voor de klant op smartphone en bevat:
+
+- inloggen met Google
+- inloggen met e-mail en wachtwoord
+- accountregistratie
+- wachtwoord vergeten en resetflow
+- dashboard met 4 spaarkaarten
+- statusbadge en voortgang naar volgend level
+- scanpagina voor QR-codes
+- beloningspagina met beschikbare en reeds ingewisselde rewards
+- live promo-banner vanuit het beheerderspaneel
+
+## 2.2 Beheerderspaneel
+
+Het beheerderspaneel is bedoeld voor de zaak en bevat 5 tabs:
+
+- Nieuwe QR
+- Open flessen
+- Klanten
+- Historiek
+- Inwisselen
+
+## 2.3 Database
+
+Alle productiegegevens staan in Supabase. De actuele database gebruikt onder meer:
+
+- `customers`
+- `admin_users`
+- `customer_transactions`
+- `site_settings`
+
+Belangrijke databasefuncties die vandaag actief gebruikt worden:
+
+- `apply_customer_scan`
+- `claim_customer_reward`
+- `apply_manual_adjustment`
+- `merge_customer_by_email`
+- `delete_customer_account`
+
+---
+
+# 3. Het beheerderspaneel
 
 ## 3.1 Inloggen
 
-1. Open de browser op de tablet
-2. Ga naar: **https://cozy-moments-admin.vercel.app/**
-3. Vul uw inloggegevens in:
+Een admin logt in met e-mail en wachtwoord.
 
-| | |
-|---|---|
-| **E-mail** | sixtine@cozy.com |
-| **Wachtwoord** | sixtine2026! |
+Voor correcte productieconfiguratie zijn 2 voorwaarden nodig:
 
-4. Tik op **"Inloggen"**
+1. Het e-mailadres staat in de omgevingsvariabele `VITE_ADMIN_EMAILS`.
+2. Het e-mailadres staat ook in de tabel `admin_users` in Supabase.
 
-> Het wachtwoord is persoonlijk. Deel het niet met klanten.
+De handleiding gebruikt bewust geen hardcoded wachtwoorden of publieke beheer-URL's. Vul hier intern jullie echte beheer-URL in:
 
-#### Of scan direct:
-
-<!-- QR_ADMIN -->
-
----
+- Beheer-URL: `[jullie admin-URL]`
 
 ## 3.2 Tab: Nieuwe QR
 
-Dit is het startscherm. Hier genereert u QR codes voor klanten die iets hebben besteld.
+Dit is de standaard werkflow aan de kassa.
 
-### Stap voor stap:
+### Wat je hier kunt doen
 
-1. **Selecteer de consumpties** — Gebruik de **+** en **-** knoppen bij elk dranktype:
-   - ☕ Koffie: voor elke koffie of warme drank
-   - 🍷 Wijn: voor elk glas wijn
-   - 🍺 Bier: voor elk biertje
-   - 🧃 Frisdrank: voor elke frisdrank
+- aantallen kiezen per dranktype
+- 1 QR-code genereren voor meerdere consumpties tegelijk
+- wachten op scanbevestiging
+- automatisch resetten na succesvolle scan
 
-2. **Tik op "Genereer QR Code"** — Er verschijnt een grote QR code op het scherm
+### Ondersteunde dranktypes
 
-3. **Laat de klant scannen** — De klant opent de Cozy Moments app en scant de QR code
+- koffie
+- wijn
+- bier
+- frisdrank
 
-4. **Wacht op bevestiging** — Zodra de klant scant, verschijnt er een groen vinkje ✅ met een geluidje, en het scherm reset automatisch
+### Hoe het werkt
 
-### Voorbeeld:
-> Een klant bestelt 2 koffies en 1 biertje.
-> → Tik 2x op **+** bij Koffie, 1x op **+** bij Bier → "Genereer QR Code"
+1. Kies per dranktype het juiste aantal via `+` en `-`.
+2. Tik op `Genereer QR Code`.
+3. Laat de klant de code scannen in de klanten-app.
+4. Na verwerking verschijnt een bevestiging met groene check.
+5. Het scherm sluit daarna automatisch terug af.
 
-### Goed om te weten:
-- U kunt **meerdere drankjes tegelijk** in één QR code stoppen
-- De QR code **verloopt na 5 minuten** (veiligheid)
-- Na 60 seconden reset het scherm automatisch
-- Als de klant niet scant, tik op **"Nieuwe Transactie"** om te resetten
+### Belangrijke details
 
----
+- Een QR-code is cryptografisch ondertekend.
+- Een QR-code vervalt na 5 minuten.
+- Elke scan krijgt een unieke transactie-ID.
+- Dubbele verwerking van dezelfde QR-code wordt door de database geblokkeerd.
+- Het QR-scherm reset sowieso na 60 seconden, ook als niemand scant.
+- Het beheerderspaneel detecteert een voltooide scan via realtime updates en gebruikt polling als fallback.
 
-## 3.3 Tab: Klanten
+## 3.3 Tab: Open flessen
 
-Hier ziet u **al uw klanten** en hun volledige statistieken.
+Dit is een nieuwe operationele feature voor producten die snel verkocht moeten worden zodra ze open zijn.
 
-### 3.3.1 VIP- en niveaustatus
+### Wat deze tab vandaag opvolgt
 
-Elke klant krijgt automatisch een **statusniveau** op basis van zijn of haar totale aantal verzamelde consumpties:
+De actuele build volgt 13 risico-items op:
 
-- **Bronze** — startniveau
-- **Silver** — vanaf 25 punten
-- **Gold** — vanaf 75 punten
-- **VIP** — vanaf 150 punten
+- 12 wijnen of bubbels per glas
+- lactosevrije melk als koffie-special
 
-In het klantenscherm ziet u per klant:
-- het huidige niveau
-- het totaal aantal punten
-- hoeveel punten nog nodig zijn tot het volgende niveau
+### Twee risiconiveaus
 
-Zo ziet u snel welke klanten het trouwst zijn en welke klanten u extra aandacht kunt geven, bijvoorbeeld voor acties of privé-events.
+- `Code rood`: absolute prioriteit
+- `Code oranje`: huiswijnen en lagere urgentie
 
-### Dashboard Samenvatting (bovenaan)
+### Wat je per product kunt doen
 
-Bovenaan de klantenpagina ziet u vier samenvattingskaarten:
+- `+ Nieuwe fles`: start of herstart de timer
+- `Zet in promo`: zet meteen een live klantenbanner klaar
+- `1 glas verkocht` of `1 koffie verkocht`: verlaagt de resterende inhoud
+- `Fles weg`: sluit de fles manueel af en verwijdert ze uit de lijst
 
-| Kaart | Betekenis |
-|-------|-----------|
-| **Klanten** | Totaal aantal geregistreerde klanten |
-| **Consumpties** | Totaal aantal verkochte consumpties (alle klanten samen) |
-| **Actief deze maand** | Hoeveel klanten deze maand iets hebben geconsumeerd |
-| **Geschatte omzet** | Totale geschatte omzet op basis van gemiddelde drankprijzen |
+### Wat het systeem bewaart
 
-### Zoeken
+Per actief item:
 
-Gebruik de **zoekbalk** om een klant te vinden op naam of e-mailadres.
+- openingsmoment
+- resterend aantal glazen of koffies
+- vervaltijd in uren
+- gekoppelde promo-tekst
 
-### Klantdetail (tik op een klant om uit te klappen)
+### Timers
 
-Per klant ziet u de volgende informatie:
+Afhankelijk van het product krijgt een item een venster van:
 
-#### Klant Inzichten
-| Gegeven | Beschrijving |
-|---------|-------------|
-| **Favoriet** | Het dranktype dat de klant het meest bestelt |
-| **Geschatte omzet** | Hoeveel deze klant naar schatting heeft uitgegeven |
-| **Bezoeken** | Totaal aantal keren dat de klant een QR code heeft gescand |
-| **Laatste bezoek** | Hoeveel dagen geleden de klant voor het laatst is geweest |
-| **Gem. per bezoek** | Gemiddeld aantal consumpties per bezoek |
+- 48 uur
+- 72 uur
 
-#### Totale Consumpties
-Per dranktype het totaal aantal consumpties + het gemiddelde per maand.
+De UI toont:
 
-#### Stempelkaart
-De huidige stand van de stempelkaart (bijv. 7/10 koffie).
+- niet open
+- resterende tijd
+- hoeveel tijd het item over tijd is
 
-#### Volle kaarten
-Hoeveel volle kaarten (= verdiende beloningen) deze klant nog kan inwisselen.
+### Live promo-integratie
 
-#### Ingewisseld
-Hoeveel gratis consumpties de klant al heeft opgenomen.
+Wanneer je een item in promo zet, verschijnt de ingestelde promo meteen in de klanten-app.  
+Wanneer de fles op nul staat of manueel gewist wordt, verdwijnt de promo automatisch als die nog aan dat item gekoppeld was.
+
+## 3.4 Tab: Klanten
+
+Dit is het centrale overzicht van alle klanten.
+
+### Bovenste samenvattingskaarten
+
+De actuele build toont hier:
+
+- totaal aantal klanten
+- totaal aantal consumpties
+- aantal actieve klanten deze maand
+- geschatte omzet
+- geschatte loyaliteitskorting
+
+### Levelblokken
+
+Er is een aparte teller voor:
+
+- Bronze
+- Silver
+- Gold
+- VIP
+
+### Filters en zoeken
+
+Je kunt klanten filteren op:
+
+- alle levels samen
+- Bronze
+- Silver
+- Gold
+- VIP
+
+Daarnaast kun je zoeken op:
+
+- naam
+- e-mailadres
+
+### Wat je ziet per klant in het overzicht
+
+- initialen/avatar
+- naam
+- e-mailadres
+- huidig level
+- totaal aantal loyaliteitspunten
+- aantal punten tot het volgende level
+- huidige stempelstand voor de 4 kaarten
+
+### Uitgeklapte klantkaart
+
+Per klant toont het detailpaneel:
+
+- levelbadge
+- punten
+- favoriete drank
+- punten nodig tot volgend level
+- geschatte omzet
+- geschatte loyaliteitskorting
+- aantal bezoeken
+- dagen sinds laatste bezoek
+- voortgangsbalk binnen het huidige level
+- gemiddeld aantal consumpties per bezoek
+- totaal aantal consumpties per dranktype
+- gemiddelde consumptie per maand per dranktype
+- huidige stempelstand per kaart
+- openstaande rewards per kaart
+- reeds ingewisselde rewards per kaart
+- klant-sinds datum
+
+### Extra beheeractie
+
+Onderaan een klantkaart staat `Account verwijderen`.
+
+Deze actie verwijdert:
+
+- de klantrecord in `public.customers`
+- de gebruiker in `auth.users`
+
+Gebruik dit alleen wanneer een account echt volledig weg moet.
 
 ### Export
 
-Tik op de **"Export"** knop rechtsboven om alle klantendata te downloaden:
-- **CSV-bestand** — voor Excel, Google Sheets of nieuwsbriefimport
-- **TXT-bestand** — leesbaar tekstoverzicht om af te drukken
+De exportknop downloadt 2 bestanden:
 
-> De export bevat alle statistieken: stempels, bezoeken, geschatte omzet, favorieten, etc.
+- een CSV voor Excel, Google Sheets of import
+- een TXT met een leesbaar samenvattend klantoverzicht
+
+De export bevat vandaag onder meer:
+
+- naam
+- e-mail
+- level
+- punten
+- huidige stempels
+- openstaande rewards
+- ingewisselde rewards
+- totale consumpties per type
+- gemiddeld per maand per type
+- aantal bezoeken
+- laatste bezoek
+- geschatte omzet
+- loyaliteitskorting
+- klant-sinds datum
+
+## 3.5 Tab: Historiek
+
+Deze tab combineert audittrail en manuele correcties.
+
+### Wat hier gelogd wordt
+
+- scans
+- inwisselingen
+- manuele correcties
+
+### Wat het overzicht toont
+
+Per transactie:
+
+- type gebeurtenis
+- datum en uur
+- klantnaam
+- klantmail
+- medewerker
+- samenvattende delta's
+- optionele reden
+- optionele QR transactie-ID
+
+### Filters in de historiek
+
+- alles
+- scans
+- inwisselingen
+- correcties
+
+### Zoekfunctie
+
+Zoeken werkt op:
+
+- klantnaam
+- klantmail
+- medewerker
+- reden
+
+### Hoeveel historiek zichtbaar is
+
+De UI laadt de recentste 120 transacties.  
+De volledige brondata blijft wel in de database staan.
+
+## 3.6 Manuele correcties
+
+In dezelfde tab kun je een formele correctie registreren.
+
+### Verplichte velden
+
+- klant
+- reden
+- minstens 1 effectieve wijziging
+
+### Wat je kunt corrigeren
+
+- stempels op de huidige kaart
+- beschikbare rewards
+- reeds ingewisselde rewards
+- totaal aantal bezoeken
+
+### Ingebouwde validaties
+
+Het systeem voorkomt dat een correctie de data ongeldig maakt.
+
+Concreet:
+
+- stempels op een lopende kaart moeten tussen 0 en 9 blijven
+- beschikbare rewards mogen niet negatief worden
+- ingewisselde rewards mogen niet negatief worden
+- bezoeken mogen niet negatief worden
+
+### Audittrail
+
+Elke correctie krijgt:
+
+- medewerker-e-mail
+- reden
+- exacte delta's
+- tijdstip
+
+## 3.7 Tab: Inwisselen
+
+Deze tab genereert een QR-code waarmee een klant een reward kan opnemen.
+
+### Werkflow
+
+1. Kies het dranktype dat de klant gratis krijgt.
+2. Het systeem maakt een ondertekende redeem-QR.
+3. De klant scant die QR in de klanten-app.
+4. De database controleert of de klant voldoende rewards heeft.
+5. Bij succes wordt de reward afgetrokken en gelogd in de historiek.
+
+Ondersteunde types:
+
+- gratis koffie
+- gratis wijn
+- gratis bier
+- gratis frisdrank
+
+## 3.8 Screensaver
+
+Het beheerderspaneel heeft een ingebouwde screensaver.
+
+### Activering
+
+- start na 60 seconden inactiviteit
+- stopt bij aanraken, klikken, scrollen of toetsenbordactiviteit
+
+### Wat de screensaver doet
+
+- toont een reeks sfeerbeelden
+- gebruikt meerdere scènes met animatie
+- helpt tegen inbranden op vaste displays
 
 ---
 
-## 3.4 Tab: Inwisselen
+# 4. De klanten-app
 
-Wanneer een klant een **gratis consumptie** wil opnemen:
+## 4.1 Aanmelden en registreren
 
-1. Ga naar de tab **"Inwisselen"**
-2. Tik op het dranktype dat de klant gratis krijgt (bijv. "Gratis Koffie")
-3. Er verschijnt een QR code
-4. **Laat de klant scannen** met de app
-5. De beloning wordt automatisch afgetrokken van de klant
+De klanten-app ondersteunt vandaag:
 
-> **Let op:** de klant moet minstens 1 volle kaart (10 stempels) hebben voor dat dranktype. Het systeem controleert dit automatisch.
+- aanmelden met Google
+- aanmelden met e-mail en wachtwoord
+- nieuw account maken met naam, e-mail en wachtwoord
+- wachtwoord vergeten
+- wachtwoord opnieuw instellen via herstellink
 
----
+### Belangrijke nuance
 
-## 3.5 Screensaver
+Of een klant na registratie meteen ingelogd wordt, hangt mee af van de Supabase-authconfiguratie.  
+De app probeert gebruikers na registratie wel meteen in te loggen als er niet automatisch een sessie wordt teruggegeven.
 
-Na **60 seconden inactiviteit** verschijnt er automatisch een mooie screensaver met foto's. Dit beschermt het scherm en ziet er professioneel uit in de zaak.
+### Voorwaardenvenster
 
-**Aanraken** om de screensaver te stoppen en terug te keren naar het admin paneel.
-
----
-
-## 3.6 Uitloggen
-
-Tik op het **uitlog-icoontje** (⏻ rechts bovenaan) om uit te loggen. In de praktijk hoeft u alleen uit te loggen als u de tablet deelt met anderen.
-
-<div style="page-break-after: always;"></div>
-
----
-
-# 4. De Klanten App (voor de klant)
-
-De klanten-app is een **website** die klanten openen op hun smartphone. Geen download uit de App Store nodig!
-
-## 4.1 Account aanmaken
-
-Klanten kunnen op twee manieren een account aanmaken:
-
-1. **Google** — 1 tik om in te loggen met hun Google-account (snelst)
-2. **E-mail + wachtwoord** — zelf een account aanmaken met naam, e-mailadres en wachtwoord
-
-#### E-mail registratie stap voor stap
-
-1. Klant tikt op **"Account aanmaken"**
-2. Klant vult in: volledige naam, e-mailadres en een zelfgekozen wachtwoord
-3. Het account is **direct actief** — er is géén bevestigingsmail nodig
-4. Klant is meteen ingelogd en kan beginnen sparen
-
-> **Wachtwoord vergeten?** Op de inlogpagina staat een **"Wachtwoord vergeten"**-knop. De klant vult zijn/haar e-mailadres in en ontvangt een link om een nieuw wachtwoord in te stellen.
+Op de loginpagina staat een knop om de voorwaarden te openen.
 
 ## 4.2 Dashboard
 
 Na het inloggen ziet de klant:
-- **4 stempelkaarten** — visueel met gevulde bolletjes (☕🍷🍺🧃)
-- **Motiverende teksten** — "Halverwege! Nog 5 stempels 🍻"
-- **Statusbadge** — Bronze, Silver, Gold of VIP rechtsboven in beeld
-- **Levelvoortgang** — de app toont hoeveel punten nog nodig zijn voor het volgende niveau
-- **Beloningenbanner** — als er gratis consumpties beschikbaar zijn
-- **Scan-knop** — om een QR code te scannen
 
-## 4.2.1 Levels & status
+- een welkomstblok met naam
+- een levelbadge
+- totaal aantal loyaliteitspunten
+- voortgang naar het volgende niveau
+- een live promo-banner wanneer die actief is
+- een beloningsbanner als er openstaande rewards zijn
+- 4 spaarkaarten
+- een vaste knop `Scan QR Code`
 
-Naast stempels spaart de klant ook **statuspunten**. Het niveau stijgt automatisch naarmate de klant meer consumpties verzamelt.
+### De 4 spaarkaarten
 
-| Niveau | Vanaf | Beschrijving |
-|-------|-------|-------------|
-| **Bronze** | 0 punten | Startniveau voor elke klant |
-| **Silver** | 25 punten | Vaste klant in opbouw |
-| **Gold** | 75 punten | Zeer trouwe klant |
-| **VIP** | 150 punten | Absolute topklant |
+- koffie
+- wijn
+- bier
+- frisdrank
 
-> De status is zichtbaar in de klanten-app en in het admin-paneel, zodat zowel klant als zaak meteen ziet hoe waardevol de relatie aan het worden is.
+### Welkomstbonus zichtbaar op de kaart
 
-## 4.3 QR Code scannen
+Als de klant nog recht heeft op de welkomstbonus, toont de app op de betrokken kaart tijdelijke gouden bonusstempels.  
+Die visuele markering verdwijnt zodra de eerste bonuscyclus op dat dranktype is afgerond.
 
-1. Klant tikt op **"Scan QR Code"**
-2. De camera opent (de klant moet toestemming geven)
-3. Klant richt de camera op de QR code op de tablet
-4. **Piep!** — stempels worden automatisch toegevoegd
-5. Als er een beloning is verdiend, verschijnt een extra melding: "🎁 Beloning verdiend!"
+## 4.3 QR-code scannen
 
-## 4.4 Beloningen bekijken
+De scanpagina:
 
-Op de pagina **"Mijn Beloningen"** ziet de klant:
-- **Beschikbare beloningen** — per type (bijv. "1x Gratis Koffie")
-- **Eerder ingewisseld** — hoeveel gratis consumpties al opgenomen
+- gebruikt de camera van het toestel
+- controleert of de pagina in een veilige context draait
+- toont hulp bij geweigerde cameratoegang
+- verwerkt zowel scan-QR's als redeem-QR's
 
-<div style="page-break-after: always;"></div>
+### Belangrijk gedrag
 
----
+- bij een gewone scan worden de consumpties toegevoegd
+- bij een redeem-scan wordt een reward afgeboekt
+- bij een foutieve of vervalste QR krijgt de klant een foutmelding
+- bij een verlopen QR-code moet een nieuwe code gevraagd worden aan de kassa
+- bij succes klinkt een bevestigingsgeluid
 
-# 5. Het Spaarsysteem — Spelregels
+### Toestelondersteuning
 
-### Basis: 10 stempels = 1 gratis consumptie
+De scanpagina bevat aparte hulpinstructies voor:
 
-| Regel | Beschrijving |
-|-------|-------------|
-| **Sparen** | Elke consumptie = 1 stempel op de bijbehorende kaart |
-| **Beloning** | 10 stempels op één kaart = 1 gratis consumptie van dat type |
-| **Waarde** | De gratis consumptie is max. **€3,50 tot €5** waard (afhankelijk van het dranktype) |
-| **Premium** | Duurdere drank? De volle kaart geeft **€3,50 tot €5 korting** (afhankelijk van het type) |
-| **Meerdere kaarten** | Elke kaart spaart apart (koffie ≠ wijn) |
-| **Overdracht** | Stempels boven de 10 worden meegenomen naar de volgende kaart |
-| **Geen vervaldatum** | Stempels vervallen niet |
-| **Persoonlijk** | Stempels zijn gekoppeld aan het account van de klant |
+- Safari op iPhone of iPad
+- Chrome op iPhone of iPad
+- Samsung Internet
+- Firefox
+- standaard Chrome op Android
 
-### Voorbeeld:
-> Lisa heeft 8 koffie-stempels. Ze bestelt 3 koffies.
-> → 8 + 3 = 11 → **1 gratis koffie verdiend** + 1 stempel op de nieuwe kaart.
+## 4.4 Beloningspagina
 
-### Inwisselen:
-> Lisa komt de volgende dag en wil haar gratis koffie. De bediening gaat naar "Inwisselen" → "Gratis Koffie" → Lisa scant de QR → klaar!
+De pagina `Mijn Beloningen` toont:
 
-<div style="page-break-after: always;"></div>
+- openstaande rewards per dranktype
+- reeds ingewisselde rewards per dranktype
 
----
+Als een reward beschikbaar is, kan de klant via deze pagina meteen terug naar de scanner om in te wisselen.
 
-# 6. Klantstatistieken — Wat meten we?
+## 4.5 Foutafhandeling bij laden
 
-Het systeem houdt de volgende gegevens bij per klant:
+Als het klantprofiel niet tijdig laadt:
 
-### Basisgegevens
-| Gegeven | Beschrijving |
-|---------|-------------|
-| Naam | Volledige naam van de klant |
-| E-mail | E-mailadres (voor eventuele nieuwsbrief) |
-| Klant sinds | Datum van registratie |
-
-### Stempelkaarten
-| Gegeven | Beschrijving |
-|---------|-------------|
-| Huidige stempels | Per dranktype: 0-9 stempels |
-| Volle kaarten | Verdiende maar nog niet ingewisselde beloningen |
-| Ingewisseld | Aantal gratis consumpties reeds opgenomen |
-
-### Consumptiegedrag
-| Gegeven | Beschrijving |
-|---------|-------------|
-| Totaal per type | Koffie, wijn, bier, frisdrank — alles bij elkaar |
-| Gemiddelde per maand | Per dranktype: hoeveel per maand gemiddeld |
-| Totaal alle consumpties | Eén getal: alles opgeteld |
-| Favoriet drankje | Het meest bestelde type (automatisch berekend) |
-
-### Bezoekersgedrag
-| Gegeven | Beschrijving |
-|---------|-------------|
-| Totaal bezoeken | Aantal keren dat de klant een QR code heeft gescand |
-| Laatste bezoek | Datum + "X dagen geleden" |
-| Gem. per bezoek | Gemiddeld aantal consumpties per scan-sessie |
-| Actief deze maand | Ja/nee indicator in het dashboard |
-
-### Financieel (schatting)
-| Gegeven | Beschrijving |
-|---------|-------------|
-| Geschatte omzet per klant | Op basis van gemiddelde prijzen (koffie €3, wijn €5, bier €4, frisdrank €3) |
-| Geschatte totale omzet | Alle klanten samen — zichtbaar in het dashboard |
-
-> **Opmerking:** De geschatte omzet is een benadering op basis van gemiddelde drankprijzen. Het geeft een goede indicatie maar is geen exacte boekhouding.
-
-<div style="page-break-after: always;"></div>
+- toont de app eerst een laadscherm
+- na 8 seconden verschijnt een hersteloptie
+- de klant kan dan herladen of uitloggen
 
 ---
 
-# 7. Data Exporteren (CSV & TXT)
+# 5. Spaarregels en loyaliteitsniveaus
 
-### CSV Export (voor Excel / Google Sheets / Nieuwsbrief)
+## 5.1 Basisregels
 
-Het CSV-bestand bevat per klant:
-- Naam, e-mail
-- Stempels per type
-- Volle kaarten per type
-- Ingewisseld per type
-- Totaal consumpties per type
-- Gemiddelde per maand per type
-- Totaal bezoeken
-- Laatste bezoek
-- Geschatte omzet
-- Klant sinds
+- 1 consumptie geeft 1 stempel op het juiste type
+- 10 stempels op 1 kaart geven 1 reward van dat type
+- resterende stempels lopen door naar de volgende kaart
+- elk dranktype spaart volledig apart
+- rewards blijven apart per dranktype bewaard
 
-> **Tip voor Excel:** Het bestand gebruikt puntkomma's (;) als scheidingsteken, zodat Belgische/Nederlandse Excel het direct goed opent.
+## 5.2 Welkomstbonus
 
-### TXT Export (leesbaar overzicht)
+De eerste geldige scan van een nieuwe klant activeert automatisch een welkomstbonus.
 
-Een netjes opgemaakt tekstbestand dat u kunt afdrukken of doorsturen:
+### Hoe de bonus exact werkt
 
-```
-════════════════════════════════════════════════
-         COZY MOMENTS — KLANTENEXPORT
-         05/03/2026 om 20:30
-════════════════════════════════════════════════
+De bonus geeft `+2 extra stempels` op het eerste dranktype uit deze prioriteitsvolgorde dat in de scan voorkomt:
 
-Totaal aantal klanten: 42
+1. koffie
+2. wijn
+3. bier
+4. frisdrank
 
-────────────────────────────────────────
-1. Jan Janssens
-   E-mail:        jan@email.com
-   Klant sinds:   15/01/2026
-   Laatste bezoek: 04/03/2026
-   Totaal bezoeken: 18
-   Favoriet:      Koffie
-   Geschatte omzet: €87.00
-   Totaal:        Koffie: 23  |  Wijn: 5  |  Bier: 8  |  Frisdrank: 2
-   ...
-```
+Voorbeelden:
 
-<div style="page-break-after: always;"></div>
+- eerste scan met koffie: bonus op koffie
+- eerste scan zonder koffie maar met wijn: bonus op wijn
+- eerste scan met bier en frisdrank, maar zonder koffie of wijn: bonus op bier
 
----
+De bonus wordt maar 1 keer per klant toegepast.
 
-# 8. Veelgestelde Vragen (FAQ)
+## 5.3 Loyaliteitspunten
 
-### Voor de zaak
+De klant krijgt ook algemene loyaliteitspunten.  
+De actuele berekening in code en database is:
 
-**V: Wat als een klant de QR code niet kan scannen?**
-**A:** Controleer of de klant ingelogd is in de app. De klant moet op "Scan QR Code" tikken en de camera toestaan. Bij problemen: herlaad de pagina.
+- huidige stempels tellen mee als punten
+- openstaande rewards tellen elk als 10 punten
+- reeds ingewisselde rewards tellen elk ook als 10 punten
 
-**V: Kan een klant vals spelen met nepQR codes?**
-**A:** Nee. Elke QR code is digitaal ondertekend met een geheime sleutel en verloopt na 5 minuten. Alleen QR codes van uw admin paneel werken.
+Praktisch betekent dit dat de punten een levenslange consumptiescore voorstellen.
 
-**V: Wat als ik per ongeluk de verkeerde consumpties selecteer?**
-**A:** Als de klant de QR code nog niet heeft gescand, tik op **"Nieuwe Transactie"** om te resetten en opnieuw te beginnen. Is de QR code al gescand? Geen zorgen — u kunt dit bij een volgend bezoek gewoon compenseren (bv. één stempel minder geven), of het corrigeren via het admin-paneel (correctiefunctie binnenkort beschikbaar).
+## 5.4 Niveaus
 
-**V: Kan ik meerdere tablets gebruiken?**
-**A:** Ja, u kunt op meerdere apparaten tegelijk inloggen met hetzelfde admin-account.
+De drempels zijn vandaag:
 
-**V: Hoe voeg ik een tweede admin toe?**
-**A:** Neem contact op met WebAanZee. We voegen het e-mailadres toe aan de beheerderslijst.
+- Bronze: vanaf 0 punten
+- Silver: vanaf 25 punten
+- Gold: vanaf 75 punten
+- VIP: vanaf 150 punten
 
-**V: Wat als het internet uitvalt?**
-**A:** Het systeem heeft internet nodig om te werken. Zonder internet kunt u geen QR codes genereren en kunnen klanten niet scannen. Zorg voor een stabiele WiFi-verbinding.
+De klant en het beheerderspaneel tonen allebei:
 
-**V: Moet de tablet altijd aan staan?**
-**A:** Het is het handigst om de tablet de hele dag aan te laten. Na 60 seconden verschijnt automatisch de screensaver om het scherm te beschermen.
+- huidig niveau
+- totaal aantal punten
+- voortgang naar het volgende niveau
 
 ---
 
-### Voor de klant
+# 6. Open flessen en live promo's
 
-**V: Moet ik een app downloaden?**
-**A:** Nee! Het is een website. Open de link in je browser en sla hem op als snelkoppeling op je startscherm.
+## 6.1 Promo-bericht
 
-**V: Ik ben mijn wachtwoord vergeten.**
-**A:** Op het loginscherm, tik op "Wachtwoord vergeten". Je ontvangt een e-mail met een link om je wachtwoord te resetten.
+Het systeem heeft 1 globale promo-banner voor klanten.
 
-**V: Mijn camera werkt niet bij het scannen.**
-**A:** Controleer of je de camera-toestemming hebt gegeven. De app toont stap-voor-stap instructies voor jouw browser (Safari, Chrome, Samsung, etc.).
+Die banner kan op 2 manieren gezet worden:
 
-**V: Vervallen mijn stempels?**
-**A:** Nee, stempels vervallen niet. Je kunt rustig op je eigen tempo sparen.
+- handmatig via de klanten-tab in het beheerderspaneel
+- automatisch via `Zet in promo` bij een open fles
 
-**V: Kan ik mijn beloningen meteen inwisselen?**
-**A:** Ja! Zodra je 10 stempels hebt, verschijnt de beloning in de app. Vraag aan de kassa om een inwisselQR te tonen en scan die.
+## 6.2 Handmatig promo-bericht
 
-<div style="page-break-after: always;"></div>
+In de klanten-tab kan een medewerker:
 
----
+- een promo-tekst typen
+- die opslaan
+- die later wissen
 
-# 9. Technische Info & Support
+De handmatige invoer in de UI heeft een limiet van 120 tekens.
 
-### Systeem
+## 6.3 Promo vanuit open flessen
 
-| Onderdeel | Technologie |
-|-----------|------------|
-| Klanten-app | Webapplicatie (PWA) — werkt op iPhone, Android, desktop |
-| Admin paneel | Webapplicatie — optimaal op tablet (iPad, Android tablet) |
-| Database | Supabase (PostgreSQL) — beveiligd in de cloud |
-| Beveiliging | HMAC-SHA256 ondertekening, Row Level Security, HTTPS |
-| Hosting | Vercel — snel, betrouwbaar, schaalbaar |
-
-### Aanbevolen hardware
-
-- **Tablet** voor admin: iPad (9e generatie of nieuwer) of Samsung Galaxy Tab A
-- **Tabletstandaard**: voor op de toog
-- **Stabiele WiFi**: vereist voor zowel tablet als klant-telefoons
-
-### URLs
-
-| Functie | Adres |
-|---------|-------|
-| Klanten-app | https://cozy-moments-loyalty.vercel.app/dashboard |
-| Admin paneel | https://cozy-moments-admin.vercel.app/ |
-
-### QR codes — direct scannen
-
-Scan de QR codes hieronder om de apps te openen op uw smartphone of iPad:
-
-<!-- QR_BOTH -->
-
-### Contact & Support
-
-Bij vragen, problemen of aanpassingen:
-
-**WebAanZee**
-- Website: www.webaanzee.be
-- E-mail: kevin@webaanzee.be
-- Gsm: 0494 81 67 14
+Elke risico-fles heeft een vooraf ingestelde promo-tekst.  
+Wanneer je die activeert, ziet de klant de boodschap live op het dashboard.
 
 ---
 
-<div style="text-align: center; margin-top: 60px; padding: 40px; border-top: 2px solid #e8dcc8;">
+# 7. Historiek, correcties en audittrail
 
-**Cozy Moments Loyaliteitssysteem**
+## 7.1 Welke events worden opgeslagen
 
-*Een product van WebAanZee*
+In `customer_transactions` worden 3 eventtypes opgeslagen:
 
-*Versie 1.0 — Maart 2026*
+- `scan`
+- `redeem`
+- `adjustment`
 
-*Alle rechten voorbehouden.*
+## 7.2 Wat er per event meegaat
 
-</div>
+Afhankelijk van het event worden onder meer bijgehouden:
+
+- klant-ID
+- medewerker
+- reden
+- QR transactie-ID
+- stempel-delta per dranktype
+- reward-delta per dranktype
+- claimed-delta per dranktype
+- bezoek-delta
+- metadata in JSON
+- timestamp
+
+## 7.3 Waarom dit belangrijk is
+
+Deze audittrail maakt het mogelijk om:
+
+- dubbele scans te onderzoeken
+- te zien wie een correctie deed
+- na te gaan waarom punten of rewards veranderden
+- supportvragen correct te reconstrueren
+
+---
+
+# 8. Exporten en klantinzichten
+
+## 8.1 Geschatte omzet
+
+De omzetcijfers in het beheerderspaneel zijn schattingen op basis van vaste richtprijzen in de code:
+
+- koffie: 3 euro
+- wijn: 5 euro
+- bier: 4 euro
+- frisdrank: 3 euro
+
+## 8.2 Loyaliteitskorting
+
+De weergegeven loyaliteitskorting is ook een schatting.  
+Ze wordt berekend op basis van reeds ingewisselde rewards en dezelfde richtprijzen.
+
+## 8.3 Favoriete drank
+
+De favoriete drank wordt bepaald door te kijken welk dranktype de hoogste totale levenslange consumptiescore heeft.
+
+## 8.4 Gemiddelden per maand
+
+De app berekent gemiddelden per maand op basis van:
+
+- klant-sinds datum
+- totale consumpties per dranktype
+
+---
+
+# 9. Beveiliging, data en beheer
+
+## 9.1 QR-beveiliging
+
+QR-codes worden ondertekend met HMAC-SHA256.  
+Daardoor kan de app vervalste of aangepaste codes weigeren.
+
+## 9.2 Replaybescherming
+
+Het systeem gebruikt unieke `tx_id`-waarden.  
+De database laat dezelfde transactiereferentie geen tweede keer toe.
+
+## 9.3 Row Level Security
+
+De database gebruikt RLS-regels zodat:
+
+- klanten enkel hun eigen klantrecord mogen lezen en aanpassen
+- klanten enkel hun eigen transacties mogen lezen
+- admins alle klanten en transacties mogen bekijken
+- site-instellingen alleen door admins aangepast mogen worden
+
+## 9.4 Duplicaten bij verschillende loginproviders
+
+Wanneer een klant inlogt met een andere authprovider maar hetzelfde e-mailadres gebruikt, probeert de app duplicaten automatisch samen te voegen via `merge_customer_by_email`.
+
+## 9.5 Accountverwijdering
+
+Een admin kan een klant volledig verwijderen.  
+Die actie verwijdert zowel profieldata als auth-account.
+
+---
+
+# 10. PWA en installatie op toestel
+
+Zowel de klanten-app als het beheerderspaneel zijn opgezet als PWA.
+
+## 10.1 Wat dat praktisch betekent
+
+- de app kan op het beginscherm gezet worden
+- de app draait in standalone modus
+- basisbestanden worden gecachet met een service worker
+
+## 10.2 Belangrijke nuance
+
+De service worker cachet shell-assets, maar dit is geen volledige offline bedrijfsmodus.  
+Voor scans, klantdata, promo's en transacties blijft een werkende netwerkverbinding nodig.
+
+## 10.3 Aanbeveling voor de zaak
+
+Plaats het beheerderspaneel als PWA op de tablet zodat:
+
+- het sneller opent
+- de interface schermvullend draait
+- personeel niet telkens via de browser moet navigeren
+
+---
+
+# 11. Praktische FAQ
+
+## Een klant zegt dat de QR niet werkt
+
+Controleer dit in volgorde:
+
+1. De QR is niet ouder dan 5 minuten.
+2. De klant scant vanuit de Cozy Moments app.
+3. De camera heeft toestemming.
+4. De klant heeft internet.
+5. De QR is nog niet eerder gebruikt.
+
+## Een reward kan niet ingewisseld worden
+
+Mogelijke oorzaken:
+
+- de klant heeft geen openstaande reward van dat type
+- de QR is vervallen
+- de QR is al eerder gebruikt
+- er is een rechten- of databaserespons mislukt
+
+Controleer desnoods de historiek.
+
+## Een scan werd fout geregistreerd
+
+Gebruik `Historiek & correcties` en registreer een manuele correctie met:
+
+- juiste klant
+- duidelijke reden
+- exacte delta
+
+## Hoe zie ik welke klanten het trouwst zijn?
+
+Gebruik in de klanten-tab:
+
+- de levelfilters
+- de puntenweergave
+- het aantal bezoeken
+- de geschatte omzet
+
+## Hoe zet ik snel een product in de kijker?
+
+Gebruik `Open flessen` en kies `Zet in promo` bij het gewenste item.
+
+---
+
+# 12. Technische bijlage voor beheer
+
+## 12.1 Verplichte omgevingsvariabelen
+
+De actuele code gebruikt deze variabelen:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_QR_SECRET`
+- `VITE_ADMIN_EMAILS`
+
+Alleen voor lokale fallback van admin-login:
+
+- `VITE_ADMIN_PASSWORD`
+
+## 12.2 Productievereisten
+
+Voor correcte productie-inzet moet je hebben:
+
+1. een Supabase-project met de actuele `supabase-schema.sql`
+2. minstens 1 admingebruiker in Supabase Auth
+3. hetzelfde adminadres in `admin_users`
+4. hetzelfde adminadres in `VITE_ADMIN_EMAILS`
+5. dezelfde `VITE_QR_SECRET` in zowel customer- als business-deployment
+
+## 12.3 Deploystructuur
+
+De codebasis is voorzien voor 2 aparte Vercel-deployments:
+
+- customer build output: `dist/customer`
+- business build output: `dist/business`
+
+## 12.4 Teststatus van deze versie
+
+Bij deze update is de codebasis gevalideerd met:
+
+- `npm test`
+- `npm run lint`
+- `npm run build`
+
+De actuele uitkomst op 9 maart 2026:
+
+- 52 tests geslaagd
+- TypeScript-check geslaagd
+- customer build geslaagd
+- business build geslaagd
+
+## 12.5 Wat expliciet niet meer in deze handleiding staat
+
+Om veiligheidsredenen bevat deze handleiding niet langer:
+
+- echte adminwachtwoorden
+- vaste geheime URL's
+- voorbeeldcredentials die op productie lijken
+
+Vul zulke gegevens alleen intern aan in een beveiligd beheerdocument.

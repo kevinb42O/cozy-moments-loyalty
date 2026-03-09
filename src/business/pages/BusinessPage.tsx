@@ -1317,7 +1317,7 @@ export const BusinessPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.98 }}
                   transition={{ duration: 0.18 }}
-                  className="ios-frosted-strong absolute right-0 top-full z-30 mt-2 w-60 rounded-[24px] border border-gray-100/80 p-2 shadow-xl"
+                  className={cn("absolute right-0 top-full z-30 mt-2 w-60 rounded-[24px] border p-2 shadow-xl", isDarkMode ? "bg-[#2c3036] border-white/10" : "bg-white border-gray-100/80")}
                 >
                   {HIDDEN_ADMIN_VIEWS.map((item) => (
                     <button
@@ -1330,8 +1330,8 @@ export const BusinessPage: React.FC = () => {
                       className={cn(
                         "flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition-colors",
                         view === item.view
-                          ? "bg-white/70 text-[var(--color-cozy-text)] shadow-sm"
-                          : "text-gray-700 hover:bg-white/50"
+                          ? isDarkMode ? "bg-white/15 text-[var(--color-cozy-text)] shadow-sm" : "bg-gray-100 text-[var(--color-cozy-text)] shadow-sm"
+                          : isDarkMode ? "text-[#d8dee8] hover:bg-white/10" : "text-gray-700 hover:bg-gray-50"
                       )}
                     >
                       <span>{item.label}</span>
@@ -1341,7 +1341,7 @@ export const BusinessPage: React.FC = () => {
 
                   <button
                     onClick={() => setIsDarkMode((current) => !current)}
-                    className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold text-gray-700 transition-colors hover:bg-white/50"
+                    className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition-colors", isDarkMode ? "text-[#d8dee8] hover:bg-white/10" : "text-gray-700 hover:bg-gray-50")}
                   >
                     <span className="inline-flex items-center gap-2">
                       {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}

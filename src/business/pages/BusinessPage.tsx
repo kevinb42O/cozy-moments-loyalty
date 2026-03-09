@@ -1580,15 +1580,15 @@ export const BusinessPage: React.FC = () => {
                 <p className="text-gray-500">Transactie verwerkt — scherm sluit automatisch</p>
               </motion.div>
             ) : (
-              <div className="relative flex flex-col items-center justify-center py-8">
+              <div className={cn('relative flex flex-col items-center justify-center py-8', isDarkMode && 'rounded-[34px] bg-[#1a2230]/55 ring-1 ring-white/12 px-4')}>
                 <img
                   src={brandLogoSrc}
                   alt=""
                   aria-hidden="true"
                   className="pointer-events-none select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 object-contain opacity-10"
                 />
-                <div className="relative bg-white p-6 md:p-8 rounded-[40px] shadow-xl mb-8">
-                  <QRCodeSVG value={qrPayload} size={300} level="H" />
+                <div className="relative p-6 md:p-8 rounded-[40px] shadow-xl mb-8 bg-[#ffffff] border border-black/5">
+                  <QRCodeSVG value={qrPayload} size={300} level="H" bgColor="#FFFFFF" fgColor="#111111" />
                 </div>
                 <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">
                   Laat de klant scannen
@@ -3038,15 +3038,15 @@ export const BusinessPage: React.FC = () => {
                 <p className="text-gray-500">Beloning ingewisseld — scherm sluit automatisch</p>
               </motion.div>
             ) : (
-              <div className="relative flex flex-col items-center justify-center py-8">
+              <div className={cn('relative flex flex-col items-center justify-center py-8', isDarkMode && 'rounded-[34px] bg-[#1a2230]/55 ring-1 ring-white/12 px-4')}>
                 <img
                   src={brandLogoSrc}
                   alt=""
                   aria-hidden="true"
                   className="pointer-events-none select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 object-contain opacity-10"
                 />
-                <div className="relative bg-white p-6 md:p-8 rounded-[40px] shadow-xl mb-8">
-                  <QRCodeSVG value={qrPayload} size={300} level="H" />
+                <div className="relative p-6 md:p-8 rounded-[40px] shadow-xl mb-8 bg-[#ffffff] border border-black/5">
+                  <QRCodeSVG value={qrPayload} size={300} level="H" bgColor="#FFFFFF" fgColor="#111111" />
                 </div>
                 <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">
                   Laat de klant scannen

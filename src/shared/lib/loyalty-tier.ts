@@ -82,18 +82,18 @@ export const LOYALTY_TIER_CONFIG: Record<LoyaltyTier, LoyaltyTierConfig> = {
   },
   vip: {
     tier: 'vip',
-    label: 'VIP',
-    shortLabel: 'VIP',
+    label: 'Platinum',
+    shortLabel: 'P',
     minPoints: 150,
-    customerBadgeClassName: 'bg-[#efe6c7] text-[#5f4610] border-[#d0b169]',
+    customerBadgeClassName: 'bg-[#eef4ff] text-[#36527a] border-[#b9cde8]',
     customerBadgeStyle: {
-      background: 'linear-gradient(135deg, #f8f0d7 0%, #d2a94f 100%)',
-      color: '#5f4610',
-      border: '1px solid rgba(95, 70, 16, 0.14)',
-      boxShadow: '0 12px 32px rgba(180, 140, 40, 0.28)',
+      background: 'linear-gradient(135deg, #f9fcff 0%, #dce9ff 38%, #b7d3ff 68%, #8fb5f0 100%)',
+      color: '#234468',
+      border: '1px solid rgba(63, 108, 168, 0.22)',
+      boxShadow: '0 12px 32px rgba(99, 146, 212, 0.24)',
     },
-    adminBadgeClassName: 'bg-[#efe6c7] text-[#5f4610] border-[#dcc487]',
-    accentColor: '#b5872c',
+    adminBadgeClassName: 'bg-[#eef4ff] text-[#36527a] border-[#c8daf1]',
+    accentColor: '#7da9e8',
   },
 };
 

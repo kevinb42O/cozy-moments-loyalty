@@ -263,7 +263,7 @@ describe('Loyalty Tier Logic', () => {
     expect(resolveLoyaltyTier(75)).toBe('gold');
   });
 
-  it('should assign VIP from 150 points', () => {
+  it('should assign the highest tier from 150 points', () => {
     expect(resolveLoyaltyTier(150)).toBe('vip');
   });
 
@@ -276,7 +276,7 @@ describe('Loyalty Tier Logic', () => {
     expect(progress.progressPercent).toBe(70);
   });
 
-  it('should cap VIP progress at 100 percent', () => {
+  it('should cap highest-tier progress at 100 percent', () => {
     const progress = getLoyaltyProgress(210);
 
     expect(progress.tier).toBe('vip');

@@ -2354,7 +2354,7 @@ export const BusinessPage: React.FC = () => {
                                 {stats.loyaltyProgress.nextTier ? `Nog ${stats.loyaltyProgress.pointsNeeded}` : 'Max'}
                               </span>
                               <span className="text-[10px] text-gray-400">
-                                {stats.loyaltyProgress.nextTier ? `tot ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : 'VIP-status'}
+                                {stats.loyaltyProgress.nextTier ? `tot ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : 'Platinum-status'}
                               </span>
                             </div>
                             <div className="bg-[var(--color-cozy-olive)]/5 rounded-xl p-3 flex flex-col items-center border border-[var(--color-cozy-olive)]/10">
@@ -2387,7 +2387,7 @@ export const BusinessPage: React.FC = () => {
                             <div className="flex items-center justify-between gap-3 mb-2">
                               <span className="text-xs text-gray-500">Voortgang binnen level</span>
                               <span className="text-xs font-medium text-[var(--color-cozy-text)]">
-                                {stats.loyaltyProgress.nextTier ? `${stats.loyaltyProgress.progressPercent}% naar ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : 'VIP bereikt'}
+                                {stats.loyaltyProgress.nextTier ? `${stats.loyaltyProgress.progressPercent}% naar ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : 'Platinum bereikt'}
                               </span>
                             </div>
                             <div className="h-2 rounded-full bg-white overflow-hidden">

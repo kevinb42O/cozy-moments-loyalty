@@ -10,7 +10,7 @@ De actuele feature-set omvat:
 - QR-scans voor consumpties
 - QR-inwisselingen voor rewards
 - 4 spaarkaarten: koffie, wijn, bier en frisdrank
-- loyaliteitsniveaus: Bronze, Silver, Gold en VIP
+- loyaliteitsniveaus: Bronze, Silver, Gold en Platinum
 - automatische welkomstbonus
 - klantenoverzicht met filters, export en omzetinschatting
 - open-flessenbeheer met live promo-banner

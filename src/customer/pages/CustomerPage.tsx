@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, LogOut, Gift, ChevronRight, Megaphone } from 'lucide-react';
+import { QrCode, LogOut, Gift, ChevronRight, Megaphone, X, Mail, Award, TrendingUp, CalendarDays, Crown } from 'lucide-react';
 import { useLoyalty, CardType } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
 import { LoadingScreen } from '../../shared/components/LoadingScreen';
 import { supabase } from '../../shared/lib/supabase';
-import { LOYALTY_TIER_CONFIG } from '../../shared/lib/loyalty-tier';
+import { LOYALTY_TIER_CONFIG, LOYALTY_TIER_ORDER, getLoyaltyProgress } from '../../shared/lib/loyalty-tier';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
@@ -20,6 +20,7 @@ export const CustomerPage: React.FC = () => {
   const [promoMessage, setPromoMessage] = useState('');
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [fillFromCards, setFillFromCards] = useState<Partial<Record<CardType, number>> | null>(null);
+  const [showProfileSheet, setShowProfileSheet] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
@@ -128,6 +129,24 @@ export const CustomerPage: React.FC = () => {
 
   const totalRewards = (currentCustomer.rewards?.coffee || 0) + (currentCustomer.rewards?.wine || 0) + (currentCustomer.rewards?.beer || 0) + (currentCustomer.rewards?.soda || 0);
   const loyaltyConfig = LOYALTY_TIER_CONFIG[currentCustomer.loyaltyTier];
+  const loyaltyProgress = getLoyaltyProgress(currentCustomer.loyaltyPoints);
+  const nextTierLabel = loyaltyProgress.nextTier ? LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier].label : null;
+  const memberSince = new Intl.DateTimeFormat('nl-BE', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(currentCustomer.createdAt));
+  const lastVisitLabel = (() => {
+    if (!currentCustomer.lastVisitAt) return 'Nog geen bezoek geregistreerd';
+
+    const visitDate = new Date(currentCustomer.lastVisitAt);
+    const diffMs = Date.now() - visitDate.getTime();
+    const diffDays = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
+
+    if (diffDays === 0) return 'Vandaag nog langs geweest';
+    if (diffDays === 1) return 'Laatst gezien: gisteren';
+    return `Laatst gezien: ${diffDays} dagen geleden`;
+  })();
 
   return (
     <div className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">
@@ -158,28 +177,34 @@ export const CustomerPage: React.FC = () => {
             </a>
           </div>
           <div className="flex items-center justify-end">
-            {showProfilePhoto ? (
-              <div
-                className="h-10 w-10 rounded-full p-[2px] shadow-sm"
-                style={{ background: loyaltyConfig.accentColor }}
-                title={`${displayName} - ${loyaltyConfig.label}`}
-              >
-                <img
-                  src={profilePhoto}
-                  alt={`Profielfoto van ${displayName}`}
-                  className="h-full w-full rounded-full object-cover bg-white"
-                  onError={() => setAvatarLoadFailed(true)}
-                />
-              </div>
-            ) : (
-              <div
-                className="min-w-10 h-10 rounded-full flex items-center justify-center px-2 text-[12px] font-bold shadow-sm"
-                style={loyaltyConfig.customerBadgeStyle}
-                title={`${displayName} - ${loyaltyConfig.label}`}
-              >
-                {profileInitials}
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowProfileSheet(true)}
+              className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+              title={`${displayName} - ${loyaltyConfig.label}`}
+              aria-label="Open profielstatus"
+            >
+              {showProfilePhoto ? (
+                <div
+                  className="h-10 w-10 rounded-full p-[2px] shadow-sm transition-transform active:scale-95"
+                  style={{ background: `linear-gradient(135deg, ${loyaltyConfig.accentColor} 0%, rgba(255,255,255,0.95) 100%)` }}
+                >
+                  <img
+                    src={profilePhoto}
+                    alt={`Profielfoto van ${displayName}`}
+                    className="h-full w-full rounded-full object-cover bg-white"
+                    onError={() => setAvatarLoadFailed(true)}
+                  />
+                </div>
+              ) : (
+                <div
+                  className="min-w-10 h-10 rounded-full flex items-center justify-center px-2 text-[12px] font-bold shadow-sm transition-transform active:scale-95"
+                  style={loyaltyConfig.customerBadgeStyle}
+                >
+                  {profileInitials}
+                </div>
+              )}
+            </button>
           </div>
         </div>
         <AnimatePresence>
@@ -284,6 +309,181 @@ export const CustomerPage: React.FC = () => {
           <span className="font-display font-bold text-lg tracking-wide">Scan QR Code</span>
         </motion.button>
       </div>
+
+      <AnimatePresence>
+        {showProfileSheet && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6"
+            onClick={() => setShowProfileSheet(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="bg-white w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[92vh] overflow-hidden shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="relative overflow-hidden px-5 sm:px-6 pt-5 sm:pt-6 pb-5 border-b border-white/70"
+                style={{
+                  background: `linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(245,249,255,0.96) 45%, ${currentCustomer.loyaltyTier === 'vip' ? 'rgba(203,223,255,0.92)' : 'rgba(248,245,239,0.96)'} 100%)`,
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="text-[11px] font-medium tracking-[0.24em] uppercase text-[var(--color-cozy-text)]/45 mb-2">Profielstatus</p>
+                    <h2 className="font-display font-bold text-2xl text-[var(--color-cozy-text)] leading-tight">{displayName}</h2>
+                    <p className="text-sm text-[var(--color-cozy-text)]/60 mt-1">Alles over je loyalty-status op één plek.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileSheet(false)}
+                    className="w-10 h-10 rounded-full bg-white/85 border border-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors shrink-0"
+                    aria-label="Sluit profielstatus"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="mt-5 flex items-center gap-4">
+                  {showProfilePhoto ? (
+                    <div className="h-16 w-16 rounded-full p-[3px] shadow-sm" style={{ background: loyaltyConfig.customerBadgeStyle.background }}>
+                      <img
+                        src={profilePhoto}
+                        alt={`Profielfoto van ${displayName}`}
+                        className="h-full w-full rounded-full object-cover bg-white"
+                        onError={() => setAvatarLoadFailed(true)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="min-w-16 h-16 rounded-full flex items-center justify-center px-3 text-lg font-bold shadow-sm" style={loyaltyConfig.customerBadgeStyle}>
+                      {profileInitials}
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border" style={{
+                      background: loyaltyConfig.customerBadgeStyle.background,
+                      color: loyaltyConfig.customerBadgeStyle.color,
+                      border: loyaltyConfig.customerBadgeStyle.border,
+                      boxShadow: loyaltyConfig.customerBadgeStyle.boxShadow,
+                    }}>
+                      <Crown size={13} />
+                      {loyaltyConfig.label}
+                    </div>
+                    <p className="text-sm text-[var(--color-cozy-text)] mt-2 font-medium">{currentCustomer.loyaltyPoints} loyalty-punten</p>
+                    <p className="text-xs text-[var(--color-cozy-text)]/55 mt-1">Lid sinds {memberSince}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-y-auto px-5 sm:px-6 py-5 space-y-5 max-h-[calc(92vh-180px)]">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
+                    <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
+                      <Award size={16} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Huidige tier</span>
+                    </div>
+                    <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">{loyaltyConfig.label}</p>
+                    <p className="text-xs text-gray-500 mt-1">Vanaf {loyaltyConfig.minPoints} punten</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
+                    <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
+                      <TrendingUp size={16} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Volgende stap</span>
+                    </div>
+                    <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">
+                      {nextTierLabel ? `Nog ${loyaltyProgress.pointsNeeded}` : 'Max bereikt'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{nextTierLabel ? `Tot ${nextTierLabel}` : 'Je zit op het hoogste level'}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-gray-100 bg-white shadow-sm px-4 py-4">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="text-sm font-medium text-[var(--color-cozy-text)]">Voortgang naar volgende tier</span>
+                    <span className="text-xs text-gray-500">
+                      {nextTierLabel ? `${loyaltyProgress.progressPercent}% naar ${nextTierLabel}` : 'Hoogste tier bereikt'}
+                    </span>
+                  </div>
+                  <div className="h-3 rounded-full bg-[#edf1f6] overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${loyaltyProgress.progressPercent}%`,
+                        background: nextTierLabel
+                          ? `linear-gradient(90deg, ${loyaltyConfig.accentColor}, ${LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier!].accentColor})`
+                          : loyaltyConfig.customerBadgeStyle.background,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {nextTierLabel
+                      ? `${currentCustomer.loyaltyPoints} van ${loyaltyProgress.nextTierMinPoints} punten voor ${nextTierLabel}`
+                      : 'Je hebt het hoogste loyalty-level bereikt.'}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
+                    <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
+                      <Mail size={16} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Account</span>
+                    </div>
+                    <p className="text-sm font-medium text-[var(--color-cozy-text)] break-all">{currentCustomer.email || 'Geen e-mailadres beschikbaar'}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
+                    <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
+                      <CalendarDays size={16} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Bezoeken</span>
+                    </div>
+                    <p className="text-sm font-medium text-[var(--color-cozy-text)]">{currentCustomer.totalVisits} bezoeken</p>
+                    <p className="text-xs text-gray-500 mt-1">{lastVisitLabel}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-gray-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fc_100%)] px-4 py-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Crown size={16} className="text-[var(--color-cozy-olive)]" />
+                    <h3 className="font-display font-bold text-[var(--color-cozy-text)]">Levelvolgorde</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {LOYALTY_TIER_ORDER.map((tier) => {
+                      const config = LOYALTY_TIER_CONFIG[tier];
+                      const isActiveTier = tier === currentCustomer.loyaltyTier;
+                      return (
+                        <div
+                          key={tier}
+                          className="flex items-center justify-between gap-3 rounded-2xl px-3 py-2 border"
+                          style={isActiveTier ? {
+                            background: config.customerBadgeStyle.background,
+                            color: config.customerBadgeStyle.color,
+                            border: config.customerBadgeStyle.border,
+                            boxShadow: config.customerBadgeStyle.boxShadow,
+                          } : undefined}
+                        >
+                          <div>
+                            <p className="text-sm font-semibold">{config.label}</p>
+                            <p className={`text-xs ${isActiveTier ? 'opacity-75' : 'text-gray-500'}`}>Vanaf {config.minPoints} punten</p>
+                          </div>
+                          <span className={`text-[11px] font-medium ${isActiveTier ? 'opacity-80' : 'text-gray-400'}`}>
+                            {isActiveTier ? 'Jouw level' : 'Nog niet bereikt'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

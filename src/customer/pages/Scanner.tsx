@@ -15,6 +15,7 @@ interface ScanResult {
   claimedType?: CardType;
   bonusApplied?: boolean;
   bonusType?: CardType;
+  previousCards?: Record<CardType, number>;
 }
 
 // Module-level AudioContext that gets unlocked on user tap and reused for chimes.
@@ -327,6 +328,12 @@ export const Scanner: React.FC = () => {
               ) {
                 const txId = typeof payload.txId === 'string' ? payload.txId : undefined;
                 const staffEmail = typeof payload.staffEmail === 'string' ? payload.staffEmail : null;
+                const previousCards = {
+                  coffee: currentCustomer.cards.coffee,
+                  wine: currentCustomer.cards.wine,
+                  beer: currentCustomer.cards.beer,
+                  soda: currentCustomer.cards.soda,
+                };
                 stopAndClear().then(() => {
                   addConsumptions(currentCustomer.id, {
                     coffee: payload.coffee as number,
@@ -335,7 +342,20 @@ export const Scanner: React.FC = () => {
                     soda: (payload.soda as number) || 0,
                   }, { txId, staffEmail }).then(result => {
                     playSuccessChime();
-                    setScanResult({ type: 'add', earned: result.earned, bonusApplied: result.bonusApplied, bonusType: result.bonusType });
+                    setScanResult({
+                      type: 'add',
+                      earned: result.earned,
+                      bonusApplied: result.bonusApplied,
+                      bonusType: result.bonusType,
+                      previousCards,
+                    });
+
+                    sessionStorage.setItem('cozy-card-fill-animation', JSON.stringify({
+                      customerId: currentCustomer.id,
+                      createdAt: Date.now(),
+                      fromCards: previousCards,
+                    }));
+
                     setScanned(true);
                     setTimeout(() => navigate('/dashboard'), result.bonusApplied ? 4500 : 2500);
                   }).catch(() => {
@@ -463,6 +483,7 @@ export const Scanner: React.FC = () => {
                         <LoyaltyCard
                           type={scanResult.bonusType}
                           count={currentCustomer.cards[scanResult.bonusType]}
+                          fromCount={scanResult.previousCards?.[scanResult.bonusType]}
                           bonusStampPositions={[0, 1]}
                         />
                         <p className="text-center text-amber-300 text-xs mt-2 font-medium">

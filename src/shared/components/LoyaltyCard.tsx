@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Coffee, Wine, Beer, GlassWater, Check, Gift } from 'lucide-react';
 import { CardType } from '../store/LoyaltyContext';
 import { clsx } from 'clsx';
@@ -14,6 +14,7 @@ interface LoyaltyCardProps {
   count: number;
   isActive?: boolean;
   bonusStampPositions?: number[];
+  fromCount?: number;
 }
 
 const cardConfig = {
@@ -80,10 +81,32 @@ function getMotivationText(count: number, type: string): string {
 
 
 
-export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStampPositions }) => {
+export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStampPositions, fromCount }) => {
   const config = cardConfig[type];
   const Icon = config.icon;
-  const fillPercent = Math.max(0, Math.min(100, (count / 10) * 100));
+  const clampedCount = Math.max(0, Math.min(10, count));
+  const targetFillPercent = (clampedCount / 10) * 100;
+
+  const initialFillPercent = useMemo(() => {
+    if (fromCount === undefined) return targetFillPercent;
+    const clampedFrom = Math.max(0, Math.min(10, fromCount));
+    return (clampedFrom / 10) * 100;
+  }, [fromCount, targetFillPercent]);
+
+  const [fillPercent, setFillPercent] = useState(initialFillPercent);
+  const playedInitialTransitionRef = useRef(false);
+
+  useEffect(() => {
+    if (fromCount !== undefined && !playedInitialTransitionRef.current) {
+      playedInitialTransitionRef.current = true;
+      setFillPercent(initialFillPercent);
+      const timeout = setTimeout(() => setFillPercent(targetFillPercent), 40);
+      return () => clearTimeout(timeout);
+    }
+
+    setFillPercent(targetFillPercent);
+    return undefined;
+  }, [fromCount, initialFillPercent, targetFillPercent]);
 
   return (
     <div
@@ -101,12 +124,12 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
           className="absolute inset-x-0 bottom-0 overflow-hidden transition-[height] duration-500 ease-out loyalty-liquid-fill"
           style={{
             height: `${fillPercent}%`,
-            background: `linear-gradient(180deg, ${config.accent}22 0%, ${config.accent}38 100%)`,
+            background: `linear-gradient(180deg, ${config.accent}30 0%, ${config.accent}52 100%)`,
           }}
         >
           <div
             className="loyalty-liquid-wave loyalty-liquid-wave-a"
-            style={{ background: `linear-gradient(180deg, ${config.accent}4a 0%, ${config.accent}28 100%)` }}
+            style={{ background: `linear-gradient(180deg, ${config.accent}75 0%, ${config.accent}3a 100%)` }}
           />
           <div
             className="loyalty-liquid-wave loyalty-liquid-wave-b"

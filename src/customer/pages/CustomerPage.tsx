@@ -19,6 +19,7 @@ export const CustomerPage: React.FC = () => {
   const [loadTimeout, setLoadTimeout] = useState(false);
   const [promoMessage, setPromoMessage] = useState('');
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  const [fillFromCards, setFillFromCards] = useState<Partial<Record<CardType, number>> | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
@@ -72,6 +73,33 @@ export const CustomerPage: React.FC = () => {
   useEffect(() => {
     setAvatarLoadFailed(false);
   }, [profilePhoto]);
+
+  useEffect(() => {
+    if (!currentCustomer) return;
+
+    try {
+      const raw = sessionStorage.getItem('cozy-card-fill-animation');
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as {
+        customerId?: string;
+        createdAt?: number;
+        fromCards?: Partial<Record<CardType, number>>;
+      };
+
+      const isSameCustomer = parsed.customerId === currentCustomer.id;
+      const isFresh = typeof parsed.createdAt === 'number' && Date.now() - parsed.createdAt < 2 * 60 * 1000;
+
+      if (isSameCustomer && isFresh && parsed.fromCards) {
+        setFillFromCards(parsed.fromCards);
+        setTimeout(() => setFillFromCards(null), 1200);
+      }
+
+      sessionStorage.removeItem('cozy-card-fill-animation');
+    } catch {
+      sessionStorage.removeItem('cozy-card-fill-animation');
+    }
+  }, [currentCustomer]);
 
   if (!currentCustomer) {
     if (!loadTimeout) return <LoadingScreen variant="customer" />;
@@ -230,6 +258,7 @@ export const CustomerPage: React.FC = () => {
               <LoyaltyCard
                 type={type}
                 count={currentCustomer.cards[type]}
+                fromCount={fillFromCards?.[type]}
                 bonusStampPositions={bonusStillActive ? [0, 1] : undefined}
               />
             </motion.div>

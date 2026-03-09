@@ -422,28 +422,28 @@ export const LoginPage: React.FC = () => {
               className="bg-white w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[92vh] flex flex-col overflow-hidden shadow-2xl"
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
-                <div>
-                  <h2 className="font-display font-bold text-lg text-[var(--color-cozy-text)]">Gebruiksvoorwaarden &amp; Privacybeleid</h2>
+              <div className="flex items-start justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-gray-100 shrink-0 gap-3">
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-display font-bold text-lg text-[var(--color-cozy-text)] wrap-anywhere">Gebruiksvoorwaarden &amp; Privacybeleid</h2>
                   <p className="text-xs text-gray-400 mt-0.5">Cozy Moments — Digitale Spaarkaart</p>
                 </div>
                 <button
                   onClick={() => setShowTerms(false)}
-                  className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors flex-shrink-0 ml-4"
+                  className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"
                 >
                   <X size={18} />
                 </button>
               </div>
 
               {/* Scroll hint */}
-              <div className="flex items-center justify-center gap-1 py-2 text-gray-300 flex-shrink-0">
+              <div className="flex items-center justify-center gap-1 py-2 text-gray-300 shrink-0">
                 <ChevronDown size={14} />
                 <span className="text-[10px] uppercase tracking-widest">Scroll om alles te lezen</span>
                 <ChevronDown size={14} />
               </div>
 
               {/* Content */}
-              <div className="overflow-y-auto px-6 pb-8 flex-1 text-sm text-gray-600 space-y-6 leading-relaxed">
+              <div className="overflow-y-auto px-5 sm:px-6 pb-8 flex-1 text-sm text-gray-600 space-y-6 leading-relaxed wrap-anywhere">
 
                 <p className="text-xs text-gray-400 italic">Versie 1.0 — van kracht vanaf 3 maart 2026 &nbsp;|&nbsp; Onderneming: Cozy Moments</p>
 
@@ -453,11 +453,11 @@ export const LoginPage: React.FC = () => {
                   <p>
                     De verwerkingsverantwoordelijke in de zin van de Algemene Verordening Gegevensbescherming (AVG / GDPR, EU 2016/679) is:
                   </p>
-                  <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs">
+                  <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs wrap-anywhere">
                     <strong>Cozy Moments</strong><br />
-                    Grote Markt 2, 8370 Blankenberge, België<br />
-                    E-mail: <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline">info@cozy-moments.be</a><br />
-                    Website: <a href="https://www.cozy-moments.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline">www.cozy-moments.be</a>
+                    Grote Markt 2, 8370 Blankenberge, Belgie<br />
+                    E-mail: <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a><br />
+                    Website: <a href="https://www.cozy-moments.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline break-all">www.cozy-moments.be</a>
                   </p>
                 </section>
 
@@ -499,7 +499,7 @@ export const LoginPage: React.FC = () => {
                         <li>Uitnodigingen voor evenementen</li>
                       </ul>
                       <p className="mt-2 text-xs text-gray-500">
-                        U kunt deze toestemming te allen tijde intrekken door te klikken op de afmeldlink in elke e-mail die wij u sturen, of door ons te contacteren via <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline">info@cozy-moments.be</a>. Het intrekken van toestemming heeft geen invloed op de rechtmatigheid van de verwerking vóór de intrekking.
+                        U kunt deze toestemming te allen tijde intrekken door te klikken op de afmeldlink in elke e-mail die wij u sturen, of door ons te contacteren via <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a>. Het intrekken van toestemming heeft geen invloed op de rechtmatigheid van de verwerking voor de intrekking.
                       </p>
                     </div>
                   </div>
@@ -523,7 +523,7 @@ export const LoginPage: React.FC = () => {
                   <p>Wij geven uw persoonsgegevens niet door aan derden voor commerciële doeleinden zonder uw uitdrukkelijke toestemming. Wij maken gebruik van de volgende verwerkers:</p>
                   <ul className="list-disc pl-5 mt-2 space-y-1">
                     <li><strong>Supabase Inc.</strong> (VS) — opslag van gebruikersgegevens en authenticatie, met passende waarborgen conform de AVG (Standard Contractual Clauses).</li>
-                    <li><strong>Google LLC</strong> — optionele aanmelding via Google OAuth. Raadpleeg het <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline">privacybeleid van Google</a>.</li>
+                    <li><strong>Google LLC</strong> — optionele aanmelding via Google OAuth. Raadpleeg het <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline break-all">privacybeleid van Google</a>.</li>
                     <li><strong>Vercel Inc.</strong> — hosting van de webapplicatie.</li>
                   </ul>
                   <p className="mt-2">Al onze verwerkers zijn contractueel gebonden aan strikte geheimhoudings- en beveiligingsvereisten.</p>
@@ -543,7 +543,7 @@ export const LoginPage: React.FC = () => {
                     <li><strong>Recht op intrekking van toestemming (art. 7.3 AVG):</strong> u kunt uw toestemming voor marketing te allen tijde intrekken.</li>
                   </ul>
                   <p className="mt-2">
-                    Om een van bovenstaande rechten uit te oefenen, stuurt u een e-mail naar <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline">info@cozy-moments.be</a>. Wij behandelen uw verzoek binnen de wettelijke termijn van 30 kalenderdagen.
+                    Om een van bovenstaande rechten uit te oefenen, stuurt u een e-mail naar <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a>. Wij behandelen uw verzoek binnen de wettelijke termijn van 30 kalenderdagen.
                   </p>
                 </section>
 
@@ -553,10 +553,10 @@ export const LoginPage: React.FC = () => {
                   <p>
                     Indien u van mening bent dat uw persoonsgegevens onrechtmatig worden verwerkt, heeft u het recht om een klacht in te dienen bij de bevoegde toezichthoudende autoriteit in België:
                   </p>
-                  <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs">
+                  <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs wrap-anywhere">
                     <strong>Gegevensbeschermingsautoriteit (GBA)</strong><br />
                     Drukpersstraat 35, 1000 Brussel<br />
-                    <a href="https://www.gegevensbeschermingsautoriteit.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline">www.gegevensbeschermingsautoriteit.be</a><br />
+                    <a href="https://www.gegevensbeschermingsautoriteit.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline break-all">www.gegevensbeschermingsautoriteit.be</a><br />
                     Tel: +32 2 274 48 00
                   </p>
                 </section>
@@ -583,7 +583,7 @@ export const LoginPage: React.FC = () => {
               </div>
 
               {/* Footer button */}
-              <div className="px-6 py-5 border-t border-gray-100 flex-shrink-0">
+              <div className="px-5 sm:px-6 py-5 border-t border-gray-100 shrink-0">
                 <button
                   onClick={() => setShowTerms(false)}
                   className="w-full bg-[var(--color-cozy-coffee)] text-white rounded-2xl py-4 font-display font-bold text-sm hover:opacity-90 transition-opacity"

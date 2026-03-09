@@ -89,7 +89,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
       className="relative w-full rounded-[28px] overflow-hidden select-none"
       style={{
         background: config.cardGradient,
-        aspectRatio: '1.58 / 1',
+        aspectRatio: '1.5 / 1',
         boxShadow: `0 16px 48px -10px ${config.shadowColor}, 0 6px 16px -4px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)`,
         border: '1px solid rgba(255,255,255,0.9)',
       }}
@@ -102,7 +102,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
       />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col justify-between h-full p-5">
+      <div className="relative z-10 flex flex-col justify-between h-full p-4 sm:p-5">
 
         {/* Header */}
         <div className="flex justify-between items-start">
@@ -131,7 +131,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
         </div>
 
         {/* Stamps */}
-        <div className="grid grid-cols-5 gap-2 my-1">
+        <div className="grid grid-cols-5 gap-1.5 sm:gap-2 my-0.5 sm:my-1">
           {Array.from({ length: 10 }).map((_, i) => {
             const isFilled = i < count;
             const isBonus = isFilled && (bonusStampPositions?.includes(i) ?? false);
@@ -175,14 +175,14 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
-          className="text-[11.5px] text-gray-400 font-serif text-center italic leading-tight"
+          className="text-[10.5px] sm:text-[11.5px] text-gray-400 font-serif text-center italic leading-tight truncate"
         >
           {getMotivationText(count, type)}
         </motion.p>
 
         {/* €5 Regel */}
         <p
-          className="text-[10px] text-black/80 text-center leading-tight mt-1 px-2"
+          className="text-[10px] sm:text-[11px] text-gray-400 font-serif text-center italic leading-tight mt-0.5 sm:mt-1 px-1 sm:px-2 break-words"
           style={{ letterSpacing: '0.02em' }}
         >
           {config.rewardRule}

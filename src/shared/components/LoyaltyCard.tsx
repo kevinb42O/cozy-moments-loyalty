@@ -85,28 +85,61 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
   const config = cardConfig[type];
   const Icon = config.icon;
   const clampedCount = Math.max(0, Math.min(10, count));
+  const clampedFromCount = fromCount === undefined ? clampedCount : Math.max(0, Math.min(10, fromCount));
+  const shouldAnimateFromPrevious = fromCount !== undefined && clampedFromCount < clampedCount;
   const targetFillPercent = (clampedCount / 10) * 100;
 
   const initialFillPercent = useMemo(() => {
-    if (fromCount === undefined) return targetFillPercent;
-    const clampedFrom = Math.max(0, Math.min(10, fromCount));
-    return (clampedFrom / 10) * 100;
-  }, [fromCount, targetFillPercent]);
+    if (!shouldAnimateFromPrevious) return targetFillPercent;
+    return (clampedFromCount / 10) * 100;
+  }, [clampedFromCount, shouldAnimateFromPrevious, targetFillPercent]);
 
   const [fillPercent, setFillPercent] = useState(initialFillPercent);
+  const [displayCount, setDisplayCount] = useState(shouldAnimateFromPrevious ? clampedFromCount : clampedCount);
+  const [slowFillMode, setSlowFillMode] = useState(false);
   const playedInitialTransitionRef = useRef(false);
 
   useEffect(() => {
-    if (fromCount !== undefined && !playedInitialTransitionRef.current) {
+    if (shouldAnimateFromPrevious && !playedInitialTransitionRef.current) {
       playedInitialTransitionRef.current = true;
+
+      setSlowFillMode(false);
       setFillPercent(initialFillPercent);
-      const timeout = setTimeout(() => setFillPercent(targetFillPercent), 40);
-      return () => clearTimeout(timeout);
+      setDisplayCount(clampedFromCount);
+
+      // Delay a bit after landing on dashboard, then animate slowly.
+      const fillStartTimeout = setTimeout(() => {
+        setSlowFillMode(true);
+        setFillPercent(targetFillPercent);
+      }, 420);
+
+      // Add newly earned stamps one-by-one with lightweight interval updates.
+      let stampInterval: ReturnType<typeof setInterval> | null = null;
+      const stampStartTimeout = setTimeout(() => {
+        let current = clampedFromCount;
+        stampInterval = setInterval(() => {
+          current += 1;
+          if (current >= clampedCount) {
+            setDisplayCount(clampedCount);
+            if (stampInterval) clearInterval(stampInterval);
+            return;
+          }
+          setDisplayCount(current);
+        }, 200);
+      }, 560);
+
+      return () => {
+        clearTimeout(fillStartTimeout);
+        clearTimeout(stampStartTimeout);
+        if (stampInterval) clearInterval(stampInterval);
+      };
     }
 
+    setSlowFillMode(false);
     setFillPercent(targetFillPercent);
+    setDisplayCount(clampedCount);
     return undefined;
-  }, [fromCount, initialFillPercent, targetFillPercent]);
+  }, [clampedCount, clampedFromCount, initialFillPercent, shouldAnimateFromPrevious, targetFillPercent]);
 
   return (
     <div
@@ -121,9 +154,11 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
       {/* Liquid fill layer (background only) */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div
-          className="absolute inset-x-0 bottom-0 overflow-hidden transition-[height] duration-500 ease-out loyalty-liquid-fill"
+          className="absolute inset-x-0 bottom-0 overflow-hidden transition-[height] loyalty-liquid-fill"
           style={{
             height: `${fillPercent}%`,
+            transitionDuration: slowFillMode ? '1650ms' : '450ms',
+            transitionTimingFunction: slowFillMode ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'ease-out',
             background: `linear-gradient(180deg, ${config.accent}30 0%, ${config.accent}52 100%)`,
           }}
         >
@@ -169,16 +204,17 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
             className="px-3 py-1 rounded-full text-[13px] font-bold"
             style={{ background: config.accentLight, color: config.accent }}
           >
-            {count}/10
+            {displayCount}/10
           </div>
         </div>
 
         {/* Stamps */}
         <div className="grid grid-cols-5 gap-1.5 sm:gap-2 my-0.5 sm:my-1">
           {Array.from({ length: 10 }).map((_, i) => {
-            const isFilled = i < count;
+            const isFilled = i < displayCount;
             const isBonus = isFilled && (bonusStampPositions?.includes(i) ?? false);
             const isFree = i === 9;
+            const isNewlyAnimatedStamp = shouldAnimateFromPrevious && i >= clampedFromCount && i < displayCount;
             return (
               <div
                 key={i}
@@ -197,9 +233,23 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
                 }}
               >
                 {isBonus ? (
-                  <Gift className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                  <motion.div
+                    key={`bonus-${i}-${isFilled ? 'filled' : 'empty'}`}
+                    initial={isNewlyAnimatedStamp ? { scale: 0.4, opacity: 0 } : false}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                  >
+                    <Gift className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                  </motion.div>
                 ) : isFilled ? (
-                  <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                  <motion.div
+                    key={`stamp-${i}-${isFilled ? 'filled' : 'empty'}`}
+                    initial={isNewlyAnimatedStamp ? { scale: 0.45, opacity: 0 } : false}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                  >
+                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                  </motion.div>
                 ) : isFree ? (
                   <span style={{ color: config.emptyBorder }} className="font-display font-bold text-[8px] leading-none text-center px-0.5">
                     Gratis
@@ -214,13 +264,13 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
 
         {/* Motivation */}
         <motion.p
-          key={`${type}-${count}`}
+          key={`${type}-${displayCount}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
           className="text-[10.5px] sm:text-[11.5px] text-gray-400 font-serif text-center italic leading-tight truncate"
         >
-          {getMotivationText(count, type)}
+          {getMotivationText(displayCount, type)}
         </motion.p>
 
         {/* €5 Regel */}

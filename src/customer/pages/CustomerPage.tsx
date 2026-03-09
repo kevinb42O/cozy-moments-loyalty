@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QrCode, LogOut, Gift, ChevronRight, Megaphone } from 'lucide-react';
 import { useLoyalty, CardType } from '../../shared/store/LoyaltyContext';
@@ -20,6 +20,7 @@ export const CustomerPage: React.FC = () => {
   const [promoMessage, setPromoMessage] = useState('');
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [fillFromCards, setFillFromCards] = useState<Partial<Record<CardType, number>> | null>(null);
+  const dashboardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
@@ -101,6 +102,97 @@ export const CustomerPage: React.FC = () => {
     }
   }, [currentCustomer]);
 
+  useEffect(() => {
+    if (!dashboardRef.current) return;
+    const host = dashboardRef.current;
+
+    // Default CSS vars keep the liquid stable when motion sensors are unavailable.
+    host.style.setProperty('--cozy-liquid-gyro-x', '0px');
+    host.style.setProperty('--cozy-liquid-gyro-y', '0px');
+
+    if (typeof window === 'undefined' || !('DeviceOrientationEvent' in window)) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let active = true;
+    let listening = false;
+    let rafId = 0;
+
+    let targetX = 0;
+    let targetY = 0;
+    let currentX = 0;
+    let currentY = 0;
+
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+    const onOrientation = (event: DeviceOrientationEvent) => {
+      const gamma = typeof event.gamma === 'number' ? event.gamma : 0;
+      const beta = typeof event.beta === 'number' ? event.beta : 0;
+
+      // Keep movement subtle so text/readability and FPS stay stable.
+      const normalizedX = clamp(gamma / 38, -1, 1);
+      const normalizedY = clamp(beta / 55, -1, 1);
+      targetX = normalizedX * 8;
+      targetY = normalizedY * 4;
+    };
+
+    const startListening = () => {
+      if (listening || !active) return;
+      window.addEventListener('deviceorientation', onOrientation, true);
+      listening = true;
+    };
+
+    const requestMotionPermissionIfNeeded = async () => {
+      try {
+        const OrientationCtor = window.DeviceOrientationEvent as any;
+        if (typeof OrientationCtor?.requestPermission === 'function') {
+          const permission = await OrientationCtor.requestPermission();
+          if (permission === 'granted') startListening();
+          return;
+        }
+        startListening();
+      } catch {
+        // Silent fallback: leave gyro disabled, no crashes/no UI errors.
+      }
+    };
+
+    // Non-iOS usually starts immediately; iOS will prompt on first user gesture.
+    void requestMotionPermissionIfNeeded();
+
+    const enableOnGesture = () => {
+      void requestMotionPermissionIfNeeded();
+    };
+
+    window.addEventListener('pointerdown', enableOnGesture, { passive: true });
+    window.addEventListener('touchstart', enableOnGesture, { passive: true });
+
+    const tick = () => {
+      if (!active) return;
+
+      currentX += (targetX - currentX) * 0.12;
+      currentY += (targetY - currentY) * 0.12;
+
+      const x = Math.abs(currentX) < 0.05 ? 0 : currentX;
+      const y = Math.abs(currentY) < 0.05 ? 0 : currentY;
+
+      host.style.setProperty('--cozy-liquid-gyro-x', `${x.toFixed(2)}px`);
+      host.style.setProperty('--cozy-liquid-gyro-y', `${y.toFixed(2)}px`);
+
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    rafId = window.requestAnimationFrame(tick);
+
+    return () => {
+      active = false;
+      if (rafId) window.cancelAnimationFrame(rafId);
+      if (listening) window.removeEventListener('deviceorientation', onOrientation, true);
+      window.removeEventListener('pointerdown', enableOnGesture);
+      window.removeEventListener('touchstart', enableOnGesture);
+      host.style.setProperty('--cozy-liquid-gyro-x', '0px');
+      host.style.setProperty('--cozy-liquid-gyro-y', '0px');
+    };
+  }, []);
+
   if (!currentCustomer) {
     if (!loadTimeout) return <LoadingScreen variant="customer" />;
     return (
@@ -129,7 +221,7 @@ export const CustomerPage: React.FC = () => {
   const loyaltyConfig = LOYALTY_TIER_CONFIG[currentCustomer.loyaltyTier];
 
   return (
-    <div className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">
+    <div ref={dashboardRef} className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">
       {/* Header — premium glassmorphism */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}

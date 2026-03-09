@@ -159,6 +159,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
             height: `${fillPercent}%`,
             transitionDuration: slowFillMode ? '1650ms' : '450ms',
             transitionTimingFunction: slowFillMode ? 'cubic-bezier(0.2, 0.8, 0.2, 1)' : 'ease-out',
+            transform: 'translate3d(var(--cozy-liquid-gyro-x, 0px), calc(var(--cozy-liquid-gyro-y, 0px) * -0.45), 0)',
             background: `linear-gradient(180deg, ${config.accent}30 0%, ${config.accent}52 100%)`,
           }}
         >

@@ -132,6 +132,57 @@ Aanbevolen deployment:
 - 1 aparte Vercel-project voor customer
 - 1 aparte Vercel-project voor business
 
+## Supabase keepalive
+
+Supabase kan op goedkopere plannen een project pauzeren na langere inactiviteit. Helemaal garanderen dat een project "nooit" slaapt kun je alleen met een plan zonder auto-pause, maar deze repo bevat nu wel een degelijke keepalive-opzet.
+
+Wat er nu in de repo zit:
+
+- een lichtgewicht ping-script: [scripts/keep-supabase-alive.mjs](scripts/keep-supabase-alive.mjs)
+- een dagelijkse GitHub Action: [.github/workflows/supabase-keepalive.yml](.github/workflows/supabase-keepalive.yml)
+
+De workflow doet elke dag een kleine GET naar Supabase REST, standaard:
+
+```text
+/rest/v1/site_settings?select=id&id=eq.default&limit=1
+```
+
+Dat endpoint is bewust gekozen omdat de tabel al in deze app bestaat en altijd een `default` rij hoort te hebben.
+
+### Benodigde GitHub Secrets
+
+Zet in je GitHub repository onder Settings → Secrets and variables → Actions:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Optioneel:
+
+- `SUPABASE_KEEPALIVE_PATH`
+
+Gebruik hier bij voorkeur de service-role key, niet de anon key. In het actuele schema mag `site_settings` enkel gelezen worden door `authenticated` users, en de workflow moet zonder interactieve login betrouwbaar kunnen draaien.
+
+Belangrijk: de service-role key hoort alleen in GitHub Secrets of een serveromgeving, nooit in frontend-env vars zoals `VITE_*`.
+
+### Handmatig testen
+
+Lokaal kun je de ping ook handmatig draaien:
+
+```bash
+npm run supabase:keepalive
+```
+
+Daarvoor moeten minstens deze env vars aanwezig zijn:
+
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+### Praktische nuance
+
+Deze aanpak verlaagt de kans sterk dat Supabase in slaap valt door inactiviteit, maar het is geen harde SLA. Als je echt nul risico op auto-pause wilt, dan is een Supabase-plan zonder die beperking de enige waterdichte oplossing.
+
 Aanbevolen buildcommands:
 
 - customer: npm run build:customer

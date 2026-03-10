@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ImagePlus, Minus, MonitorPlay, Play, Plus, RotateCcw, Save, Upload } from 'lucide-react';
+import { ArrowDown, ArrowLeftRight, ArrowUp, ChevronDown, ImagePlus, Minus, MonitorPlay, Play, Plus, RotateCcw, Save, Upload } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   MAX_SLIDE_DURATION_MS,
@@ -9,6 +9,8 @@ import {
   MIN_SLIDE_DURATION_MS,
   MIN_SCREENSAVER_UPLOAD_SHORT_SIDE_PX,
   resolvePrimarySlideImage,
+  resolveLeftSlideImage,
+  resolveRightSlideImage,
   resolveSecondarySlideImage,
   type ScreensaverImageRole,
   type ScreensaverSlideConfig,
@@ -29,6 +31,7 @@ type ScreensaverEditorProps = {
   error: string | null;
   success: string | null;
   onMoveSlide: (slideId: string, direction: -1 | 1) => void;
+  onSwapSlideSides: (slideId: string) => void;
   onDurationChange: (slideId: string, durationMs: number) => void;
   onUploadImage: (slideId: string, role: ScreensaverImageRole, file: File) => Promise<void>;
   onResetImage: (slideId: string, role: ScreensaverImageRole) => void;
@@ -56,6 +59,7 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
   error,
   success,
   onMoveSlide,
+  onSwapSlideSides,
   onDurationChange,
   onUploadImage,
   onResetImage,
@@ -172,6 +176,8 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
           const isDual = slide.mode === 'dual';
           const primaryImageUrl = resolvePrimarySlideImage(slide);
           const secondaryImageUrl = resolveSecondarySlideImage(slide);
+          const leftImageUrl = resolveLeftSlideImage(slide);
+          const rightImageUrl = resolveRightSlideImage(slide);
           const isOpen = openSlideId === slide.id;
 
           return (
@@ -215,7 +221,7 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
                     className="overflow-hidden"
                   >
                     <div className={cn('px-5 pb-5 pt-5 md:px-6 md:pb-6', isDarkMode ? 'border-t border-white/10' : 'border-t border-black/5')}>
-                      <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                      <div className={cn('flex flex-col gap-5', isDual ? 'xl:grid xl:grid-cols-[1fr_auto_1fr] xl:items-start' : 'xl:flex-row xl:items-start xl:justify-between')}>
                         <div>
                           <div className="flex flex-wrap gap-2">
                             <button
@@ -248,6 +254,24 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
                             </button>
                           </div>
                         </div>
+
+                        {isDual && (
+                          <div className="xl:flex xl:justify-center">
+                            <button
+                              type="button"
+                              onClick={() => onSwapSlideSides(slide.id)}
+                              className={cn(
+                                'inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
+                                isDarkMode
+                                  ? 'border-white/15 bg-[#1f2734] text-[#d6deea] hover:bg-[#253042]'
+                                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                              )}
+                            >
+                              <ArrowLeftRight size={15} />
+                              Wissel links/rechts
+                            </button>
+                          </div>
+                        )}
 
                         <label className="block min-w-[220px]">
                           <span className={cn('mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--color-cozy-text)]', isDarkMode && 'text-[#e4ebf5]')}>
@@ -286,18 +310,18 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
                       <div className={cn('mt-5 grid gap-4', isDual ? 'lg:grid-cols-2' : 'lg:grid-cols-1')}>
                         {[
                           {
-                            role: 'primary' as const,
+                            role: slide.swapSides ? 'secondary' as const : 'primary' as const,
                             label: isDual ? 'Linker afbeelding' : 'Afbeelding',
-                            imageUrl: primaryImageUrl,
-                            customImageUrl: slide.customPrimaryImageUrl,
+                            imageUrl: isDual ? leftImageUrl : primaryImageUrl,
+                            customImageUrl: slide.swapSides ? slide.customSecondaryImageUrl : slide.customPrimaryImageUrl,
                             inputKey: primaryKey,
                           },
                           ...(isDual
                             ? [{
-                              role: 'secondary' as const,
+                              role: slide.swapSides ? 'primary' as const : 'secondary' as const,
                               label: 'Rechter afbeelding',
-                              imageUrl: secondaryImageUrl,
-                              customImageUrl: slide.customSecondaryImageUrl,
+                              imageUrl: rightImageUrl,
+                              customImageUrl: slide.swapSides ? slide.customPrimaryImageUrl : slide.customSecondaryImageUrl,
                               inputKey: secondaryKey,
                             }]
                             : []),

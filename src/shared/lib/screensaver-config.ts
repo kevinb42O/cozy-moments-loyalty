@@ -24,6 +24,7 @@ export type StoredScreensaverSlideConfig = {
   id: string;
   order: number;
   durationMs: number;
+  swapSides: boolean;
   customPrimaryImageUrl: string | null;
   customSecondaryImageUrl: string | null;
 };
@@ -116,6 +117,7 @@ export function createDefaultScreensaverSlides() {
     ...definition,
     order: index,
     durationMs: DEFAULT_SLIDE_DURATION_MS,
+    swapSides: false,
     customPrimaryImageUrl: null,
     customSecondaryImageUrl: null,
   }));
@@ -140,6 +142,7 @@ export function normalizeScreensaverConfig(value: unknown) {
       ...definition,
       order: typeof stored?.order === 'number' ? stored.order : index,
       durationMs: clampDuration(stored?.durationMs),
+      swapSides: definition.mode === 'dual' ? stored?.swapSides === true : false,
       customPrimaryImageUrl: normalizeStoredUrl(stored?.customPrimaryImageUrl),
       customSecondaryImageUrl: definition.mode === 'dual'
         ? normalizeStoredUrl(stored?.customSecondaryImageUrl)
@@ -155,6 +158,7 @@ export function serializeScreensaverConfig(slides: ScreensaverSlideConfig[]) {
     id: slide.id,
     order: slide.order,
     durationMs: clampDuration(slide.durationMs),
+    swapSides: slide.mode === 'dual' ? slide.swapSides === true : false,
     customPrimaryImageUrl: normalizeStoredUrl(slide.customPrimaryImageUrl),
     customSecondaryImageUrl: slide.mode === 'dual'
       ? normalizeStoredUrl(slide.customSecondaryImageUrl)
@@ -189,6 +193,23 @@ export function resolvePrimarySlideImage(slide: ScreensaverSlideConfig) {
 export function resolveSecondarySlideImage(slide: ScreensaverSlideConfig) {
   if (slide.mode !== 'dual') return null;
   return slide.customSecondaryImageUrl || slide.defaultSecondaryImageUrl;
+}
+
+export function resolveLeftSlideImage(slide: ScreensaverSlideConfig) {
+  const primaryImage = resolvePrimarySlideImage(slide);
+  const secondaryImage = resolveSecondarySlideImage(slide);
+
+  if (slide.mode !== 'dual' || !secondaryImage) return primaryImage;
+  return slide.swapSides ? secondaryImage : primaryImage;
+}
+
+export function resolveRightSlideImage(slide: ScreensaverSlideConfig) {
+  const primaryImage = resolvePrimarySlideImage(slide);
+  const secondaryImage = resolveSecondarySlideImage(slide);
+
+  if (slide.mode !== 'dual') return null;
+  if (!secondaryImage) return null;
+  return slide.swapSides ? primaryImage : secondaryImage;
 }
 
 export function getScreensaverStoragePath(slideId: string, role: ScreensaverImageRole) {

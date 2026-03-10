@@ -702,6 +702,13 @@ export const BusinessPage: React.FC = () => {
     updateScreensaverDraft((current) => reorderScreensaverSlides(current, slideId, direction));
   }, [updateScreensaverDraft]);
 
+  const handleScreensaverSwapSides = useCallback((slideId: string) => {
+    updateScreensaverDraft((current) => current.map((slide) => {
+      if (slide.id !== slideId || slide.mode !== 'dual') return slide;
+      return { ...slide, swapSides: !slide.swapSides };
+    }));
+  }, [updateScreensaverDraft]);
+
   const handleScreensaverDurationChange = useCallback((slideId: string, durationMs: number) => {
     const clampedDuration = Math.max(MIN_SLIDE_DURATION_MS, Math.min(MAX_SLIDE_DURATION_MS, durationMs));
     updateScreensaverDraft((current) => current.map((slide) => (
@@ -2954,6 +2961,7 @@ export const BusinessPage: React.FC = () => {
               error={screensaverError}
               success={screensaverSuccess}
               onMoveSlide={handleScreensaverMove}
+              onSwapSlideSides={handleScreensaverSwapSides}
               onDurationChange={handleScreensaverDurationChange}
               onUploadImage={handleScreensaverUpload}
               onResetImage={handleScreensaverResetImage}

@@ -4,8 +4,9 @@ import {
   IDLE_TIMEOUT_MS,
   createDefaultScreensaverSlides,
   normalizeScreensaverConfig,
+  resolveLeftSlideImage,
   resolvePrimarySlideImage,
-  resolveSecondarySlideImage,
+  resolveRightSlideImage,
   type ScreensaverSlideConfig,
 } from '../../shared/lib/screensaver-config';
 
@@ -161,10 +162,11 @@ const SceneRenderer: React.FC<{
   const slide = slides[sceneIndex % totalScenes];
   const idx = loopCount * totalScenes + sceneIndex;
   const primaryImage = resolvePrimarySlideImage(slide);
-  const secondaryImage = resolveSecondarySlideImage(slide);
+  const leftImage = resolveLeftSlideImage(slide);
+  const rightImage = resolveRightSlideImage(slide);
 
-  if (slide.mode === 'dual' && secondaryImage) {
-    return <DualSlideScene leftImg={primaryImage} rightImg={secondaryImage} idx={idx} durationMs={slide.durationMs} />;
+  if (slide.mode === 'dual' && rightImage) {
+    return <DualSlideScene leftImg={leftImage} rightImg={rightImage} idx={idx} durationMs={slide.durationMs} />;
   }
 
   return <SingleScrollScene img={primaryImage} idx={idx} durationMs={slide.durationMs} />;

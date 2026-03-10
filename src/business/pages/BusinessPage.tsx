@@ -1043,6 +1043,10 @@ export const BusinessPage: React.FC = () => {
   };
 
   const activePromoProduct = getPromoOpenBottleProduct(promoMessage);
+  const activePromoDrinkMenuItemIds = useMemo(
+    () => getPromoDrinkMenuItemIds(promoMessage, drinkMenuDraft),
+    [drinkMenuDraft, promoMessage]
+  );
   const openBottleItems = OPEN_BOTTLE_PRODUCTS.map((product) => {
     const entry = openBottles[product.id];
     const openedAtMs = entry ? new Date(entry.openedAt).getTime() : null;
@@ -3159,6 +3163,8 @@ export const BusinessPage: React.FC = () => {
             <DrinkMenuEditor
               isDarkMode={isDarkMode}
               sections={drinkMenuDraft}
+              activePromoItemIds={activePromoDrinkMenuItemIds}
+              activePromoProductName={activePromoProduct?.name ?? null}
               dirty={drinkMenuDirty}
               saving={drinkMenuSaving}
               error={drinkMenuError}

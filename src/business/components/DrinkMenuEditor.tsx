@@ -12,6 +12,8 @@ function cn(...inputs: Array<string | false | null | undefined>) {
 interface DrinkMenuEditorProps {
   isDarkMode: boolean;
   sections: DrinkMenuSection[];
+  activePromoItemIds: string[];
+  activePromoProductName: string | null;
   dirty: boolean;
   saving: boolean;
   error: string | null;
@@ -31,6 +33,8 @@ interface DrinkMenuEditorProps {
 export function DrinkMenuEditor({
   isDarkMode,
   sections,
+  activePromoItemIds,
+  activePromoProductName,
   dirty,
   saving,
   error,
@@ -47,6 +51,7 @@ export function DrinkMenuEditor({
   onUpdateItem,
 }: DrinkMenuEditorProps) {
   const [openSectionId, setOpenSectionId] = React.useState<string | null>(null);
+  const activePromoItemIdSet = React.useMemo(() => new Set(activePromoItemIds), [activePromoItemIds]);
 
   React.useEffect(() => {
     if (!openSectionId) return;
@@ -106,6 +111,11 @@ export function DrinkMenuEditor({
           <span className={cn('inline-flex rounded-full px-3 py-1 font-semibold', isDarkMode ? 'bg-white/5 text-[#c3ccdb]' : 'bg-gray-100 text-gray-500')}>
             {sections.length} secties
           </span>
+          {activePromoItemIds.length > 0 && (
+            <span className={cn('inline-flex rounded-full px-3 py-1 font-semibold', isDarkMode ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-700')}>
+              Amber = actief in open fles promo{activePromoProductName ? `: ${activePromoProductName}` : ''}
+            </span>
+          )}
         </div>
 
         {error && (
@@ -122,7 +132,10 @@ export function DrinkMenuEditor({
       </div>
 
       <div className="space-y-5">
-        {sections.map((section, sectionIndex) => (
+        {sections.map((section, sectionIndex) => {
+          const activePromoCount = section.items.filter((item) => activePromoItemIdSet.has(item.id)).length;
+
+          return (
           <motion.div
             key={section.id}
             layout
@@ -149,6 +162,11 @@ export function DrinkMenuEditor({
               </div>
 
               <div className="flex items-center gap-3">
+                {activePromoCount > 0 && (
+                  <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', isDarkMode ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-50 text-amber-700')}>
+                    {activePromoCount} in promo
+                  </span>
+                )}
                 <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', section.isVisible ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700') : (isDarkMode ? 'bg-white/5 text-[#9fb0ca]' : 'bg-gray-100 text-gray-500'))}>
                   {section.isVisible ? 'Zichtbaar' : 'Verborgen'}
                 </span>
@@ -202,16 +220,26 @@ export function DrinkMenuEditor({
                   </div>
                 </div>
 
-              {section.items.map((item, itemIndex) => (
+              {section.items.map((item, itemIndex) => {
+                const isPromoActive = activePromoItemIdSet.has(item.id);
+
+                return (
                 <motion.div
                   key={item.id}
                   layout
                   className={cn(
                     'rounded-[24px] border p-4 transition-opacity',
                     item.isVisible ? 'opacity-100' : 'opacity-70',
-                    isDarkMode ? 'border-white/10 bg-[#111826]' : 'border-[#efe6d8] bg-[#fffdf9]'
+                    isPromoActive
+                      ? (isDarkMode ? 'border-amber-300/35 bg-amber-500/10' : 'border-amber-200 bg-amber-50/80')
+                      : (isDarkMode ? 'border-white/10 bg-[#111826]' : 'border-[#efe6d8] bg-[#fffdf9]')
                   )}
                 >
+                  {isPromoActive && (
+                    <div className={cn('mb-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold', isDarkMode ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-100 text-amber-800')}>
+                      Actief in open fles promo
+                    </div>
+                  )}
                   <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_160px_auto]">
                     <label className="space-y-1.5">
                       <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
@@ -267,7 +295,8 @@ export function DrinkMenuEditor({
                   </div>
 
                 </motion.div>
-              ))}
+                );
+              })}
 
               <button
                 type="button"
@@ -283,7 +312,8 @@ export function DrinkMenuEditor({
               </div>
             )}
           </motion.div>
-        ))}
+          );
+        })}
       </div>
 
       <button

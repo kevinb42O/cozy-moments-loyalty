@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Eye, EyeOff, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { DrinkMenuItem, DrinkMenuSection } from '../../shared/lib/drink-menu';
@@ -48,6 +48,14 @@ export function DrinkMenuEditor({
   onRemoveItem,
   onUpdateItem,
 }: DrinkMenuEditorProps) {
+  const [openSectionId, setOpenSectionId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!openSectionId) return;
+    if (sections.some((section) => section.id === openSectionId)) return;
+    setOpenSectionId(null);
+  }, [openSectionId, sections]);
+
   return (
     <div className="space-y-6 pb-10">
       <div className={cn(
@@ -128,64 +136,74 @@ export function DrinkMenuEditor({
               isDarkMode ? 'border-white/10 bg-[#1a2230]' : 'border-white/70 bg-white/85'
             )}
           >
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="grid flex-1 gap-3 md:grid-cols-[100px_minmax(0,1fr)]">
-                <label className="space-y-1.5">
-                  <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
-                    Nummer
-                  </span>
-                  <input
-                    value={section.sectionCode}
-                    onChange={(event) => onUpdateSection(section.id, { sectionCode: event.target.value })}
-                    placeholder="01"
-                    className={cn(
-                      'w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors',
-                      isDarkMode ? 'border-white/10 bg-[#111826] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-[#fcfaf7] text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
-                    )}
-                  />
-                </label>
-
-                <label className="space-y-1.5">
-                  <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
-                    Sectietitel
-                  </span>
-                  <input
-                    value={section.title}
-                    onChange={(event) => onUpdateSection(section.id, { title: event.target.value })}
-                    placeholder="Bijv. Cocktails"
-                    className={cn(
-                      'w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors',
-                      isDarkMode ? 'border-white/10 bg-[#111826] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-[#fcfaf7] text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
-                    )}
-                  />
-                </label>
+            <button
+              type="button"
+              onClick={() => setOpenSectionId((current) => current === section.id ? null : section.id)}
+              className="flex w-full items-center justify-between gap-4 text-left"
+            >
+              <div className="min-w-0">
+                <p className={cn('truncate font-display text-xl font-bold', isDarkMode ? 'text-[#f4f2ea]' : 'text-[var(--color-cozy-text)]')}>
+                  {section.title || 'Nieuwe sectie'}
+                </p>
+                <p className={cn('mt-1 text-xs font-medium', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
+                  {section.items.length} producten
+                </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onUpdateSection(section.id, { isVisible: !section.isVisible })}
-                  className={cn(
-                    'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-                    isDarkMode ? 'border border-white/10 bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                  )}
-                >
-                  {section.isVisible ? <Eye size={15} /> : <EyeOff size={15} />}
+              <div className="flex items-center gap-3">
+                <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', section.isVisible ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700') : (isDarkMode ? 'bg-white/5 text-[#9fb0ca]' : 'bg-gray-100 text-gray-500'))}>
                   {section.isVisible ? 'Zichtbaar' : 'Verborgen'}
-                </button>
-                <button type="button" onClick={() => onMoveSection(section.id, -1)} disabled={sectionIndex === 0} className={cn('rounded-full p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                  <ArrowUp size={15} />
-                </button>
-                <button type="button" onClick={() => onMoveSection(section.id, 1)} disabled={sectionIndex === sections.length - 1} className={cn('rounded-full p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                  <ArrowDown size={15} />
-                </button>
-                <button type="button" onClick={() => onRemoveSection(section.id)} className={cn('rounded-full p-2 transition-colors', isDarkMode ? 'bg-red-500/10 text-red-200 hover:bg-red-500/20' : 'bg-red-50 text-red-500 hover:bg-red-100')}>
-                  <Trash2 size={15} />
-                </button>
+                </span>
+                <motion.span animate={{ rotate: openSectionId === section.id ? 180 : 0 }} transition={{ duration: 0.18 }} className={cn('rounded-full p-2', isDarkMode ? 'bg-white/5 text-[#d9e2f1]' : 'bg-gray-100 text-gray-600')}>
+                  <ChevronDown size={16} />
+                </motion.span>
               </div>
-            </div>
+            </button>
 
-            <div className="mt-5 space-y-3">
+            {openSectionId === section.id && (
+              <div className="mt-5 space-y-3">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="flex-1">
+                    <label className="space-y-1.5">
+                      <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
+                        Sectietitel
+                      </span>
+                      <input
+                        value={section.title}
+                        onChange={(event) => onUpdateSection(section.id, { title: event.target.value })}
+                        placeholder="Bijv. Cocktails"
+                        className={cn(
+                          'w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors',
+                          isDarkMode ? 'border-white/10 bg-[#111826] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-[#fcfaf7] text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
+                        )}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onUpdateSection(section.id, { isVisible: !section.isVisible })}
+                      className={cn(
+                        'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+                        isDarkMode ? 'border border-white/10 bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                      )}
+                    >
+                      {section.isVisible ? <Eye size={15} /> : <EyeOff size={15} />}
+                      {section.isVisible ? 'Zichtbaar' : 'Verborgen'}
+                    </button>
+                    <button type="button" onClick={() => onMoveSection(section.id, -1)} disabled={sectionIndex === 0} className={cn('rounded-full p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                      <ArrowUp size={15} />
+                    </button>
+                    <button type="button" onClick={() => onMoveSection(section.id, 1)} disabled={sectionIndex === sections.length - 1} className={cn('rounded-full p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                      <ArrowDown size={15} />
+                    </button>
+                    <button type="button" onClick={() => onRemoveSection(section.id)} className={cn('rounded-full p-2 transition-colors', isDarkMode ? 'bg-red-500/10 text-red-200 hover:bg-red-500/20' : 'bg-red-50 text-red-500 hover:bg-red-100')}>
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+
               {section.items.map((item, itemIndex) => (
                 <motion.div
                   key={item.id}
@@ -290,7 +308,8 @@ export function DrinkMenuEditor({
                 <Plus size={15} />
                 Product toevoegen
               </button>
-            </div>
+              </div>
+            )}
           </motion.div>
         ))}
       </div>

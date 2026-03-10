@@ -169,6 +169,9 @@ ALTER TABLE public.site_settings
 ALTER TABLE public.site_settings
   ADD COLUMN IF NOT EXISTS screensaver_config JSONB NOT NULL DEFAULT '[]'::jsonb;
 
+ALTER TABLE public.site_settings
+  ADD COLUMN IF NOT EXISTS drink_menu_sections JSONB NOT NULL DEFAULT '[]'::jsonb;
+
 -- Insert the single default row
 INSERT INTO public.site_settings (id) VALUES ('default') ON CONFLICT DO NOTHING;
 

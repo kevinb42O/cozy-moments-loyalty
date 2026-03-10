@@ -6,6 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { Screensaver } from '../components/Screensaver';
 import { ScreensaverEditor } from '../components/ScreensaverEditor';
+import { DrinkMenuEditor } from '../components/DrinkMenuEditor';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
 import {
@@ -48,15 +49,25 @@ import {
   persistCachedScreensaverSlides,
   warmScreensaverImageCache,
 } from '../../shared/lib/screensaver-cache';
+import {
+  createDefaultDrinkMenuSections,
+  createEmptyDrinkMenuItem,
+  createEmptyDrinkMenuSection,
+  normalizeDrinkMenuSections,
+  serializeDrinkMenuSections,
+  type DrinkMenuItem,
+  type DrinkMenuSection,
+} from '../../shared/lib/drink-menu';
 
 export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'open-bottles' | 'history' | 'screensaver'>; label: string }> = [
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
   { view: 'customers', label: 'Klanten' },
   { view: 'open-bottles', label: 'Open flessen' },
   { view: 'history', label: 'Historiek' },
+  { view: 'drink-menu', label: 'Drankkaart' },
   { view: 'screensaver', label: 'Screensaver' },
 ];
 
@@ -111,7 +122,7 @@ const PRICE_ESTIMATE: Record<CardType, number> = {
   soda: 3.00,
 };
 
-type BusinessView = 'create' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'redeem';
+type BusinessView = 'create' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'redeem';
 type OpenBottleRisk = 'red' | 'orange';
 type OpenBottleFilter = 'all' | 'open' | 'expired' | 'promo';
 type HistoryPanelKey = 'correction' | 'filters';
@@ -513,6 +524,12 @@ export const BusinessPage: React.FC = () => {
   const [screensaverSuccess, setScreensaverSuccess] = useState<string | null>(null);
   const [screensaverPreviewSlides, setScreensaverPreviewSlides] = useState<ScreensaverSlideConfig[] | null>(null);
   const [screensaverPreviewRequest, setScreensaverPreviewRequest] = useState(0);
+  const [drinkMenuSections, setDrinkMenuSections] = useState<DrinkMenuSection[]>(() => createDefaultDrinkMenuSections());
+  const [drinkMenuDraft, setDrinkMenuDraft] = useState<DrinkMenuSection[]>(() => createDefaultDrinkMenuSections());
+  const [drinkMenuEditing, setDrinkMenuEditing] = useState(false);
+  const [drinkMenuSaving, setDrinkMenuSaving] = useState(false);
+  const [drinkMenuError, setDrinkMenuError] = useState<string | null>(null);
+  const [drinkMenuSuccess, setDrinkMenuSuccess] = useState<string | null>(null);
   const [clockNow, setClockNow] = useState(Date.now());
   const [transactions, setTransactions] = useState<CustomerTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
@@ -603,6 +620,11 @@ export const BusinessPage: React.FC = () => {
     [screensaverDraft, screensaverSlides]
   );
 
+  const drinkMenuDirty = useMemo(
+    () => JSON.stringify(serializeDrinkMenuSections(drinkMenuDraft)) !== JSON.stringify(serializeDrinkMenuSections(drinkMenuSections)),
+    [drinkMenuDraft, drinkMenuSections]
+  );
+
   useEffect(() => {
     persistCachedScreensaverSlides(screensaverSlides);
     void warmScreensaverImageCache(screensaverSlides);
@@ -613,7 +635,7 @@ export const BusinessPage: React.FC = () => {
 
     const { data, error } = await supabase
       .from('site_settings')
-      .select('promo_message, open_bottles, screensaver_config')
+      .select('promo_message, open_bottles, screensaver_config, drink_menu_sections')
       .eq('id', 'default')
       .single();
 
@@ -631,7 +653,13 @@ export const BusinessPage: React.FC = () => {
     setScreensaverDraft(current => screensaverEditing ? current : nextScreensaverSlides);
     persistCachedScreensaverSlides(nextScreensaverSlides);
     void warmScreensaverImageCache(nextScreensaverSlides);
-  }, [promoEditing, screensaverEditing]);
+    const nextDrinkMenuSections = normalizeDrinkMenuSections(
+      (data as { drink_menu_sections?: unknown } | null)?.drink_menu_sections,
+      createDefaultDrinkMenuSections()
+    );
+    setDrinkMenuSections(nextDrinkMenuSections);
+    setDrinkMenuDraft(current => drinkMenuEditing ? current : nextDrinkMenuSections);
+  }, [drinkMenuEditing, promoEditing, screensaverEditing]);
 
   // Fetch promo message + open bottles and keep in sync across devices
   useEffect(() => {
@@ -676,6 +704,27 @@ export const BusinessPage: React.FC = () => {
 
     if (error) {
       console.error('Kon site_settings niet opslaan:', error);
+      return false;
+    }
+
+    return true;
+  }, []);
+
+  const persistDrinkMenuSections = useCallback(async (nextSections: DrinkMenuSection[]) => {
+    setDrinkMenuSections(nextSections);
+
+    if (!supabase) return true;
+
+    const { error } = await supabase
+      .from('site_settings')
+      .update({
+        drink_menu_sections: serializeDrinkMenuSections(nextSections),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', 'default');
+
+    if (error) {
+      console.error('Kon drink_menu_sections niet opslaan:', error);
       return false;
     }
 
@@ -803,6 +852,122 @@ export const BusinessPage: React.FC = () => {
     setScreensaverError(null);
     setScreensaverSuccess('Screensaver opgeslagen. De nieuwe volgorde en timing zijn meteen actief.');
   }, [openBottles, persistSiteSettings, promoMessage, screensaverDraft]);
+
+  const updateDrinkMenuDraft = useCallback((updater: (current: DrinkMenuSection[]) => DrinkMenuSection[]) => {
+    setDrinkMenuEditing(true);
+    setDrinkMenuError(null);
+    setDrinkMenuSuccess(null);
+    setDrinkMenuDraft((current) => normalizeDrinkMenuSections(updater(current), []));
+  }, []);
+
+  const handleDrinkMenuSectionUpdate = useCallback((sectionId: string, patch: Partial<Pick<DrinkMenuSection, 'sectionCode' | 'title' | 'isVisible'>>) => {
+    updateDrinkMenuDraft((current) => current.map((section) => (
+      section.id === sectionId ? { ...section, ...patch } : section
+    )));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuAddSection = useCallback(() => {
+    updateDrinkMenuDraft((current) => [...current, createEmptyDrinkMenuSection()]);
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuRemoveSection = useCallback((sectionId: string) => {
+    updateDrinkMenuDraft((current) => current.filter((section) => section.id !== sectionId));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuMoveSection = useCallback((sectionId: string, direction: -1 | 1) => {
+    updateDrinkMenuDraft((current) => {
+      const index = current.findIndex((section) => section.id === sectionId);
+      const nextIndex = index + direction;
+
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+
+      const next = [...current];
+      const [section] = next.splice(index, 1);
+      next.splice(nextIndex, 0, section);
+      return next;
+    });
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuAddItem = useCallback((sectionId: string) => {
+    updateDrinkMenuDraft((current) => current.map((section) => (
+      section.id === sectionId
+        ? { ...section, items: [...section.items, createEmptyDrinkMenuItem()] }
+        : section
+    )));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuItemUpdate = useCallback((sectionId: string, itemId: string, patch: Partial<Pick<DrinkMenuItem, 'name' | 'price' | 'details' | 'isVisible'>>) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      return {
+        ...section,
+        items: section.items.map((item) => (
+          item.id === itemId ? { ...item, ...patch } : item
+        )),
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuRemoveItem = useCallback((sectionId: string, itemId: string) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      return {
+        ...section,
+        items: section.items.filter((item) => item.id !== itemId),
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuMoveItem = useCallback((sectionId: string, itemId: string, direction: -1 | 1) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      const index = section.items.findIndex((item) => item.id === itemId);
+      const nextIndex = index + direction;
+
+      if (index < 0 || nextIndex < 0 || nextIndex >= section.items.length) {
+        return section;
+      }
+
+      const nextItems = [...section.items];
+      const [item] = nextItems.splice(index, 1);
+      nextItems.splice(nextIndex, 0, item);
+
+      return {
+        ...section,
+        items: nextItems,
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
+  const resetDrinkMenuDraft = useCallback(() => {
+    setDrinkMenuDraft(drinkMenuSections);
+    setDrinkMenuEditing(false);
+    setDrinkMenuError(null);
+    setDrinkMenuSuccess(null);
+  }, [drinkMenuSections]);
+
+  const saveDrinkMenu = useCallback(async () => {
+    const normalizedDraft = normalizeDrinkMenuSections(drinkMenuDraft, []);
+    setDrinkMenuSaving(true);
+    const ok = await persistDrinkMenuSections(normalizedDraft);
+    setDrinkMenuSaving(false);
+
+    if (!ok) {
+      setDrinkMenuError('De drankkaart kon niet worden opgeslagen.');
+      return;
+    }
+
+    setDrinkMenuSections(normalizedDraft);
+    setDrinkMenuDraft(normalizedDraft);
+    setDrinkMenuEditing(false);
+    setDrinkMenuError(null);
+    setDrinkMenuSuccess('Drankkaart opgeslagen. De website kan nu deze gepubliceerde versie uitlezen.');
+  }, [drinkMenuDraft, persistDrinkMenuSections]);
 
   const handleOpenBottle = async (productId: string) => {
     const product = OPEN_BOTTLE_PRODUCT_MAP[productId];
@@ -2968,6 +3133,29 @@ export const BusinessPage: React.FC = () => {
               onResetAll={handleScreensaverResetAll}
               onPreview={handleScreensaverPreview}
               onSave={saveScreensaver}
+            />
+          </motion.div>
+        )}
+
+        {view === 'drink-menu' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <DrinkMenuEditor
+              isDarkMode={isDarkMode}
+              sections={drinkMenuDraft}
+              dirty={drinkMenuDirty}
+              saving={drinkMenuSaving}
+              error={drinkMenuError}
+              success={drinkMenuSuccess}
+              onAddSection={handleDrinkMenuAddSection}
+              onMoveSection={handleDrinkMenuMoveSection}
+              onRemoveSection={handleDrinkMenuRemoveSection}
+              onReset={resetDrinkMenuDraft}
+              onSave={saveDrinkMenu}
+              onUpdateSection={handleDrinkMenuSectionUpdate}
+              onAddItem={handleDrinkMenuAddItem}
+              onMoveItem={handleDrinkMenuMoveItem}
+              onRemoveItem={handleDrinkMenuRemoveItem}
+              onUpdateItem={handleDrinkMenuItemUpdate}
             />
           </motion.div>
         )}

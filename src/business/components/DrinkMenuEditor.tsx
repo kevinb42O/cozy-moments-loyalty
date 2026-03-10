@@ -247,21 +247,6 @@ export function DrinkMenuEditor({
                       </button>
                     </div>
                   </div>
-
-                  <label className="mt-3 block space-y-1.5">
-                    <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
-                      Extra info (optioneel)
-                    </span>
-                    <input
-                      value={item.details}
-                      onChange={(event) => onUpdateItem(section.id, item.id, { details: event.target.value })}
-                      placeholder="Bijv. aardbei, banaan of 25 cl | 5,2%"
-                      className={cn(
-                        'w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors',
-                        isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
-                      )}
-                    />
-                  </label>
                 </motion.div>
               ))}
 

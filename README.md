@@ -139,30 +139,62 @@ Supabase kan op goedkopere plannen een project pauzeren na langere inactiviteit.
 Wat er nu in de repo zit:
 
 - een lichtgewicht ping-script: [scripts/keep-supabase-alive.mjs](scripts/keep-supabase-alive.mjs)
-- een dagelijkse GitHub Action: [.github/workflows/supabase-keepalive.yml](.github/workflows/supabase-keepalive.yml)
+- een publieke Supabase RPC: `keepalive_ping()` in [supabase-schema.sql](supabase-schema.sql)
 
-De workflow doet elke dag een kleine GET naar Supabase REST, standaard:
+De aanbevolen ping gaat nu naar Supabase REST, standaard:
 
 ```text
-/rest/v1/site_settings?select=id&id=eq.default&limit=1
+/rest/v1/rpc/keepalive_ping
 ```
 
-Dat endpoint is bewust gekozen omdat de tabel al in deze app bestaat en altijd een `default` rij hoort te hebben.
+Dat endpoint gebruikt een heel kleine `SECURITY DEFINER` RPC die alleen `{ ok, project, ts }` teruggeeft. Zo hoef je geen service-role key in een externe scheduler te stoppen.
 
-### Benodigde GitHub Secrets
+### Waarom geen GitHub Actions meer
 
-Zet in je GitHub repository onder Settings → Secrets and variables → Actions:
+Als GitHub Actions geblokkeerd is door billing, dan heeft die route geen zin. Voor deze repo is een externe cronservice daarom praktischer dan GitHub Actions.
+
+Goede gratis opties:
+
+- `cron-job.org`
+- `Better Stack`
+- `UptimeRobot` als je custom headers beschikbaar hebt in je plan
+
+### Nodig voor de externe keepalive
+
+Je hebt alleen dit nodig:
 
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- de bestaande `VITE_SUPABASE_ANON_KEY`
+- de SQL-update uit [supabase-schema.sql](supabase-schema.sql) zodat `keepalive_ping()` bestaat
 
-Optioneel:
+De anon key is hier acceptabel omdat die al in de frontendbundles gebruikt wordt. Gebruik voor deze externe ping expliciet niet de service-role key.
 
-- `SUPABASE_KEEPALIVE_PATH`
+### Concrete request voor een externe cronservice
 
-Gebruik hier bij voorkeur de service-role key, niet de anon key. In het actuele schema mag `site_settings` enkel gelezen worden door `authenticated` users, en de workflow moet zonder interactieve login betrouwbaar kunnen draaien.
+Gebruik een `POST` request naar:
 
-Belangrijk: de service-role key hoort alleen in GitHub Secrets of een serveromgeving, nooit in frontend-env vars zoals `VITE_*`.
+```text
+https://mwjnrcquwfakynndkxcn.supabase.co/rest/v1/rpc/keepalive_ping
+```
+
+Met deze headers:
+
+```text
+apikey: <jouw VITE_SUPABASE_ANON_KEY>
+Authorization: Bearer <jouw VITE_SUPABASE_ANON_KEY>
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{}
+```
+
+Frequentie:
+
+- 1 keer per dag is meestal genoeg
+- 1 keer per 12 uur is nog veiliger zonder overkill
 
 ### Handmatig testen
 
@@ -176,12 +208,17 @@ Daarvoor moeten minstens deze env vars aanwezig zijn:
 
 ```env
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ### Praktische nuance
 
 Deze aanpak verlaagt de kans sterk dat Supabase in slaap valt door inactiviteit, maar het is geen harde SLA. Als je echt nul risico op auto-pause wilt, dan is een Supabase-plan zonder die beperking de enige waterdichte oplossing.
+
+### Setup in 2 stappen
+
+1. Run in Supabase SQL Editor het stuk uit [supabase-schema.sql](supabase-schema.sql) dat `keepalive_ping()` toevoegt.
+2. Zet een gratis externe cronservice op die elke 12 of 24 uur de RPC endpoint pingt met de anon key in de headers.
 
 Aanbevolen buildcommands:
 

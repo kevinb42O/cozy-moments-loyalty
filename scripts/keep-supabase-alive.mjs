@@ -9,7 +9,7 @@ const rawKey =
 
 const keepalivePath =
   process.env.SUPABASE_KEEPALIVE_PATH ||
-  '/rest/v1/site_settings?select=id&id=eq.default&limit=1';
+  '/rest/v1/rpc/keepalive_ping';
 
 if (!rawUrl) {
   console.error('Missing SUPABASE_URL or VITE_SUPABASE_URL.');

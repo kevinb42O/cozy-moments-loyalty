@@ -342,6 +342,23 @@ CREATE INDEX IF NOT EXISTS customers_loyalty_points_idx ON public.customers (loy
 CREATE INDEX IF NOT EXISTS customer_transactions_customer_created_idx ON public.customer_transactions (customer_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS customer_transactions_tx_id_uidx ON public.customer_transactions (tx_id) WHERE tx_id IS NOT NULL;
 
+-- 6c. Public keepalive RPC for external cron services
+CREATE OR REPLACE FUNCTION public.keepalive_ping()
+RETURNS JSONB
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT jsonb_build_object(
+    'ok', TRUE,
+    'project', 'cozy-moments-loyalty',
+    'ts', NOW()
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.keepalive_ping() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.keepalive_ping() TO anon, authenticated, service_role;
+
 -- 6b. RPC: apply a signed scan exactly once and log it in the history
 CREATE OR REPLACE FUNCTION public.apply_customer_scan(
   p_customer_id TEXT,

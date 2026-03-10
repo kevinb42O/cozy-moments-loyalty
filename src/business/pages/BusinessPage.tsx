@@ -35,7 +35,6 @@ import {
   MIN_SLIDE_DURATION_MS,
   MIN_SCREENSAVER_UPLOAD_SHORT_SIDE_PX,
   SCREENSAVER_STORAGE_BUCKET,
-  createDefaultScreensaverSlides,
   getScreensaverStoragePath,
   normalizeScreensaverConfig,
   reorderScreensaverSlides,
@@ -75,26 +74,41 @@ const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'ope
 // ── Admin audio chime (same Web Audio approach as Scanner) ────────────────────
 let adminAudioCtx: AudioContext | null = null;
 
+function getAdminAudioContextConstructor() {
+  const browserGlobal = globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+  return browserGlobal.AudioContext ?? browserGlobal.webkitAudioContext ?? null;
+}
+
+function ensureAdminAudioContext() {
+  if (!adminAudioCtx || adminAudioCtx.state === 'closed') {
+    const AudioContextConstructor = getAdminAudioContextConstructor();
+    if (!AudioContextConstructor) {
+      return null;
+    }
+    adminAudioCtx = new AudioContextConstructor();
+  }
+
+  return adminAudioCtx;
+}
+
 function unlockAdminAudio() {
   try {
-    if (!adminAudioCtx || adminAudioCtx.state === 'closed') {
-      adminAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    if (adminAudioCtx.state === 'suspended') adminAudioCtx.resume();
+    const audioContext = ensureAdminAudioContext();
+    if (audioContext?.state === 'suspended') void audioContext.resume();
   } catch { /* ignore */ }
 }
 
 async function playAdminChime() {
   try {
-    if (!adminAudioCtx || adminAudioCtx.state === 'closed') {
-      adminAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = ensureAdminAudioContext();
+    if (!ctx) {
+      return;
     }
-    if (adminAudioCtx.state === 'suspended') await adminAudioCtx.resume();
-    const ctx = adminAudioCtx;
+    if (ctx.state === 'suspended') await ctx.resume();
     const notes = [
       { freq: 660,  start: 0,    duration: 0.18 },
       { freq: 880,  start: 0.15, duration: 0.18 },
-      { freq: 1100, start: 0.30, duration: 0.30 },
+      { freq: 1100, start: 0.3, duration: 0.3 },
     ];
     notes.forEach(({ freq, start, duration }) => {
       const osc = ctx.createOscillator();
@@ -117,10 +131,10 @@ const MS_PER_MONTH = 30.4375 * 24 * 60 * 60 * 1000;
 
 // Estimated average price per drink type (for revenue estimation)
 const PRICE_ESTIMATE: Record<CardType, number> = {
-  coffee: 3.00,
-  wine: 5.00,
-  beer: 4.00,
-  soda: 3.00,
+  coffee: 3,
+  wine: 5,
+  beer: 4,
+  soda: 3,
 };
 
 type BusinessView = 'create' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'redeem';
@@ -348,7 +362,7 @@ function normalizeOpenBottleState(value: unknown): Record<string, OpenBottleEntr
 
 function formatRemainingCount(product: OpenBottleProduct, count: number) {
   const unit = count === 1 ? product.unitSingular : product.unitPlural;
-  const prefix = product.id === 'lactosevrije-melk' ? 'Nog' : 'Nog';
+  const prefix = 'Nog';
   const suffix = product.id === 'lactosevrije-melk' ? 'mogelijk' : 'over';
   return `${prefix} ${count} ${unit} ${suffix}`;
 }
@@ -444,7 +458,7 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
 
   // Favorite drink
   const types: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
-  const favorite = types.reduce((a, b) => total[a] >= total[b] ? a : b);
+  const favorite = types.reduce((a, b) => total[a] >= total[b] ? a : b, types[0]);
   const hasFavorite = total[favorite] > 0;
 
   // Estimated revenue
@@ -572,11 +586,11 @@ export const BusinessPage: React.FC = () => {
   // Unlock AudioContext on first tap (needed on iOS/Android)
   useEffect(() => {
     const handler = () => unlockAdminAudio();
-    window.addEventListener('touchstart', handler, { once: true, passive: true });
-    window.addEventListener('click', handler, { once: true, passive: true });
+    globalThis.addEventListener('touchstart', handler, { once: true, passive: true });
+    globalThis.addEventListener('click', handler, { once: true, passive: true });
     return () => {
-      window.removeEventListener('touchstart', handler);
-      window.removeEventListener('click', handler);
+      globalThis.removeEventListener('touchstart', handler);
+      globalThis.removeEventListener('click', handler);
     };
   }, []);
 
@@ -586,8 +600,8 @@ export const BusinessPage: React.FC = () => {
   }, [view]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setClockNow(Date.now()), 30000);
-    return () => window.clearInterval(interval);
+    const interval = globalThis.setInterval(() => setClockNow(Date.now()), 30000);
+    return () => globalThis.clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -2154,7 +2168,7 @@ export const BusinessPage: React.FC = () => {
                     a.download = filename;
                     document.body.appendChild(a);
                     a.click();
-                    document.body.removeChild(a);
+                    a.remove();
                     URL.revokeObjectURL(url);
                   };
 
@@ -2175,8 +2189,8 @@ export const BusinessPage: React.FC = () => {
                   const csvHeader = ['Naam','Email','Level','Level_Punten','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Loyaliteitskorting','Klant_Sinds'].join(SEP);
                   const csvRows = exportCustomers.map((c, idx) => {
                     const st = allStats[idx];
-                    const name = `"${c.name.replace(/"/g, '""')}"`;
-                    const email = `"${(c.email || '').replace(/"/g, '""')}"`;
+                    const name = `"${c.name.replaceAll('"', '""')}"`;
+                    const email = `"${(c.email || '').replaceAll('"', '""')}"`;
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
                     return [name, email, LOYALTY_TIER_CONFIG[c.loyaltyTier].label, c.loyaltyPoints, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, `€${st.estimatedGivenAway.toFixed(2)}`, since].join(SEP);
@@ -2198,32 +2212,36 @@ export const BusinessPage: React.FC = () => {
                     const st = allStats[i];
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-                    lines.push('────────────────────────────────────────');
-                    lines.push(`${i + 1}. ${c.name}`);
-                    lines.push(`   E-mail:        ${c.email || '—'}`);
-                    lines.push(`   Level:         ${LOYALTY_TIER_CONFIG[c.loyaltyTier].label} (${c.loyaltyPoints} punten)`);
-                    lines.push(`   Klant sinds:   ${since}`);
-                    lines.push(`   Laatste bezoek: ${lastVisit}`);
-                    lines.push(`   Totaal bezoeken: ${c.totalVisits || 0}`);
-                    lines.push(`   Favoriet:      ${st.hasFavorite ? cardTypeLabels[st.favorite] : '—'}`);
-                    lines.push(`   Geschatte omzet: €${st.estimatedRevenue.toFixed(2)}`);
-                    lines.push(`   Loyaliteitskorting: €${st.estimatedGivenAway.toFixed(2)}`);
-                    lines.push(`   Totaal:        Koffie: ${st.total.coffee}  |  Wijn: ${st.total.wine}  |  Bier: ${st.total.beer}  |  Frisdrank: ${st.total.soda}`);
-                    lines.push(`   Gem/maand:     Koffie: ${st.avgPerMonth.coffee.toFixed(1)}  |  Wijn: ${st.avgPerMonth.wine.toFixed(1)}  |  Bier: ${st.avgPerMonth.beer.toFixed(1)}  |  Frisdrank: ${st.avgPerMonth.soda.toFixed(1)}`);
-                    lines.push(`   Stempels:      Koffie: ${c.cards.coffee}/10  |  Wijn: ${c.cards.wine}/10  |  Bier: ${c.cards.beer}/10  |  Frisdrank: ${c.cards.soda}/10`);
-                    lines.push(`   Volle kaarten: Koffie: ${c.rewards.coffee || 0}  |  Wijn: ${c.rewards.wine || 0}  |  Bier: ${c.rewards.beer || 0}  |  Frisdrank: ${c.rewards.soda || 0}`);
-                    lines.push(`   Ingewisseld:   Koffie: ${c.claimedRewards?.coffee || 0}  |  Wijn: ${c.claimedRewards?.wine || 0}  |  Bier: ${c.claimedRewards?.beer || 0}  |  Frisdrank: ${c.claimedRewards?.soda || 0}`);
-                    lines.push('');
+                    lines.push(
+                      '────────────────────────────────────────',
+                      `${i + 1}. ${c.name}`,
+                      `   E-mail:        ${c.email || '—'}`,
+                      `   Level:         ${LOYALTY_TIER_CONFIG[c.loyaltyTier].label} (${c.loyaltyPoints} punten)`,
+                      `   Klant sinds:   ${since}`,
+                      `   Laatste bezoek: ${lastVisit}`,
+                      `   Totaal bezoeken: ${c.totalVisits || 0}`,
+                      `   Favoriet:      ${st.hasFavorite ? cardTypeLabels[st.favorite] : '—'}`,
+                      `   Geschatte omzet: €${st.estimatedRevenue.toFixed(2)}`,
+                      `   Loyaliteitskorting: €${st.estimatedGivenAway.toFixed(2)}`,
+                      `   Totaal:        Koffie: ${st.total.coffee}  |  Wijn: ${st.total.wine}  |  Bier: ${st.total.beer}  |  Frisdrank: ${st.total.soda}`,
+                      `   Gem/maand:     Koffie: ${st.avgPerMonth.coffee.toFixed(1)}  |  Wijn: ${st.avgPerMonth.wine.toFixed(1)}  |  Bier: ${st.avgPerMonth.beer.toFixed(1)}  |  Frisdrank: ${st.avgPerMonth.soda.toFixed(1)}`,
+                      `   Stempels:      Koffie: ${c.cards.coffee}/10  |  Wijn: ${c.cards.wine}/10  |  Bier: ${c.cards.beer}/10  |  Frisdrank: ${c.cards.soda}/10`,
+                      `   Volle kaarten: Koffie: ${c.rewards.coffee || 0}  |  Wijn: ${c.rewards.wine || 0}  |  Bier: ${c.rewards.beer || 0}  |  Frisdrank: ${c.rewards.soda || 0}`,
+                      `   Ingewisseld:   Koffie: ${c.claimedRewards?.coffee || 0}  |  Wijn: ${c.claimedRewards?.wine || 0}  |  Bier: ${c.claimedRewards?.beer || 0}  |  Frisdrank: ${c.claimedRewards?.soda || 0}`,
+                      '',
+                    );
                   });
-                  lines.push('════════════════════════════════════════════════════');
-                  lines.push('  TOTAAL VERKOCHT — ALLE KLANTEN SAMEN');
-                  lines.push('════════════════════════════════════════════════════');
-                  lines.push(`  Koffie:    ${grandTotal.coffee} consumpties`);
-                  lines.push(`  Wijn:      ${grandTotal.wine} consumpties`);
-                  lines.push(`  Bier:      ${grandTotal.beer} consumpties`);
-                  lines.push(`  Frisdrank: ${grandTotal.soda} consumpties`);
-                  lines.push('');
-                  lines.push('Geëxporteerd door Cozy Moments Loyalty');
+                  lines.push(
+                    '════════════════════════════════════════════════════',
+                    '  TOTAAL VERKOCHT — ALLE KLANTEN SAMEN',
+                    '════════════════════════════════════════════════════',
+                    `  Koffie:    ${grandTotal.coffee} consumpties`,
+                    `  Wijn:      ${grandTotal.wine} consumpties`,
+                    `  Bier:      ${grandTotal.beer} consumpties`,
+                    `  Frisdrank: ${grandTotal.soda} consumpties`,
+                    '',
+                    'Geëxporteerd door Cozy Moments Loyalty',
+                  );
 
                   // Small delay so the browser doesn't block the second download
                   setTimeout(() => {

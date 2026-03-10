@@ -11,7 +11,6 @@ import {
   resolvePrimarySlideImage,
   resolveLeftSlideImage,
   resolveRightSlideImage,
-  resolveSecondarySlideImage,
   type ScreensaverImageRole,
   type ScreensaverSlideConfig,
 } from '../../shared/lib/screensaver-config';
@@ -175,7 +174,6 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
           const secondaryKey = `${slide.id}:secondary`;
           const isDual = slide.mode === 'dual';
           const primaryImageUrl = resolvePrimarySlideImage(slide);
-          const secondaryImageUrl = resolveSecondarySlideImage(slide);
           const leftImageUrl = resolveLeftSlideImage(slide);
           const rightImageUrl = resolveRightSlideImage(slide);
           const isOpen = openSlideId === slide.id;

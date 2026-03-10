@@ -5,7 +5,6 @@ import {
   createDefaultScreensaverSlides,
   normalizeScreensaverConfig,
   resolveLeftSlideImage,
-  resolvePrimarySlideImage,
   resolveRightSlideImage,
   type ScreensaverSlideConfig,
 } from '../../shared/lib/screensaver-config';
@@ -262,10 +261,8 @@ export const Screensaver: React.FC<{
   // ── Preload images on mount ────────────────────────────────────────────────
   useEffect(() => {
     orderedSlides.flatMap((slide) => {
-      const urls = [resolvePrimarySlideImage(slide)];
-      const secondaryImage = resolveSecondarySlideImage(slide);
-      if (secondaryImage) urls.push(secondaryImage);
-      return urls;
+      const imageUrls = [resolveLeftSlideImage(slide), resolveRightSlideImage(slide)];
+      return imageUrls.filter((url): url is string => Boolean(url));
     }).forEach(src => {
       const img = new Image();
       img.src = src;

@@ -12,7 +12,6 @@ function cn(...inputs: Array<string | false | null | undefined>) {
 interface DrinkMenuEditorProps {
   isDarkMode: boolean;
   sections: DrinkMenuSection[];
-  openBottleOptions: Array<{ id: string; name: string }>;
   dirty: boolean;
   saving: boolean;
   error: string | null;
@@ -26,13 +25,12 @@ interface DrinkMenuEditorProps {
   onAddItem: (sectionId: string) => void;
   onMoveItem: (sectionId: string, itemId: string, direction: -1 | 1) => void;
   onRemoveItem: (sectionId: string, itemId: string) => void;
-  onUpdateItem: (sectionId: string, itemId: string, patch: Partial<Pick<DrinkMenuItem, 'name' | 'price' | 'details' | 'openBottleProductId' | 'isVisible'>>) => void;
+  onUpdateItem: (sectionId: string, itemId: string, patch: Partial<Pick<DrinkMenuItem, 'name' | 'price' | 'details' | 'isVisible'>>) => void;
 }
 
 export function DrinkMenuEditor({
   isDarkMode,
   sections,
-  openBottleOptions,
   dirty,
   saving,
   error,
@@ -268,32 +266,6 @@ export function DrinkMenuEditor({
                     </div>
                   </div>
 
-                  <label className="mt-3 block space-y-1.5">
-                    <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
-                      Open fles promo
-                    </span>
-                    <select
-                      value={item.openBottleProductId ?? ''}
-                      onChange={(event) => onUpdateItem(section.id, item.id, { openBottleProductId: event.target.value || null })}
-                      className={cn(
-                        'w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors',
-                        isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] focus:border-[var(--color-cozy-olive)]'
-                      )}
-                    >
-                      <option value="">Geen koppeling</option>
-                      {openBottleOptions.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  {item.openBottleProductId && (
-                    <p className={cn('mt-2 text-xs leading-5', isDarkMode ? 'text-[#c3ccdb]' : 'text-gray-500')}>
-                      Dit item kan op de website communiceren dat het nu een extra stempel promoot wanneer deze open fles actief staat.
-                    </p>
-                  )}
                 </motion.div>
               ))}
 

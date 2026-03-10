@@ -3,7 +3,6 @@ export interface DrinkMenuItem {
   name: string;
   price: string;
   details: string;
-  openBottleProductId: string | null;
   isVisible: boolean;
 }
 
@@ -25,7 +24,6 @@ function cloneItem(item: DrinkMenuItem): DrinkMenuItem {
     name: item.name,
     price: item.price,
     details: item.details,
-    openBottleProductId: item.openBottleProductId,
     isVisible: item.isVisible,
   };
 }
@@ -56,7 +54,6 @@ function normalizeItem(raw: unknown, index: number): DrinkMenuItem {
     name: normalizeText(candidate.name),
     price: normalizeText(candidate.price),
     details: normalizeText(candidate.details),
-    openBottleProductId: normalizeText(candidate.openBottleProductId) || null,
     isVisible: normalizeBoolean(candidate.isVisible, true),
   };
 }
@@ -87,10 +84,10 @@ const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [
       { id: 'espresso', name: 'Espresso', price: '€ 2,90', details: '', isVisible: true },
       { id: 'dubbele-espresso', name: 'Dubbele Espresso', price: '€ 3,90', details: '', isVisible: true },
       { id: 'americano', name: 'Americano', price: '€ 3,20', details: '', isVisible: true },
-      { id: 'cappuccino-melkschuim', name: 'Cappuccino Melkschuim*', price: '€ 3,50', details: '', openBottleProductId: 'lactosevrije-melk', isVisible: true },
-      { id: 'cappuccino-slagroom', name: 'Cappuccino Slagroom', price: '€ 3,90', details: '', openBottleProductId: 'lactosevrije-melk', isVisible: true },
-      { id: 'latte-macchiato', name: 'Latte Macchiato*', price: '€ 4,10', details: '', openBottleProductId: 'lactosevrije-melk', isVisible: true },
-      { id: 'koffie-verkeerd', name: 'Koffie Verkeerd*', price: '€ 4,10', details: '', openBottleProductId: 'lactosevrije-melk', isVisible: true },
+      { id: 'cappuccino-melkschuim', name: 'Cappuccino Melkschuim*', price: '€ 3,50', details: '', isVisible: true },
+      { id: 'cappuccino-slagroom', name: 'Cappuccino Slagroom', price: '€ 3,90', details: '', isVisible: true },
+      { id: 'latte-macchiato', name: 'Latte Macchiato*', price: '€ 4,10', details: '', isVisible: true },
+      { id: 'koffie-verkeerd', name: 'Koffie Verkeerd*', price: '€ 4,10', details: '', isVisible: true },
       { id: 'iced-coffee', name: 'Iced Coffee', price: '€ 6,00', details: '', isVisible: true },
       { id: 'iced-coffee-slagroom', name: '+ Slagroom', price: '€ 0,80', details: '', isVisible: true },
       { id: 'hazelnootsiroop', name: '+ Hazelnootsiroop', price: '€ 0,60', details: '', isVisible: true },
@@ -120,7 +117,7 @@ const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [
       { id: 'warme-melk-bourbon', name: '+ Bourbon', price: '€ 5,00', details: '', isVisible: true },
       { id: 'cecemel-koud', name: 'Cecemel (koud)', price: '€ 3,00', details: '', isVisible: true },
       { id: 'fristi', name: 'Fristi', price: '€ 3,00', details: '', isVisible: true },
-      { id: 'melk', name: 'Melk*', price: '€ 2,80', details: '*ook verkrijgbaar met lactosevrije melk', openBottleProductId: null, isVisible: true },
+      { id: 'melk', name: 'Melk*', price: '€ 2,80', details: '*ook verkrijgbaar met lactosevrije melk', isVisible: true },
     ],
   },
   {
@@ -158,10 +155,10 @@ const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [
     title: 'Smoothie',
     isVisible: true,
     items: [
-      { id: 'berry-cherry', name: 'Berry Cherry', price: '€ 6,50', details: 'kers, banaan, aardbei, zwarte bes', openBottleProductId: null, isVisible: true },
-      { id: 'pineapple-sunset', name: 'Pineapple Sunset', price: '€ 6,50', details: 'ananas, papaya, mango', openBottleProductId: null, isVisible: true },
-      { id: 'strawberry-fantasy', name: 'Strawberry Fantasy', price: '€ 6,50', details: 'aardbei, banaan', openBottleProductId: null, isVisible: true },
-      { id: 'coconut-crush', name: 'Coconut Crush', price: '€ 6,50', details: 'ananas, kokosmelk', openBottleProductId: null, isVisible: true },
+      { id: 'berry-cherry', name: 'Berry Cherry', price: '€ 6,50', details: 'kers, banaan, aardbei, zwarte bes', isVisible: true },
+      { id: 'pineapple-sunset', name: 'Pineapple Sunset', price: '€ 6,50', details: 'ananas, papaya, mango', isVisible: true },
+      { id: 'strawberry-fantasy', name: 'Strawberry Fantasy', price: '€ 6,50', details: 'aardbei, banaan', isVisible: true },
+      { id: 'coconut-crush', name: 'Coconut Crush', price: '€ 6,50', details: 'ananas, kokosmelk', isVisible: true },
     ],
   },
   {
@@ -279,15 +276,15 @@ const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [
     title: 'Witte Wijn',
     isVisible: true,
     items: [
-      { id: 'les-rochettes-wit-glas', name: 'Les Rochettes Wit', price: '€ 5,50', details: '', openBottleProductId: 'les-rochettes-wit', isVisible: true },
+      { id: 'les-rochettes-wit-glas', name: 'Les Rochettes Wit', price: '€ 5,50', details: '', isVisible: true },
       { id: 'les-rochettes-wit-fles', name: 'Les Rochettes Wit (Fles)', price: '€ 24,00', details: '', isVisible: true },
-      { id: 'les-silex-glas', name: 'Les Silex Sauvignon', price: '€ 8,00', details: '', openBottleProductId: 'les-silex-sauvignon', isVisible: true },
+      { id: 'les-silex-glas', name: 'Les Silex Sauvignon', price: '€ 8,00', details: '', isVisible: true },
       { id: 'les-silex-fles', name: 'Les Silex Sauvignon (Fles)', price: '€ 34,00', details: '', isVisible: true },
-      { id: 'no-excuse-glas', name: 'No Excuse Chardonnay', price: '€ 7,00', details: '', openBottleProductId: 'no-excuse-chardonnay', isVisible: true },
+      { id: 'no-excuse-glas', name: 'No Excuse Chardonnay', price: '€ 7,00', details: '', isVisible: true },
       { id: 'no-excuse-fles', name: 'No Excuse Chardonnay (Fles)', price: '€ 32,00', details: '', isVisible: true },
       { id: 'macon-chardonnay', name: 'Macon-Chardonnay', price: '€ 42,00', details: '', isVisible: true },
       { id: 'weingut-keth-riesling', name: 'Weingut Keth Riesling', price: '€ 34,00', details: '', isVisible: true },
-      { id: 'moelleux-glas', name: 'Terroir et Vignobles Moelleux | zoet', price: '€ 7,00', details: '', openBottleProductId: 'terroir-moelleux', isVisible: true },
+      { id: 'moelleux-glas', name: 'Terroir et Vignobles Moelleux | zoet', price: '€ 7,00', details: '', isVisible: true },
       { id: 'moelleux-fles', name: 'Terroir et Vignobles Moelleux | zoet (Fles)', price: '€ 34,00', details: '', isVisible: true },
     ],
   },
@@ -297,7 +294,7 @@ const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [
     title: 'Rode Wijn',
     isVisible: true,
     items: [
-      { id: 'les-rochettes-rood-glas', name: 'Les Rochettes Rood Glas', price: '€ 5,50', details: '', openBottleProductId: 'les-rochettes-rood', isVisible: true },
+      { id: 'les-rochettes-rood-glas', name: 'Les Rochettes Rood Glas', price: '€ 5,50', details: '', isVisible: true },
       { id: 'les-rochettes-rood-fles', name: 'Les Rochettes Rood Fles', price: '€ 24,00', details: '', isVisible: true },
       { id: 'pure-altitude-pinot-noir', name: 'Pure Altitude Pinot Noir Fles', price: '€ 32,00', details: '', isVisible: true },
       { id: 'lornano-le-bandito', name: 'Lornano Le Bandito Chianti Fles', price: '€ 49,00', details: '', isVisible: true },
@@ -313,10 +310,10 @@ const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [
     title: 'Rose Wijn',
     isVisible: true,
     items: [
-      { id: 'gris-blanc-rose', name: 'Gris Blanc Rose Glas', price: '€ 5,50', details: '', openBottleProductId: 'gris-blanc-rose', isVisible: true },
-      { id: 'les-rochettes-rose-glas', name: 'Les Rochettes Rose Glas', price: '€ 5,50', details: '', openBottleProductId: 'les-rochettes-rose', isVisible: true },
+      { id: 'gris-blanc-rose', name: 'Gris Blanc Rose Glas', price: '€ 5,50', details: '', isVisible: true },
+      { id: 'les-rochettes-rose-glas', name: 'Les Rochettes Rose Glas', price: '€ 5,50', details: '', isVisible: true },
       { id: 'les-rochettes-rose-fles', name: 'Les Rochettes Rose Fles', price: '€ 24,00', details: '', isVisible: true },
-      { id: 'altes-rose-glas', name: "Altes L'Espontania Rose Glas", price: '€ 8,50', details: '', openBottleProductId: 'altes-espontania-rose', isVisible: true },
+      { id: 'altes-rose-glas', name: "Altes L'Espontania Rose Glas", price: '€ 8,50', details: '', isVisible: true },
       { id: 'altes-rose-fles', name: "Altes L'Espontania Rose Fles", price: '€ 35,00', details: '', isVisible: true },
       { id: 'font-vive-rose', name: 'Chateau de Font Vive Rose Fles', price: '€ 49,00', details: '', isVisible: true },
     ],
@@ -327,9 +324,9 @@ const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [
     title: 'Bubbels',
     isVisible: true,
     items: [
-      { id: 'cava-brisa-glas', name: 'Cava Brisa Nova Glas', price: '€ 8,50', details: '', openBottleProductId: 'cava-brisa-nova', isVisible: true },
+      { id: 'cava-brisa-glas', name: 'Cava Brisa Nova Glas', price: '€ 8,50', details: '', isVisible: true },
       { id: 'cava-brisa-fles', name: 'Cava Brisa Nova Fles', price: '€ 35,00', details: '', isVisible: true },
-      { id: 'charles-latour-glas', name: 'Champagne Charles Latour Glas', price: '€ 12,50', details: '', openBottleProductId: 'champagne-charles-latour', isVisible: true },
+      { id: 'charles-latour-glas', name: 'Champagne Charles Latour Glas', price: '€ 12,50', details: '', isVisible: true },
       { id: 'charles-latour-fles', name: 'Champagne Charles Latour Fles', price: '€ 62,00', details: '', isVisible: true },
       { id: 'barbichon', name: 'Champagne Barbichon', price: 'Op aanvraag', details: '', isVisible: true },
       { id: 'vranken-fles', name: 'Champagne Vranken Fles', price: '€ 49,00', details: '', isVisible: true },
@@ -354,8 +351,8 @@ const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [
       { id: 'leffe-00', name: 'Leffe Blond/Bruin 0,0', price: '€ 4,00', details: '', isVisible: true },
       { id: 'hoegaarden-citrus-00', name: 'Hoegaarden Citrus 0,0', price: '€ 3,50', details: '', isVisible: true },
       { id: 'tripel-karmeliet-00', name: 'Tripel Karmeliet Alcoholvrij', price: '€ 4,50', details: '', isVisible: true },
-      { id: 'keth-pinot-blanc-00', name: 'Keth Pinot Blanc 0,0', price: '€ 7,00', details: '', openBottleProductId: 'keth-pinot-blanc-00', isVisible: true },
-      { id: 'divin-pinot-noir-00', name: 'Divin Pinot Noir 0,0', price: '€ 7,00', details: '', openBottleProductId: 'divin-pinot-noir-00', isVisible: true },
+      { id: 'keth-pinot-blanc-00', name: 'Keth Pinot Blanc 0,0', price: '€ 7,00', details: '', isVisible: true },
+      { id: 'divin-pinot-noir-00', name: 'Divin Pinot Noir 0,0', price: '€ 7,00', details: '', isVisible: true },
       { id: 'virgin-mojito', name: 'Virgin Mojito', price: '€ 9,50', details: '', isVisible: true },
       { id: 'virgin-pina-colada', name: 'Virgin Pina Colada', price: '€ 9,50', details: '', isVisible: true },
       { id: 'kidibul', name: 'Kidibul', price: '€ 5,50', details: '', isVisible: true },
@@ -375,9 +372,124 @@ export function createEmptyDrinkMenuItem(): DrinkMenuItem {
     name: '',
     price: '',
     details: '',
-    openBottleProductId: null,
     isVisible: true,
   };
+}
+
+const OPEN_BOTTLE_PROMO_ITEM_IDS: Record<string, string[]> = {
+  'champagne-charles-latour': ['charles-latour-glas'],
+  'cava-brisa-nova': ['cava-brisa-glas'],
+  'altes-espontania-rose': ['altes-rose-glas'],
+  'les-silex-sauvignon': ['les-silex-glas'],
+  'no-excuse-chardonnay': ['no-excuse-glas'],
+  'terroir-moelleux': ['moelleux-glas'],
+  'keth-pinot-blanc-00': ['keth-pinot-blanc-00'],
+  'divin-pinot-noir-00': ['divin-pinot-noir-00'],
+  'les-rochettes-wit': ['les-rochettes-wit-glas'],
+  'les-rochettes-rood': ['les-rochettes-rood-glas'],
+  'les-rochettes-rose': ['les-rochettes-rose-glas'],
+  'gris-blanc-rose': ['gris-blanc-rose'],
+  'lactosevrije-melk': ['cappuccino-melkschuim', 'cappuccino-slagroom', 'latte-macchiato', 'koffie-verkeerd'],
+};
+
+const OPEN_BOTTLE_PROMO_NAME_ALIASES: Record<string, string[]> = {
+  'champagne-charles-latour': ['charles latour', 'champagne charles latour'],
+  'cava-brisa-nova': ['cava brisa nova'],
+  'altes-espontania-rose': ['altes l espontania rose', 'altes espontania rose'],
+  'les-silex-sauvignon': ['les silex sauvignon'],
+  'no-excuse-chardonnay': ['no excuse chardonnay'],
+  'terroir-moelleux': ['terroir et vignobles moelleux', 'moelleux'],
+  'keth-pinot-blanc-00': ['keth pinot blanc 0 0', 'pinot blanc 0 0'],
+  'divin-pinot-noir-00': ['divin pinot noir 0 0', 'pinot noir 0 0'],
+  'les-rochettes-wit': ['les rochettes wit'],
+  'les-rochettes-rood': ['les rochettes rood'],
+  'les-rochettes-rose': ['les rochettes rose', 'les rochettes rosé'],
+  'gris-blanc-rose': ['gris blanc rose', 'gris blanc rosé'],
+};
+
+const PROMO_MATCH_IGNORED_TOKENS = new Set([
+  'de',
+  'en',
+  'het',
+  'met',
+  'per',
+  'glas',
+  'onze',
+  'huis',
+]);
+
+function normalizePromoMatchText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function tokenizePromoMatchText(value: string) {
+  return normalizePromoMatchText(value)
+    .split(' ')
+    .filter((token) => token.length > 1 && !PROMO_MATCH_IGNORED_TOKENS.has(token));
+}
+
+function isBottleOnlyDrinkMenuItem(itemName: string) {
+  const normalizedName = normalizePromoMatchText(itemName);
+  return /\b(fles|magnum)\b/.test(normalizedName) || normalizedName.includes('1 2');
+}
+
+function matchesOpenBottlePromoByName(itemName: string, productName: string, aliases: string[]) {
+  if (!productName || isBottleOnlyDrinkMenuItem(itemName)) {
+    return false;
+  }
+
+  const normalizedItemName = normalizePromoMatchText(itemName);
+  const productTokens = new Set(tokenizePromoMatchText([productName, ...aliases].join(' ')));
+
+  if (productTokens.size === 0) {
+    return false;
+  }
+
+  const itemTokens = new Set(tokenizePromoMatchText(itemName));
+  if (itemTokens.size === 0) {
+    return false;
+  }
+
+  if ([productName, ...aliases].some((candidate) => normalizePromoMatchText(candidate) && normalizedItemName.includes(normalizePromoMatchText(candidate)))) {
+    return true;
+  }
+
+  return Array.from(productTokens).every((token) => itemTokens.has(token));
+}
+
+export function getAutomaticPromoDrinkMenuItemIds(
+  sections: DrinkMenuSection[],
+  promoProductId: string | null,
+  promoProductName: string | null,
+) {
+  if (!promoProductId) {
+    return [];
+  }
+
+  const matchedItemIds = new Set<string>();
+  const knownItemIds = new Set(OPEN_BOTTLE_PROMO_ITEM_IDS[promoProductId] ?? []);
+  const aliases = OPEN_BOTTLE_PROMO_NAME_ALIASES[promoProductId] ?? [];
+
+  sections.forEach((section) => {
+    section.items.forEach((item) => {
+      if (knownItemIds.has(item.id)) {
+        matchedItemIds.add(item.id);
+        return;
+      }
+
+      if (matchesOpenBottlePromoByName(item.name, promoProductName ?? '', aliases)) {
+        matchedItemIds.add(item.id);
+      }
+    });
+  });
+
+  return Array.from(matchedItemIds);
 }
 
 export function createEmptyDrinkMenuSection(): DrinkMenuSection {
@@ -409,7 +521,6 @@ export function serializeDrinkMenuSections(sections: DrinkMenuSection[]) {
       name: item.name,
       price: item.price,
       details: item.details,
-      openBottleProductId: item.openBottleProductId,
       isVisible: item.isVisible,
     })),
   }));

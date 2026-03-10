@@ -53,6 +53,7 @@ import {
   createDefaultDrinkMenuSections,
   createEmptyDrinkMenuItem,
   createEmptyDrinkMenuSection,
+  getAutomaticPromoDrinkMenuItemIds,
   normalizeDrinkMenuSections,
   serializeDrinkMenuSections,
   type DrinkMenuItem,
@@ -308,6 +309,15 @@ const OPEN_BOTTLE_PRODUCT_MAP = OPEN_BOTTLE_PRODUCTS.reduce<Record<string, OpenB
   acc[product.id] = product;
   return acc;
 }, {});
+
+function getPromoOpenBottleProduct(message: string) {
+  return OPEN_BOTTLE_PRODUCTS.find((product) => product.promoMessage === message) ?? null;
+}
+
+function getPromoDrinkMenuItemIds(message: string, sections: DrinkMenuSection[]) {
+  const activeProduct = getPromoOpenBottleProduct(message);
+  return getAutomaticPromoDrinkMenuItemIds(sections, activeProduct?.id ?? null, activeProduct?.name ?? null);
+}
 
 function normalizeOpenBottleState(value: unknown): Record<string, OpenBottleEntry> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -684,7 +694,8 @@ export const BusinessPage: React.FC = () => {
     nextOpenBottles: Record<string, OpenBottleEntry>,
     nextScreensaverSlides: ScreensaverSlideConfig[]
   ) => {
-    const nextPromoOpenBottleProduct = OPEN_BOTTLE_PRODUCTS.find((product) => product.promoMessage === nextPromoMessage) ?? null;
+    const nextPromoOpenBottleProduct = getPromoOpenBottleProduct(nextPromoMessage);
+    const nextPromoDrinkMenuItemIds = getPromoDrinkMenuItemIds(nextPromoMessage, drinkMenuSections);
 
     setPromoMessage(nextPromoMessage);
     setOpenBottles(nextOpenBottles);
@@ -699,6 +710,7 @@ export const BusinessPage: React.FC = () => {
       .update({
         promo_message: nextPromoMessage,
         promo_open_bottle_product_id: nextPromoOpenBottleProduct?.id ?? null,
+        promo_drink_menu_item_ids: nextPromoDrinkMenuItemIds,
         open_bottles: nextOpenBottles,
         screensaver_config: serializeScreensaverConfig(nextScreensaverSlides),
         updated_at: new Date().toISOString(),
@@ -711,10 +723,11 @@ export const BusinessPage: React.FC = () => {
     }
 
     return true;
-  }, []);
+  }, [drinkMenuSections]);
 
   const persistDrinkMenuSections = useCallback(async (nextSections: DrinkMenuSection[]) => {
     setDrinkMenuSections(nextSections);
+    const nextPromoDrinkMenuItemIds = getPromoDrinkMenuItemIds(promoMessage, nextSections);
 
     if (!supabase) return true;
 
@@ -722,6 +735,7 @@ export const BusinessPage: React.FC = () => {
       .from('site_settings')
       .update({
         drink_menu_sections: serializeDrinkMenuSections(nextSections),
+        promo_drink_menu_item_ids: nextPromoDrinkMenuItemIds,
         updated_at: new Date().toISOString(),
       })
       .eq('id', 'default');
@@ -732,7 +746,7 @@ export const BusinessPage: React.FC = () => {
     }
 
     return true;
-  }, []);
+  }, [promoMessage]);
 
   const savePromo = async (msg: string) => {
     setPromoSaving(true);
@@ -901,7 +915,7 @@ export const BusinessPage: React.FC = () => {
     )));
   }, [updateDrinkMenuDraft]);
 
-  const handleDrinkMenuItemUpdate = useCallback((sectionId: string, itemId: string, patch: Partial<Pick<DrinkMenuItem, 'name' | 'price' | 'details' | 'openBottleProductId' | 'isVisible'>>) => {
+  const handleDrinkMenuItemUpdate = useCallback((sectionId: string, itemId: string, patch: Partial<Pick<DrinkMenuItem, 'name' | 'price' | 'details' | 'isVisible'>>) => {
     updateDrinkMenuDraft((current) => current.map((section) => {
       if (section.id !== sectionId) return section;
 
@@ -1028,8 +1042,7 @@ export const BusinessPage: React.FC = () => {
     await persistSiteSettings(product.promoMessage, openBottles, screensaverSlides);
   };
 
-  const activePromoProduct = OPEN_BOTTLE_PRODUCTS.find(product => product.promoMessage === promoMessage) ?? null;
-  const drinkMenuOpenBottleOptions = OPEN_BOTTLE_PRODUCTS.map((product) => ({ id: product.id, name: product.name }));
+  const activePromoProduct = getPromoOpenBottleProduct(promoMessage);
   const openBottleItems = OPEN_BOTTLE_PRODUCTS.map((product) => {
     const entry = openBottles[product.id];
     const openedAtMs = entry ? new Date(entry.openedAt).getTime() : null;
@@ -3146,7 +3159,6 @@ export const BusinessPage: React.FC = () => {
             <DrinkMenuEditor
               isDarkMode={isDarkMode}
               sections={drinkMenuDraft}
-              openBottleOptions={drinkMenuOpenBottleOptions}
               dirty={drinkMenuDirty}
               saving={drinkMenuSaving}
               error={drinkMenuError}

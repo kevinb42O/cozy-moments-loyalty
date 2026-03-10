@@ -170,6 +170,9 @@ ALTER TABLE public.site_settings
   ADD COLUMN IF NOT EXISTS promo_open_bottle_product_id TEXT;
 
 ALTER TABLE public.site_settings
+  ADD COLUMN IF NOT EXISTS promo_drink_menu_item_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+ALTER TABLE public.site_settings
   ADD COLUMN IF NOT EXISTS screensaver_config JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 ALTER TABLE public.site_settings

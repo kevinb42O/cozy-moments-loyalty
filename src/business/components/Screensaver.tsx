@@ -5,6 +5,7 @@ import {
   createDefaultScreensaverSlides,
   normalizeScreensaverConfig,
   resolveLeftSlideImage,
+  resolvePrimarySlideImage,
   resolveRightSlideImage,
   type ScreensaverSlideConfig,
 } from '../../shared/lib/screensaver-config';

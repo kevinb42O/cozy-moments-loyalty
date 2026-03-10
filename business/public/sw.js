@@ -1,5 +1,5 @@
 // Cozy Moments — Business/Admin Service Worker
-const CACHE_NAME = 'cozy-moments-admin-v6';
+const CACHE_NAME = 'cozy-moments-admin-v7';
 const RUNTIME_IMAGE_CACHE = 'cozy-moments-admin-screensaver-v1';
 const OFFLINE_URL = '/';
 

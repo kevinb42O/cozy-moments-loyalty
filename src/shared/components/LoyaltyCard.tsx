@@ -185,10 +185,10 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0"
               style={{ background: config.accent }}
             >
-              <Icon className="w-5 h-5 text-white" />
+              <Icon className="w-[22px] h-[22px] sm:w-6 sm:h-6 text-white" strokeWidth={2.25} />
             </div>
             <div>
               <h3 className="text-[17px] font-display font-bold leading-tight" style={{ color: config.accent }}>
@@ -254,7 +254,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
                     Gratis
                   </span>
                 ) : (
-                  <Icon className="w-3 h-3" style={{ color: config.emptyBorder }} />
+                  <Icon className="w-[14px] h-[14px] sm:w-4 sm:h-4" style={{ color: config.emptyBorder }} strokeWidth={2.2} />
                 )}
               </div>
             );
@@ -267,14 +267,14 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
-          className="text-[10.5px] sm:text-[11.5px] text-gray-400 font-serif text-center italic leading-tight truncate"
+          className="text-[10.5px] sm:text-[11.5px] text-gray-500 font-serif text-center italic leading-tight truncate"
         >
           {getMotivationText(displayCount, type)}
         </motion.p>
 
         {/* €5 Regel */}
         <p
-          className="text-[10px] sm:text-[11px] text-gray-400 font-serif text-center italic leading-tight mt-0.5 sm:mt-1 px-1 sm:px-2 break-words"
+          className="text-[10px] sm:text-[11px] text-gray-500 font-serif text-center italic leading-tight mt-0.5 sm:mt-1 px-1 sm:px-2 break-words"
           style={{ letterSpacing: '0.02em' }}
         >
           {config.rewardRule}

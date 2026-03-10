@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, LogOut, Gift, ChevronRight, Megaphone, X, Mail, Award, TrendingUp, CalendarDays } from 'lucide-react';
+import { QrCode, LogOut, Gift, ChevronRight, Megaphone, X, Mail, Award, CalendarDays, BookOpen, TriangleAlert } from 'lucide-react';
 import { useLoyalty, CardType } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
@@ -21,6 +21,7 @@ export const CustomerPage: React.FC = () => {
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [fillFromCards, setFillFromCards] = useState<Partial<Record<CardType, number>> | null>(null);
   const [showProfileSheet, setShowProfileSheet] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
@@ -136,20 +137,44 @@ export const CustomerPage: React.FC = () => {
     month: 'long',
     year: 'numeric',
   }).format(new Date(currentCustomer.createdAt));
-  const lastVisitLabel = (() => {
+  const lastVisitDateLabel = currentCustomer.lastVisitAt
+    ? new Intl.DateTimeFormat('nl-BE', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(currentCustomer.lastVisitAt))
+    : 'Nog geen bezoek';
+  const lastVisitSummary = (() => {
     if (!currentCustomer.lastVisitAt) return 'Nog geen bezoek geregistreerd';
 
     const visitDate = new Date(currentCustomer.lastVisitAt);
     const diffMs = Date.now() - visitDate.getTime();
     const diffDays = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
 
-    if (diffDays === 0) return 'Vandaag nog langs geweest';
-    if (diffDays === 1) return 'Laatst gezien: gisteren';
-    return `Laatst gezien: ${diffDays} dagen geleden`;
+    if (diffDays === 0) return 'Vandaag';
+    if (diffDays === 1) return 'Gisteren';
+    return `${diffDays} dagen geleden`;
   })();
+  const closeProfileSheet = () => {
+    setShowProfileSheet(false);
+    setShowLogoutConfirm(false);
+  };
+
+  const requestLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutConfirm(false);
+    setShowProfileSheet(false);
+    logout();
+  };
 
   return (
-    <div className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">
+    <div
+      className="min-h-screen pb-32 bg-[var(--color-cozy-bg)]"
+      style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       {/* Header — premium glassmorphism */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
@@ -172,7 +197,7 @@ export const CustomerPage: React.FC = () => {
             </button>
           </div>
           <div className="flex items-center justify-center">
-            <a href="https://www.cozy-moments.be/" target="_blank" rel="noopener noreferrer">
+            <a href="https://cozy-moments-website.vercel.app/" target="_blank" rel="noopener noreferrer">
               <img src="/cozylogo.png" alt="COZY Moments" className="w-[60px] h-[60px] object-contain" />
             </a>
           </div>
@@ -275,29 +300,61 @@ export const CustomerPage: React.FC = () => {
           const isBonusCard = currentCustomer.bonusCardType === type;
           const bonusStillActive = isBonusCard && currentCustomer.cards[type] >= 2;
           return (
-            <motion.div
-              key={type}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.5,
-                delay: 0.1 + i * 0.12,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-            >
-              <LoyaltyCard
-                type={type}
-                count={currentCustomer.cards[type]}
-                fromCount={fillFromCards?.[type]}
-                bonusStampPositions={bonusStillActive ? [0, 1] : undefined}
-              />
-            </motion.div>
+            <React.Fragment key={type}>
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.5,
+                  delay: 0.1 + i * 0.12,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <LoyaltyCard
+                  type={type}
+                  count={currentCustomer.cards[type]}
+                  fromCount={fillFromCards?.[type]}
+                  bonusStampPositions={bonusStillActive ? [0, 1] : undefined}
+                />
+              </motion.div>
+
+              {i === 1 && (
+                <motion.a
+                  href="https://cozy-moments-website.vercel.app/menu"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, y: 26 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.5,
+                    delay: 0.1 + i * 0.12 + 0.06,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  className="block rounded-[28px] border border-white/70 bg-white/55 backdrop-blur-md px-5 py-4 shadow-[0_10px_30px_rgba(70,62,48,0.08)] active:scale-[0.98] transition-transform"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[var(--color-cozy-olive)]/12 flex items-center justify-center text-[var(--color-cozy-olive)] shrink-0">
+                      <BookOpen size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-gray-400 font-medium mb-1">Cozy Moments</p>
+                      <h3 className="font-display font-bold text-[var(--color-cozy-text)] text-lg leading-tight">Menukaart bekijken</h3>
+                      <p className="text-sm text-gray-500 mt-1">Open het menu en bekijk het actuele aanbod.</p>
+                    </div>
+                    <ChevronRight size={20} className="text-gray-400 shrink-0" />
+                  </div>
+                </motion.a>
+              )}
+            </React.Fragment>
           );
         })}
       </main>
 
       {/* Scan button */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--color-cozy-bg)] via-[var(--color-cozy-bg)] to-transparent z-20 pointer-events-none">
+      <div
+        className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[var(--color-cozy-bg)] via-[var(--color-cozy-bg)] to-transparent z-20 pointer-events-none"
+        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <motion.button
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -316,15 +373,20 @@ export const CustomerPage: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6"
-            onClick={() => setShowProfileSheet(false)}
+            className="fixed inset-0 z-[70] bg-black/45 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            style={{
+              paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+              paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
+            }}
+            onClick={closeProfileSheet}
           >
             <motion.div
               initial={{ opacity: 0, y: 24, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 18, scale: 0.98 }}
               transition={{ duration: 0.22, ease: 'easeOut' }}
-              className="bg-white w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[92vh] overflow-hidden shadow-2xl"
+              className="bg-white w-full sm:max-w-lg rounded-[32px] max-h-[calc(100dvh-24px)] sm:max-h-[92vh] overflow-hidden shadow-2xl"
+              style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px)' }}
               onClick={(event) => event.stopPropagation()}
             >
               <div className="relative overflow-hidden px-5 sm:px-6 pt-5 sm:pt-6 pb-5 border-b border-white/70"
@@ -340,7 +402,7 @@ export const CustomerPage: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShowProfileSheet(false)}
+                    onClick={closeProfileSheet}
                     className="w-10 h-10 rounded-full bg-white/85 border border-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors shrink-0"
                     aria-label="Sluit accountinformatie"
                   >
@@ -380,7 +442,13 @@ export const CustomerPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="overflow-y-auto px-5 sm:px-6 py-5 space-y-5 max-h-[calc(92vh-180px)]">
+              <div
+                className="overflow-y-auto px-5 sm:px-6 py-5 space-y-5 max-h-[calc(100dvh-250px)] sm:max-h-[calc(92vh-230px)]"
+                style={{
+                  maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 250px)',
+                  paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))',
+                }}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
                     <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
@@ -404,20 +472,20 @@ export const CustomerPage: React.FC = () => {
 
                   <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
                     <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
-                      <TrendingUp size={16} />
-                      <span className="text-xs font-medium uppercase tracking-wide">Punten</span>
+                      <CalendarDays size={16} />
+                      <span className="text-xs font-medium uppercase tracking-wide">Recent bezoek</span>
                     </div>
-                    <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">{currentCustomer.loyaltyPoints}</p>
-                    <p className="text-xs text-gray-500 mt-1">Automatisch bijgewerkt bij geregistreerde bezoeken</p>
+                    <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">{lastVisitSummary}</p>
+                    <p className="text-xs text-gray-500 mt-1">{lastVisitDateLabel}</p>
                   </div>
 
                   <div className="rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3">
                     <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
                       <CalendarDays size={16} />
-                      <span className="text-xs font-medium uppercase tracking-wide">Bezoeken</span>
+                      <span className="text-xs font-medium uppercase tracking-wide">Totaal bezoeken</span>
                     </div>
                     <p className="font-display font-bold text-lg text-[var(--color-cozy-text)]">{currentCustomer.totalVisits}</p>
-                    <p className="text-xs text-gray-500 mt-1">{lastVisitLabel}</p>
+                    <p className="text-xs text-gray-500 mt-1">Totaal aantal geregistreerde bezoeken.</p>
                   </div>
                 </div>
 
@@ -516,7 +584,60 @@ export const CustomerPage: React.FC = () => {
                     })}
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={requestLogout}
+                  className="w-full rounded-full border border-[rgba(148,53,53,0.28)] bg-[rgba(176,72,72,0.5)] py-3.5 px-6 text-sm font-medium text-white shadow-[0_10px_24px_rgba(120,40,40,0.14)] backdrop-blur-sm transition-all active:scale-[0.98]"
+                >
+                  Uitloggen
+                </button>
               </div>
+
+              <AnimatePresence>
+                {showLogoutConfirm && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-10 bg-[rgba(32,24,20,0.34)] backdrop-blur-[3px] flex items-center justify-center p-4"
+                    onClick={() => setShowLogoutConfirm(false)}
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      className="w-full max-w-sm rounded-[28px] border border-white/70 bg-white/96 px-5 py-5 shadow-2xl"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="w-11 h-11 rounded-full bg-[rgba(176,72,72,0.12)] text-[#a84f4f] flex items-center justify-center mb-4">
+                        <TriangleAlert size={20} />
+                      </div>
+                      <h3 className="font-display font-bold text-lg text-[var(--color-cozy-text)]">Ben je zeker?</h3>
+                      <p className="text-sm text-gray-500 leading-relaxed mt-2">
+                        Je wordt uitgelogd uit je klantenkaart en moet daarna opnieuw aanmelden om je account te openen.
+                      </p>
+                      <div className="mt-5 grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowLogoutConfirm(false)}
+                          className="rounded-full border border-gray-200 bg-[#f7f6f2] py-3 px-4 text-sm font-medium text-[var(--color-cozy-text)] transition-all active:scale-[0.98]"
+                        >
+                          Annuleren
+                        </button>
+                        <button
+                          type="button"
+                          onClick={confirmLogout}
+                          className="rounded-full border border-[rgba(148,53,53,0.28)] bg-[rgba(176,72,72,0.5)] py-3 px-4 text-sm font-medium text-white shadow-[0_10px_24px_rgba(120,40,40,0.14)] backdrop-blur-sm transition-all active:scale-[0.98]"
+                        >
+                          Ja, uitloggen
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
         )}

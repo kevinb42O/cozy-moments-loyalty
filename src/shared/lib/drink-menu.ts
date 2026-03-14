@@ -6,6 +6,14 @@ export interface DrinkMenuItem {
   isVisible: boolean;
 }
 
+export interface ActivePromo {
+  productId: string;
+  promoMessage: string;
+  drinkMenuItemIds: string[];
+}
+
+export const MAX_ACTIVE_PROMOS = 3;
+
 export interface DrinkMenuSection {
   id: string;
   sectionCode: string;
@@ -523,5 +531,41 @@ export function serializeDrinkMenuSections(sections: DrinkMenuSection[]) {
       details: item.details,
       isVisible: item.isVisible,
     })),
+  }));
+}
+
+export function getMultiPromoDrinkMenuItemIds(
+  sections: DrinkMenuSection[],
+  promos: Array<{ productId: string; productName: string }>,
+): string[] {
+  const allIds = new Set<string>();
+  for (const promo of promos) {
+    for (const id of getAutomaticPromoDrinkMenuItemIds(sections, promo.productId, promo.productName)) {
+      allIds.add(id);
+    }
+  }
+  return Array.from(allIds);
+}
+
+export function normalizeActivePromos(raw: unknown): ActivePromo[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((entry): entry is Record<string, unknown> => entry !== null && typeof entry === 'object' && !Array.isArray(entry))
+    .filter((entry) => typeof entry.productId === 'string' && typeof entry.promoMessage === 'string')
+    .slice(0, MAX_ACTIVE_PROMOS)
+    .map((entry) => ({
+      productId: entry.productId as string,
+      promoMessage: entry.promoMessage as string,
+      drinkMenuItemIds: Array.isArray(entry.drinkMenuItemIds)
+        ? (entry.drinkMenuItemIds as unknown[]).filter((id): id is string => typeof id === 'string')
+        : [],
+    }));
+}
+
+export function serializeActivePromos(promos: ActivePromo[]) {
+  return promos.map((p) => ({
+    productId: p.productId,
+    promoMessage: p.promoMessage,
+    drinkMenuItemIds: p.drinkMenuItemIds,
   }));
 }

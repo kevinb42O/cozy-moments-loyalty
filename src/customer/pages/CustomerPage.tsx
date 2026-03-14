@@ -6,10 +6,12 @@ import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
 import { LoadingScreen } from '../../shared/components/LoadingScreen';
 import { supabase } from '../../shared/lib/supabase';
+import { normalizeActivePromos, type ActivePromo } from '../../shared/lib/drink-menu';
 import { LOYALTY_TIER_CONFIG, LOYALTY_TIER_ORDER, getLoyaltyProgress } from '../../shared/lib/loyalty-tier';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
+const PROMO_ROTATION_INTERVAL_MS = 10_000;
 
 export const CustomerPage: React.FC = () => {
   const { currentCustomer } = useLoyalty();
@@ -17,7 +19,8 @@ export const CustomerPage: React.FC = () => {
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(true);
   const [loadTimeout, setLoadTimeout] = useState(false);
-  const [promoMessage, setPromoMessage] = useState('');
+  const [promoMessages, setPromoMessages] = useState<string[]>([]);
+  const [promoIndex, setPromoIndex] = useState(0);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [fillFromCards, setFillFromCards] = useState<Partial<Record<CardType, number>> | null>(null);
   const [showProfileSheet, setShowProfileSheet] = useState(false);
@@ -28,25 +31,33 @@ export const CustomerPage: React.FC = () => {
     return () => clearTimeout(t);
   }, []);
 
-  // Fetch promo message
+  // Fetch promo messages (multi-promo with fallback to legacy single promo)
   useEffect(() => {
     if (!supabase) return;
 
-    const loadPromoMessage = async () => {
-      const { data, error } = await supabase.from('site_settings').select('promo_message').eq('id', 'default').single();
+    const loadPromos = async () => {
+      const { data, error } = await supabase.from('site_settings').select('promo_message, active_promos').eq('id', 'default').single();
       if (error) {
         console.error('Kon promo banner niet laden:', error);
         return;
       }
-      setPromoMessage(data?.promo_message ?? '');
+      const promos = normalizeActivePromos((data as { active_promos?: unknown } | null)?.active_promos);
+      if (promos.length > 0) {
+        setPromoMessages(promos.map((p) => p.promoMessage));
+      } else {
+        // Backward compat: fall back to legacy single promo_message
+        const legacy = data?.promo_message ?? '';
+        setPromoMessages(legacy ? [legacy] : []);
+      }
+      setPromoIndex(0);
     };
 
-    loadPromoMessage();
+    loadPromos();
 
     const channel = supabase
       .channel('site-settings-realtime-customer')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, () => {
-        loadPromoMessage();
+        loadPromos();
       })
       .subscribe();
 
@@ -54,6 +65,15 @@ export const CustomerPage: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Rotate promo messages every 10 seconds when there are multiple
+  useEffect(() => {
+    if (promoMessages.length <= 1) return;
+    const interval = globalThis.setInterval(() => {
+      setPromoIndex((current) => (current + 1) % promoMessages.length);
+    }, PROMO_ROTATION_INTERVAL_MS);
+    return () => globalThis.clearInterval(interval);
+  }, [promoMessages.length]);
 
   // If currentCustomer doesn't load within 8s, show escape hatch
   useEffect(() => {
@@ -249,17 +269,40 @@ export const CustomerPage: React.FC = () => {
         </AnimatePresence>
       </motion.header>
 
-      {/* Promo banner */}
-      {promoMessage && (
+      {/* Promo banner — rotates through active promos */}
+      {promoMessages.length > 0 && (
         <div className="px-6 mb-4">
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-[var(--color-cozy-olive)]/8 border border-[var(--color-cozy-olive)]/15 rounded-2xl px-4 py-3 flex items-start gap-2.5"
+            className="bg-[var(--color-cozy-olive)]/8 border border-[var(--color-cozy-olive)]/15 rounded-2xl px-4 py-3 flex items-start gap-2.5 overflow-hidden"
           >
             <Megaphone size={16} className="text-[var(--color-cozy-olive)] mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-[var(--color-cozy-text)]/80 leading-snug">{promoMessage}</p>
+            <div className="flex-1 min-w-0 relative">
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={promoIndex}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-sm text-[var(--color-cozy-text)]/80 leading-snug"
+                >
+                  {promoMessages[promoIndex]}
+                </motion.p>
+              </AnimatePresence>
+              {promoMessages.length > 1 && (
+                <div className="flex justify-center gap-1.5 mt-2">
+                  {promoMessages.map((_, i) => (
+                    <span
+                      key={i}
+                      className={`inline-block w-1.5 h-1.5 rounded-full transition-colors ${i === promoIndex ? 'bg-[var(--color-cozy-olive)]' : 'bg-[var(--color-cozy-olive)]/25'}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
       )}

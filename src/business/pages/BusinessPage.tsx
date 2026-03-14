@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, Check, X, Gift, Clock3, History, Save, Settings2, ArrowLeft, Moon, Sun } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, X, Gift, Clock3, History, Save, Settings2, ArrowLeft, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -53,8 +53,13 @@ import {
   createEmptyDrinkMenuItem,
   createEmptyDrinkMenuSection,
   getAutomaticPromoDrinkMenuItemIds,
+  getMultiPromoDrinkMenuItemIds,
+  normalizeActivePromos,
   normalizeDrinkMenuSections,
+  serializeActivePromos,
   serializeDrinkMenuSections,
+  MAX_ACTIVE_PROMOS,
+  type ActivePromo,
   type DrinkMenuItem,
   type DrinkMenuSection,
 } from '../../shared/lib/drink-menu';
@@ -324,15 +329,6 @@ const OPEN_BOTTLE_PRODUCT_MAP = OPEN_BOTTLE_PRODUCTS.reduce<Record<string, OpenB
   return acc;
 }, {});
 
-function getPromoOpenBottleProduct(message: string) {
-  return OPEN_BOTTLE_PRODUCTS.find((product) => product.promoMessage === message) ?? null;
-}
-
-function getPromoDrinkMenuItemIds(message: string, sections: DrinkMenuSection[]) {
-  const activeProduct = getPromoOpenBottleProduct(message);
-  return getAutomaticPromoDrinkMenuItemIds(sections, activeProduct?.id ?? null, activeProduct?.name ?? null);
-}
-
 function normalizeOpenBottleState(value: unknown): Record<string, OpenBottleEntry> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
 
@@ -528,10 +524,8 @@ export const BusinessPage: React.FC = () => {
   const [loyaltyFilter, setLoyaltyFilter] = useState<'all' | LoyaltyTier>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // Promo message state
-  const [promoMessage, setPromoMessage] = useState('');
-  const [promoInput, setPromoInput] = useState('');
-  const [promoEditing, setPromoEditing] = useState(false);
+  // Promo state — up to MAX_ACTIVE_PROMOS simultaneously
+  const [activePromos, setActivePromos] = useState<ActivePromo[]>([]);
   const [promoSaving, setPromoSaving] = useState(false);
   const [openBottles, setOpenBottles] = useState<Record<string, OpenBottleEntry>>({});
   const [openBottleFilter, setOpenBottleFilter] = useState<OpenBottleFilter>('all');
@@ -659,7 +653,7 @@ export const BusinessPage: React.FC = () => {
 
     const { data, error } = await supabase
       .from('site_settings')
-      .select('promo_message, open_bottles, screensaver_config, drink_menu_sections')
+      .select('promo_message, open_bottles, screensaver_config, drink_menu_sections, active_promos')
       .eq('id', 'default')
       .single();
 
@@ -668,9 +662,8 @@ export const BusinessPage: React.FC = () => {
       return;
     }
 
-    const nextPromo = data?.promo_message ?? '';
-    setPromoMessage(nextPromo);
-    setPromoInput(current => promoEditing ? current : nextPromo);
+    const nextActivePromos = normalizeActivePromos((data as { active_promos?: unknown } | null)?.active_promos);
+    setActivePromos(nextActivePromos);
     setOpenBottles(normalizeOpenBottleState((data as { open_bottles?: unknown } | null)?.open_bottles));
     const nextScreensaverSlides = normalizeScreensaverConfig((data as { screensaver_config?: unknown } | null)?.screensaver_config);
     setScreensaverSlides(nextScreensaverSlides);
@@ -683,7 +676,7 @@ export const BusinessPage: React.FC = () => {
     );
     setDrinkMenuSections(nextDrinkMenuSections);
     setDrinkMenuDraft(current => drinkMenuEditing ? current : nextDrinkMenuSections);
-  }, [drinkMenuEditing, promoEditing, screensaverEditing]);
+  }, [drinkMenuEditing, screensaverEditing]);
 
   // Fetch promo message + open bottles and keep in sync across devices
   useEffect(() => {
@@ -704,27 +697,34 @@ export const BusinessPage: React.FC = () => {
   }, [loadSiteSettings]);
 
   const persistSiteSettings = useCallback(async (
-    nextPromoMessage: string,
+    nextActivePromos: ActivePromo[],
     nextOpenBottles: Record<string, OpenBottleEntry>,
     nextScreensaverSlides: ScreensaverSlideConfig[]
   ) => {
-    const nextPromoOpenBottleProduct = getPromoOpenBottleProduct(nextPromoMessage);
-    const nextPromoDrinkMenuItemIds = getPromoDrinkMenuItemIds(nextPromoMessage, drinkMenuSections);
-
-    setPromoMessage(nextPromoMessage);
+    setActivePromos(nextActivePromos);
     setOpenBottles(nextOpenBottles);
     setScreensaverSlides(nextScreensaverSlides);
     persistCachedScreensaverSlides(nextScreensaverSlides);
     void warmScreensaverImageCache(nextScreensaverSlides);
+
+    // Backward compat: populate legacy single-promo columns from the first active promo
+    const firstPromo = nextActivePromos[0] ?? null;
+    const legacyPromoMessage = firstPromo?.promoMessage ?? '';
+    const legacyPromoProductId = firstPromo?.productId ?? null;
+    const legacyPromoDrinkMenuItemIds = getMultiPromoDrinkMenuItemIds(
+      drinkMenuSections,
+      nextActivePromos.map((p) => ({ productId: p.productId, productName: OPEN_BOTTLE_PRODUCT_MAP[p.productId]?.name ?? '' })),
+    );
 
     if (!supabase) return true;
 
     const { error } = await supabase
       .from('site_settings')
       .update({
-        promo_message: nextPromoMessage,
-        promo_open_bottle_product_id: nextPromoOpenBottleProduct?.id ?? null,
-        promo_drink_menu_item_ids: nextPromoDrinkMenuItemIds,
+        promo_message: legacyPromoMessage,
+        promo_open_bottle_product_id: legacyPromoProductId,
+        promo_drink_menu_item_ids: legacyPromoDrinkMenuItemIds,
+        active_promos: serializeActivePromos(nextActivePromos),
         open_bottles: nextOpenBottles,
         screensaver_config: serializeScreensaverConfig(nextScreensaverSlides),
         updated_at: new Date().toISOString(),
@@ -741,7 +741,10 @@ export const BusinessPage: React.FC = () => {
 
   const persistDrinkMenuSections = useCallback(async (nextSections: DrinkMenuSection[]) => {
     setDrinkMenuSections(nextSections);
-    const nextPromoDrinkMenuItemIds = getPromoDrinkMenuItemIds(promoMessage, nextSections);
+    const nextPromoDrinkMenuItemIds = getMultiPromoDrinkMenuItemIds(
+      nextSections,
+      activePromos.map((p) => ({ productId: p.productId, productName: OPEN_BOTTLE_PRODUCT_MAP[p.productId]?.name ?? '' })),
+    );
 
     if (!supabase) return true;
 
@@ -760,15 +763,12 @@ export const BusinessPage: React.FC = () => {
     }
 
     return true;
-  }, [promoMessage]);
+  }, [activePromos]);
 
-  const savePromo = async (msg: string) => {
+  const clearAllPromos = async () => {
     setPromoSaving(true);
-    const ok = await persistSiteSettings(msg, openBottles, screensaverSlides);
+    await persistSiteSettings([], openBottles, screensaverSlides);
     setPromoSaving(false);
-    if (!ok) return;
-    setPromoInput(msg);
-    setPromoEditing(false);
   };
 
   const updateScreensaverDraft = useCallback((updater: (current: ScreensaverSlideConfig[]) => ScreensaverSlideConfig[]) => {
@@ -869,7 +869,7 @@ export const BusinessPage: React.FC = () => {
   const saveScreensaver = useCallback(async () => {
     const normalizedDraft = normalizeScreensaverConfig(screensaverDraft);
     setScreensaverSaving(true);
-    const ok = await persistSiteSettings(promoMessage, openBottles, normalizedDraft);
+    const ok = await persistSiteSettings(activePromos, openBottles, normalizedDraft);
     setScreensaverSaving(false);
 
     if (!ok) {
@@ -882,7 +882,7 @@ export const BusinessPage: React.FC = () => {
     setScreensaverEditing(false);
     setScreensaverError(null);
     setScreensaverSuccess('Screensaver opgeslagen. De nieuwe volgorde en timing zijn meteen actief.');
-  }, [openBottles, persistSiteSettings, promoMessage, screensaverDraft]);
+  }, [openBottles, persistSiteSettings, activePromos, screensaverDraft]);
 
   const updateDrinkMenuDraft = useCallback((updater: (current: DrinkMenuSection[]) => DrinkMenuSection[]) => {
     setDrinkMenuEditing(true);
@@ -1011,7 +1011,7 @@ export const BusinessPage: React.FC = () => {
         remainingCount: product.maxRemainingCount,
       },
     };
-    await persistSiteSettings(promoMessage, nextOpenBottles, screensaverSlides);
+    await persistSiteSettings(activePromos, nextOpenBottles, screensaverSlides);
   };
 
   const handleSoldUnit = async (productId: string) => {
@@ -1031,35 +1031,58 @@ export const BusinessPage: React.FC = () => {
       };
     }
 
-    const nextPromo = nextRemainingCount === 0 && promoMessage === product.promoMessage
-      ? ''
-      : promoMessage;
+    // Remove from active promos if bottle is now empty
+    const nextPromos = nextRemainingCount === 0
+      ? activePromos.filter((p) => p.productId !== productId)
+      : activePromos;
 
-    await persistSiteSettings(nextPromo, nextOpenBottles, screensaverSlides);
+    await persistSiteSettings(nextPromos, nextOpenBottles, screensaverSlides);
   };
 
   const handleClearBottle = async (productId: string) => {
     const nextOpenBottles = { ...openBottles };
     delete nextOpenBottles[productId];
 
-    const nextPromo = OPEN_BOTTLE_PRODUCTS.find(product => product.id === productId)?.promoMessage === promoMessage
-      ? ''
-      : promoMessage;
+    // Remove from active promos
+    const nextPromos = activePromos.filter((p) => p.productId !== productId);
 
-    await persistSiteSettings(nextPromo, nextOpenBottles, screensaverSlides);
+    await persistSiteSettings(nextPromos, nextOpenBottles, screensaverSlides);
   };
 
   const handlePromoteBottle = async (product: OpenBottleProduct) => {
     if (!openBottles[product.id]) return;
-    setPromoInput(product.promoMessage);
-    setPromoEditing(false);
-    await persistSiteSettings(product.promoMessage, openBottles, screensaverSlides);
+
+    const alreadyInPromo = activePromos.some((p) => p.productId === product.id);
+    let nextPromos: ActivePromo[];
+
+    if (alreadyInPromo) {
+      // Toggle off
+      nextPromos = activePromos.filter((p) => p.productId !== product.id);
+    } else {
+      // Add (respecting max)
+      const drinkMenuItemIds = getAutomaticPromoDrinkMenuItemIds(drinkMenuDraft, product.id, product.name);
+      const newEntry: ActivePromo = {
+        productId: product.id,
+        promoMessage: product.promoMessage,
+        drinkMenuItemIds,
+      };
+      nextPromos = [...activePromos, newEntry].slice(0, MAX_ACTIVE_PROMOS);
+    }
+
+    await persistSiteSettings(nextPromos, openBottles, screensaverSlides);
   };
 
-  const activePromoProduct = getPromoOpenBottleProduct(promoMessage);
+  const activePromoProductIds = useMemo(() => new Set(activePromos.map((p) => p.productId)), [activePromos]);
   const activePromoDrinkMenuItemIds = useMemo(
-    () => getPromoDrinkMenuItemIds(promoMessage, drinkMenuDraft),
-    [drinkMenuDraft, promoMessage]
+    () => getMultiPromoDrinkMenuItemIds(
+      drinkMenuDraft,
+      activePromos.map((p) => ({ productId: p.productId, productName: OPEN_BOTTLE_PRODUCT_MAP[p.productId]?.name ?? '' })),
+    ),
+    [drinkMenuDraft, activePromos]
+  );
+  const activePromoProductNames = useMemo(
+    () => activePromos.map((p) => OPEN_BOTTLE_PRODUCT_MAP[p.productId]?.name ?? p.productId),
+    [activePromos]
   );
   const openBottleItems = OPEN_BOTTLE_PRODUCTS.map((product) => {
     const entry = openBottles[product.id];
@@ -1068,7 +1091,7 @@ export const BusinessPage: React.FC = () => {
     const remainingMs = expiresAtMs ? expiresAtMs - clockNow : null;
     const isExpired = remainingMs !== null && remainingMs <= 0;
     const isActive = Boolean(entry);
-    const isPromoActive = promoMessage === product.promoMessage;
+    const isPromoActive = activePromoProductIds.has(product.id);
 
     return {
       product,
@@ -1121,7 +1144,7 @@ export const BusinessPage: React.FC = () => {
     },
     promo: {
       title: 'Alleen promo',
-      note: 'Hier zie je enkel de open fles die nu actief gepromoot wordt.',
+      note: 'Hier zie je de open flessen die nu actief gepromoot worden.',
       empty: 'Er staat momenteel geen open fles actief in promo.',
     },
   };
@@ -1871,7 +1894,7 @@ export const BusinessPage: React.FC = () => {
               </div>
               <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
                 <p className="text-[10px] uppercase tracking-wider text-gray-400">In promo</p>
-                <p className="font-mono text-2xl font-bold text-[var(--color-cozy-olive)]">{activePromoProduct ? '1' : '0'}</p>
+                <p className="font-mono text-2xl font-bold text-[var(--color-cozy-olive)]">{activePromos.length}</p>
               </div>
             </div>
 
@@ -1880,23 +1903,28 @@ export const BusinessPage: React.FC = () => {
                 <Megaphone size={16} className="text-[var(--color-cozy-olive)]" />
                 <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">Wat klanten nu zien</span>
               </div>
-              {promoMessage ? (
-                <div className="rounded-2xl border border-amber-200/50 bg-white/45 px-4 py-3">
-                  <p className="text-sm text-[var(--color-cozy-text)]/85 leading-snug">{promoMessage}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {activePromoProduct && (
-                      <span className="inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-[var(--color-cozy-olive)] shadow-sm">
-                        Actieve fles: {activePromoProduct.name}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => savePromo('')}
-                      disabled={promoSaving}
-                      className="text-xs text-red-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                    >
-                      Promo wissen
-                    </button>
-                  </div>
+              {activePromos.length > 0 ? (
+                <div className="space-y-2">
+                  {activePromos.map((promo) => {
+                    const product = OPEN_BOTTLE_PRODUCT_MAP[promo.productId];
+                    return (
+                      <div key={promo.productId} className="rounded-2xl border border-amber-200/50 bg-white/45 px-4 py-3">
+                        <p className="text-sm text-[var(--color-cozy-text)]/85 leading-snug">{promo.promoMessage}</p>
+                        {product && (
+                          <span className="mt-2 inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-[var(--color-cozy-olive)] shadow-sm">
+                            {product.name}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    onClick={clearAllPromos}
+                    disabled={promoSaving}
+                    className="text-xs text-red-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                  >
+                    Alle promo's wissen
+                  </button>
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-amber-200/60 bg-white/40 px-4 py-3 text-sm text-gray-500">
@@ -2010,13 +2038,16 @@ export const BusinessPage: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handlePromoteBottle(item.product)}
-                          disabled={promoSaving}
+                          disabled={promoSaving || (!item.isPromoActive && activePromos.length >= MAX_ACTIVE_PROMOS)}
                           className={cn(
-                            'ios-frosted w-full min-h-14 rounded-2xl border border-white/70 px-3 py-3 text-sm font-semibold text-[var(--color-cozy-text)] transition-all hover:bg-white/80 active:scale-[0.98]',
-                            promoSaving && 'opacity-50 cursor-not-allowed'
+                            'ios-frosted w-full min-h-14 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all active:scale-[0.98]',
+                            item.isPromoActive
+                              ? 'border-[var(--color-cozy-olive)]/30 bg-[var(--color-cozy-olive)]/10 text-[var(--color-cozy-olive)] hover:bg-[var(--color-cozy-olive)]/15'
+                              : 'border-white/70 text-[var(--color-cozy-text)] hover:bg-white/80',
+                            (promoSaving || (!item.isPromoActive && activePromos.length >= MAX_ACTIVE_PROMOS)) && 'opacity-50 cursor-not-allowed'
                           )}
                         >
-                          {item.isPromoActive ? 'Nu in promo' : 'Zet in promo'}
+                          {item.isPromoActive ? 'Uit promo halen' : activePromos.length >= MAX_ACTIVE_PROMOS ? `Max ${MAX_ACTIVE_PROMOS} promos` : 'Zet in promo'}
                         </button>
                         <button
                           onClick={() => handleSoldUnit(item.product.id)}
@@ -2255,57 +2286,23 @@ export const BusinessPage: React.FC = () => {
               </button>
             </div>
 
-            {/* ── Promo bericht ───────────────────────────────────── */}
+            {/* ── Actieve promo's ────────────────────────────────── */}
             <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <Megaphone size={16} className="text-[var(--color-cozy-olive)]" />
-                <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">Promo bericht voor klanten</span>
+                <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">Actieve promo's voor klanten</span>
               </div>
-              {promoEditing ? (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={promoInput}
-                    onChange={e => setPromoInput(e.target.value)}
-                    maxLength={120}
-                    placeholder="bv. Vandaag 2e koffie gratis!"
-                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)] transition"
-                    autoFocus
-                    onKeyDown={e => { if (e.key === 'Enter') savePromo(promoInput.trim()); else if (e.key === 'Escape') { setPromoInput(promoMessage); setPromoEditing(false); } }}
-                  />
-                  <button
-                    onClick={() => savePromo(promoInput.trim())}
-                    disabled={promoSaving}
-                    className="w-10 h-10 rounded-xl bg-[var(--color-cozy-olive)] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    <Check size={18} />
-                  </button>
-                  <button
-                    onClick={() => { setPromoInput(promoMessage); setPromoEditing(false); }}
-                    className="w-10 h-10 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"
-                  >
-                    <X size={18} />
-                  </button>
+              {activePromos.length > 0 ? (
+                <div className="space-y-2">
+                  {activePromos.map((promo) => (
+                    <div key={promo.productId} className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-[var(--color-cozy-text)]">
+                      {promo.promoMessage}
+                    </div>
+                  ))}
+                  <p className="text-xs text-gray-400">Beheer promo's via het Open flessen-paneel.</p>
                 </div>
               ) : (
-                <button
-                  onClick={() => setPromoEditing(true)}
-                  className="w-full text-left bg-gray-50 border border-dashed border-gray-200 rounded-xl px-3 py-2 text-sm hover:bg-gray-100 transition-colors"
-                >
-                  {promoMessage ? (
-                    <span className="text-[var(--color-cozy-text)]">{promoMessage}</span>
-                  ) : (
-                    <span className="text-gray-400 italic">Tik om een promo bericht in te stellen...</span>
-                  )}
-                </button>
-              )}
-              {promoMessage && !promoEditing && (
-                <button
-                  onClick={() => savePromo('')}
-                  className="mt-2 text-xs text-red-400 hover:text-red-500 transition-colors"
-                >
-                  Promo verwijderen
-                </button>
+                <p className="text-sm text-gray-400 italic">Geen actieve promo's. Open het Open flessen-paneel om een fles in promo te zetten.</p>
               )}
             </div>
 
@@ -3182,7 +3179,7 @@ export const BusinessPage: React.FC = () => {
               isDarkMode={isDarkMode}
               sections={drinkMenuDraft}
               activePromoItemIds={activePromoDrinkMenuItemIds}
-              activePromoProductName={activePromoProduct?.name ?? null}
+              activePromoProductName={activePromoProductNames.length > 0 ? activePromoProductNames.join(', ') : null}
               dirty={drinkMenuDirty}
               saving={drinkMenuSaving}
               error={drinkMenuError}

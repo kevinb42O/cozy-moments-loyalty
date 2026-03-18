@@ -2256,7 +2256,7 @@ export const BusinessPage: React.FC = () => {
                       `   Loyaliteitskorting: €${st.estimatedGivenAway.toFixed(2)}`,
                       `   Totaal:        Koffie: ${st.total.coffee}  |  Wijn: ${st.total.wine}  |  Bier: ${st.total.beer}  |  Frisdrank: ${st.total.soda}`,
                       `   Gem/maand:     Koffie: ${st.avgPerMonth.coffee.toFixed(1)}  |  Wijn: ${st.avgPerMonth.wine.toFixed(1)}  |  Bier: ${st.avgPerMonth.beer.toFixed(1)}  |  Frisdrank: ${st.avgPerMonth.soda.toFixed(1)}`,
-                      `   Stempels:      Koffie: ${c.cards.coffee}/10  |  Wijn: ${c.cards.wine}/10  |  Bier: ${c.cards.beer}/10  |  Frisdrank: ${c.cards.soda}/10`,
+                      `   Stempels:      Koffie: ${c.cards.coffee}/12  |  Wijn: ${c.cards.wine}/12  |  Bier: ${c.cards.beer}/12  |  Frisdrank: ${c.cards.soda}/12`,
                       `   Volle kaarten: Koffie: ${c.rewards.coffee || 0}  |  Wijn: ${c.rewards.wine || 0}  |  Bier: ${c.rewards.beer || 0}  |  Frisdrank: ${c.rewards.soda || 0}`,
                       `   Ingewisseld:   Koffie: ${c.claimedRewards?.coffee || 0}  |  Wijn: ${c.claimedRewards?.wine || 0}  |  Bier: ${c.claimedRewards?.beer || 0}  |  Frisdrank: ${c.claimedRewards?.soda || 0}`,
                       '',
@@ -2476,19 +2476,19 @@ export const BusinessPage: React.FC = () => {
                       <div className="hidden md:flex items-center gap-3 flex-shrink-0">
                         <div className="flex flex-col items-center bg-[#e8dcc8]/30 rounded-2xl px-4 py-2 min-w-[72px]">
                           <Coffee size={18} className="text-[var(--color-cozy-coffee)] mb-0.5" />
-                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.coffee}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.coffee}<span className="text-xs font-normal text-gray-400">/12</span></span>
                         </div>
                         <div className="flex flex-col items-center bg-[#f0d8dc]/30 rounded-2xl px-4 py-2 min-w-[72px]">
                           <Wine size={18} className="text-[var(--color-cozy-wine)] mb-0.5" />
-                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.wine}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.wine}<span className="text-xs font-normal text-gray-400">/12</span></span>
                         </div>
                         <div className="flex flex-col items-center bg-[#fcf4d9]/30 rounded-2xl px-4 py-2 min-w-[72px]">
                           <Beer size={18} className="text-[var(--color-cozy-beer)] mb-0.5" />
-                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.beer}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.beer}<span className="text-xs font-normal text-gray-400">/12</span></span>
                         </div>
                         <div className="flex flex-col items-center bg-[#fce4f0]/30 rounded-2xl px-4 py-2 min-w-[72px]">
                           <GlassWater size={18} className="text-[var(--color-cozy-soda)] mb-0.5" />
-                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.soda}<span className="text-xs font-normal text-gray-400">/10</span></span>
+                          <span className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{customer.cards.soda}<span className="text-xs font-normal text-gray-400">/12</span></span>
                         </div>
                       </div>
                       <motion.div
@@ -2503,19 +2503,19 @@ export const BusinessPage: React.FC = () => {
                     <div className="flex md:hidden items-center gap-2 mt-3 ml-14">
                       <div className="flex-1 flex flex-col items-center bg-[#e8dcc8]/30 rounded-xl py-1.5">
                         <Coffee size={14} className="text-[var(--color-cozy-coffee)] mb-0.5" />
-                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.coffee}<span className="text-[10px] font-normal text-gray-400">/10</span></span>
+                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.coffee}<span className="text-[10px] font-normal text-gray-400">/12</span></span>
                       </div>
                       <div className="flex-1 flex flex-col items-center bg-[#f0d8dc]/30 rounded-xl py-1.5">
                         <Wine size={14} className="text-[var(--color-cozy-wine)] mb-0.5" />
-                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.wine}<span className="text-[10px] font-normal text-gray-400">/10</span></span>
+                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.wine}<span className="text-[10px] font-normal text-gray-400">/12</span></span>
                       </div>
                       <div className="flex-1 flex flex-col items-center bg-[#fcf4d9]/30 rounded-xl py-1.5">
                         <Beer size={14} className="text-[var(--color-cozy-beer)] mb-0.5" />
-                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.beer}<span className="text-[10px] font-normal text-gray-400">/10</span></span>
+                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.beer}<span className="text-[10px] font-normal text-gray-400">/12</span></span>
                       </div>
                       <div className="flex-1 flex flex-col items-center bg-[#fce4f0]/30 rounded-xl py-1.5">
                         <GlassWater size={14} className="text-[var(--color-cozy-soda)] mb-0.5" />
-                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.soda}<span className="text-[10px] font-normal text-gray-400">/10</span></span>
+                        <span className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards.soda}<span className="text-[10px] font-normal text-gray-400">/12</span></span>
                       </div>
                     </div>
                   </button>
@@ -2672,19 +2672,19 @@ export const BusinessPage: React.FC = () => {
                           <div className="grid grid-cols-4 gap-2">
                             <div className="bg-[#e8dcc8]/30 rounded-xl p-3 flex flex-col items-center">
                               <Coffee size={20} className="text-[var(--color-cozy-coffee)] mb-1" />
-                              <span className="font-mono text-sm font-medium">{customer.cards.coffee}/10</span>
+                              <span className="font-mono text-sm font-medium">{customer.cards.coffee}/12</span>
                             </div>
                             <div className="bg-[#f0d8dc]/30 rounded-xl p-3 flex flex-col items-center">
                               <Wine size={20} className="text-[var(--color-cozy-wine)] mb-1" />
-                              <span className="font-mono text-sm font-medium">{customer.cards.wine}/10</span>
+                              <span className="font-mono text-sm font-medium">{customer.cards.wine}/12</span>
                             </div>
                             <div className="bg-[#fcf4d9]/30 rounded-xl p-3 flex flex-col items-center">
                               <Beer size={20} className="text-[var(--color-cozy-beer)] mb-1" />
-                              <span className="font-mono text-sm font-medium">{customer.cards.beer}/10</span>
+                              <span className="font-mono text-sm font-medium">{customer.cards.beer}/12</span>
                             </div>
                             <div className="bg-[#fce4f0]/30 rounded-xl p-3 flex flex-col items-center">
                               <GlassWater size={20} className="text-[var(--color-cozy-soda)] mb-1" />
-                              <span className="font-mono text-sm font-medium">{customer.cards.soda}/10</span>
+                              <span className="font-mono text-sm font-medium">{customer.cards.soda}/12</span>
                             </div>
                           </div>
 

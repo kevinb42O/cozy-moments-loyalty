@@ -11,6 +11,8 @@ const rewardConfig: Record<CardType, { icon: React.ElementType; bg: string; colo
   soda: { icon: GlassWater, bg: 'bg-[#fce4f0]', color: 'text-[var(--color-cozy-soda)]', activeBg: 'bg-[var(--color-cozy-soda)]' },
 };
 
+const STAMPS_FOR_REWARD = 12;
+
 export const RewardsPage: React.FC = () => {
   const { currentCustomer } = useLoyalty();
   const navigate = useNavigate();
@@ -20,6 +22,9 @@ export const RewardsPage: React.FC = () => {
   const rewards = currentCustomer.rewards;
   const claimed = currentCustomer.claimedRewards;
   const totalRewards = rewards.coffee + rewards.wine + rewards.beer + rewards.soda;
+  const nearestReward = (Object.keys(currentCustomer.cards) as CardType[])
+    .map((type) => ({ type, remaining: Math.max(0, STAMPS_FOR_REWARD - currentCustomer.cards[type]) }))
+    .sort((a, b) => a.remaining - b.remaining)[0];
 
   return (
     <div className="min-h-screen pb-28 bg-[var(--color-cozy-bg)]">
@@ -35,6 +40,16 @@ export const RewardsPage: React.FC = () => {
       </header>
 
       <main className="px-6 space-y-8">
+        <section className="rounded-2xl border border-[var(--color-cozy-olive)]/20 bg-white/70 backdrop-blur-sm px-4 py-3 shadow-sm">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-cozy-olive)] font-semibold">Zo werkt je beloning</p>
+          <p className="text-sm text-[var(--color-cozy-text)] mt-1 leading-snug">
+            Per {STAMPS_FOR_REWARD} stempels krijg je een gratis consumptie van hetzelfde type.
+            {nearestReward.remaining === 0
+              ? ' Je dichtste kaart is nu vol.'
+              : ` Nog ${nearestReward.remaining} stempel${nearestReward.remaining === 1 ? '' : 's'} tot je volgende beloning.`}
+          </p>
+        </section>
+
         {/* Available Rewards */}
         <section>
           <div className="flex items-center gap-2 mb-4">

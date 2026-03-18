@@ -2868,7 +2868,7 @@ export const BusinessPage: React.FC = () => {
                         <div className="space-y-3 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
                           <div className="flex items-center justify-between">
                             <p className="text-xs text-gray-400 uppercase tracking-wider">Stempels huidige kaart</p>
-                            <span className="text-[11px] text-gray-400">Moet tussen 0 en 9 uitkomen</span>
+                            <span className="text-[11px] text-gray-400">Moet tussen 0 en 11 uitkomen</span>
                           </div>
                           {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (
                             <DeltaControl
@@ -2879,7 +2879,7 @@ export const BusinessPage: React.FC = () => {
                               onChange={(value) => changeCorrectionRecord('stamps', type, value)}
                               accent="olive"
                               minValue={selectedCorrectionCustomer ? -selectedCorrectionCustomer.cards[type] : undefined}
-                              maxValue={selectedCorrectionCustomer ? 9 - selectedCorrectionCustomer.cards[type] : undefined}
+                              maxValue={selectedCorrectionCustomer ? 11 - selectedCorrectionCustomer.cards[type] : undefined}
                               disabled={!correctionControlEnabled}
                             />
                           ))}

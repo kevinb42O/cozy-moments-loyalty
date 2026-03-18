@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QrCode, LogOut, Gift, ChevronRight, Megaphone, X, Mail, Award, CalendarDays, BookOpen, TriangleAlert } from 'lucide-react';
-import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
+import { useLoyalty, CardType } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
 import { LoadingScreen } from '../../shared/components/LoadingScreen';
@@ -12,7 +12,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
 const PROMO_ROTATION_INTERVAL_MS = 10_000;
-const STAMPS_FOR_REWARD = 12;
 
 export const CustomerPage: React.FC = () => {
   const { currentCustomer } = useLoyalty();
@@ -150,14 +149,6 @@ export const CustomerPage: React.FC = () => {
   }
 
   const totalRewards = (currentCustomer.rewards?.coffee || 0) + (currentCustomer.rewards?.wine || 0) + (currentCustomer.rewards?.beer || 0) + (currentCustomer.rewards?.soda || 0);
-  const nextRewardTarget = CARD_TYPES
-    .map((type) => ({
-      type,
-      remaining: Math.max(0, STAMPS_FOR_REWARD - currentCustomer.cards[type]),
-      stamps: currentCustomer.cards[type],
-    }))
-    .sort((a, b) => a.remaining - b.remaining)[0];
-  const nextRewardDrinkLabel = cardTypeLabels[nextRewardTarget.type].toLowerCase();
   const loyaltyConfig = LOYALTY_TIER_CONFIG[currentCustomer.loyaltyTier];
   const loyaltyProgress = getLoyaltyProgress(currentCustomer.loyaltyPoints);
   const nextTierLabel = loyaltyProgress.nextTier ? LOYALTY_TIER_CONFIG[loyaltyProgress.nextTier].label : null;
@@ -343,25 +334,6 @@ export const CustomerPage: React.FC = () => {
           </motion.button>
         </div>
       )}
-
-      {/* Loyalty explainer */}
-      <div className="px-6 mb-4">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22 }}
-          className="rounded-2xl border border-[var(--color-cozy-olive)]/20 bg-white/60 backdrop-blur-sm px-4 py-3 shadow-[0_6px_20px_rgba(58,52,40,0.06)]"
-        >
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-cozy-olive)] font-semibold">Jouw spaarvoordeel</p>
-          <p className="text-sm text-[var(--color-cozy-text)] mt-1 leading-snug">
-            Je spaart nu per <strong>{STAMPS_FOR_REWARD} stempels</strong> voor een gratis consumptie.
-            {nextRewardTarget.remaining === 0
-              ? ' Je kaart is vol, claim je beloning bij je volgende scan.'
-              : ` Dichtstbij: nog ${nextRewardTarget.remaining} te gaan op je ${nextRewardDrinkLabel}-kaart.`}
-          </p>
-          <p className="text-xs text-gray-500 mt-1.5">Tip: je eerste geldige scan geeft automatisch 2 welkomststempels op je eerste kaart.</p>
-        </motion.div>
-      </div>
 
       {/* Cards stacked vertically */}
       <main className="px-6 space-y-5">

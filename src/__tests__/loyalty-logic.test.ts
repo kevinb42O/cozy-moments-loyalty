@@ -3,15 +3,15 @@ import { calculateLifetimeConsumptions, getLoyaltyProgress, resolveLoyaltyTier }
 
 /**
  * Tests the stamp → reward arithmetic used in LoyaltyContext.addConsumptions.
- * This is the core business logic: 10 stamps = 1 free drink reward.
+ * This is the core business logic: 12 stamps = 1 free drink reward.
  */
 
 type CardType = 'coffee' | 'wine' | 'beer' | 'soda';
 
 function calculateStamps(currentStamps: number, added: number) {
   const total = currentStamps + added;
-  const rewardsEarned = Math.floor(total / 10);
-  const remaining = total % 10;
+  const rewardsEarned = Math.floor(total / 12);
+  const remaining = total % 12;
   return { rewardsEarned, remaining };
 }
 
@@ -30,9 +30,9 @@ function addConsumptionsLogic(
   (Object.keys(consumptions) as CardType[]).forEach(type => {
     if (consumptions[type] <= 0) return;
     const total = newCards[type] + consumptions[type];
-    const rewardsEarned = Math.floor(total / 10);
+    const rewardsEarned = Math.floor(total / 12);
     earned[type] = rewardsEarned;
-    newCards[type] = total % 10;
+    newCards[type] = total % 12;
     if (rewardsEarned > 0) newRewards[type] = (newRewards[type] || 0) + rewardsEarned;
   });
 
@@ -53,26 +53,26 @@ function calcEstimatedRevenue(totals: Record<CardType, number>): number {
 // ══════════════════════════════════════════════════════════════════════════════
 
 describe('Stamp & Reward Logic', () => {
-  it('should not earn reward with fewer than 10 stamps', () => {
+  it('should not earn reward with fewer than 12 stamps', () => {
     const result = calculateStamps(3, 4);
     expect(result.rewardsEarned).toBe(0);
     expect(result.remaining).toBe(7);
   });
 
-  it('should earn 1 reward at exactly 10 stamps', () => {
-    const result = calculateStamps(7, 3);
+  it('should earn 1 reward at exactly 12 stamps', () => {
+    const result = calculateStamps(9, 3);
     expect(result.rewardsEarned).toBe(1);
     expect(result.remaining).toBe(0);
   });
 
-  it('should carry over stamps past 10', () => {
-    const result = calculateStamps(8, 5);
+  it('should carry over stamps past 12', () => {
+    const result = calculateStamps(10, 5);
     expect(result.rewardsEarned).toBe(1);
     expect(result.remaining).toBe(3);
   });
 
   it('should earn multiple rewards in one go', () => {
-    const result = calculateStamps(5, 25);
+    const result = calculateStamps(0, 36);
     expect(result.rewardsEarned).toBe(3);
     expect(result.remaining).toBe(0);
   });
@@ -84,25 +84,25 @@ describe('Stamp & Reward Logic', () => {
   });
 
   it('should handle starting from 0', () => {
-    const result = calculateStamps(0, 12);
+    const result = calculateStamps(0, 14);
     expect(result.rewardsEarned).toBe(1);
     expect(result.remaining).toBe(2);
   });
 
-  it('should handle adding exactly 10 from 0', () => {
-    const result = calculateStamps(0, 10);
+  it('should handle adding exactly 12 from 0', () => {
+    const result = calculateStamps(0, 12);
     expect(result.rewardsEarned).toBe(1);
     expect(result.remaining).toBe(0);
   });
 
   it('should handle large batches', () => {
-    const result = calculateStamps(9, 91);
+    const result = calculateStamps(0, 120);
     expect(result.rewardsEarned).toBe(10);
     expect(result.remaining).toBe(0);
   });
 
-  it('should handle 9 stamps + 1 addition = exactly 1 reward', () => {
-    const result = calculateStamps(9, 1);
+  it('should handle 11 stamps + 1 addition = exactly 1 reward', () => {
+    const result = calculateStamps(11, 1);
     expect(result.rewardsEarned).toBe(1);
     expect(result.remaining).toBe(0);
   });
@@ -160,7 +160,7 @@ describe('Multi-Card addConsumptions Logic', () => {
 
     expect(newCards.coffee).toBe(5);
     expect(newCards.wine).toBe(1);
-    expect(newCards.beer).toBe(2); // 7+5=12 → 2 remaining
+    expect(newCards.beer).toBe(0); // 7+5=12 → 0 remaining
     expect(newCards.soda).toBe(0);
     expect(earned.beer).toBe(1);
     expect(earned.coffee).toBe(0);
@@ -168,22 +168,22 @@ describe('Multi-Card addConsumptions Logic', () => {
   });
 
   it('should earn rewards on multiple types simultaneously', () => {
-    const cards = { coffee: 8, wine: 9, beer: 0, soda: 5 };
+    const cards = { coffee: 8, wine: 11, beer: 0, soda: 5 };
     const rewards = { coffee: 1, wine: 0, beer: 0, soda: 0 };
     const consumptions = { coffee: 5, wine: 1, beer: 0, soda: 0 };
 
     const { newCards, newRewards, earned } = addConsumptionsLogic(cards, rewards, consumptions);
 
     expect(earned.coffee).toBe(1);     // 8+5=13 → 1 reward
-    expect(earned.wine).toBe(1);       // 9+1=10 → 1 reward
-    expect(newCards.coffee).toBe(3);   // 13%10=3
-    expect(newCards.wine).toBe(0);     // 10%10=0
+    expect(earned.wine).toBe(1);       // 11+1=12 → 1 reward
+    expect(newCards.coffee).toBe(1);   // 13%12=1
+    expect(newCards.wine).toBe(0);     // 12%12=0
     expect(newRewards.coffee).toBe(2); // was 1 + earned 1
     expect(newRewards.wine).toBe(1);
   });
 
   it('should handle all-zero consumptions (noop)', () => {
-    const cards = { coffee: 5, wine: 3, beer: 1, soda: 9 };
+    const cards = { coffee: 5, wine: 3, beer: 1, soda: 11 };
     const rewards = { coffee: 0, wine: 0, beer: 0, soda: 0 };
     const consumptions = { coffee: 0, wine: 0, beer: 0, soda: 0 };
 
@@ -193,9 +193,9 @@ describe('Multi-Card addConsumptions Logic', () => {
     expect(earned).toEqual({ coffee: 0, wine: 0, beer: 0, soda: 0 });
   });
 
-  it('should handle the handleiding example: Lisa 8 coffee + 3', () => {
-    // From the user manual: Lisa has 8 coffee, buys 3 → 1 reward + 1 remaining
-    const cards = { coffee: 8, wine: 0, beer: 0, soda: 0 };
+  it('should handle the handleiding example: Lisa 10 coffee + 3', () => {
+    // From the user manual: Lisa has 10 coffee, buys 3 → 1 reward + 1 remaining
+    const cards = { coffee: 10, wine: 0, beer: 0, soda: 0 };
     const rewards = { coffee: 0, wine: 0, beer: 0, soda: 0 };
     const consumptions = { coffee: 3, wine: 0, beer: 0, soda: 0 };
 
@@ -210,11 +210,11 @@ describe('Multi-Card addConsumptions Logic', () => {
     // Round 1
     let cards = { coffee: 0, wine: 0, beer: 0, soda: 0 };
     let rewards = { coffee: 0, wine: 0, beer: 0, soda: 0 };
-    let result = addConsumptionsLogic(cards, rewards, { coffee: 10, wine: 0, beer: 0, soda: 0 });
+    let result = addConsumptionsLogic(cards, rewards, { coffee: 12, wine: 0, beer: 0, soda: 0 });
     expect(result.earned.coffee).toBe(1);
 
     // Round 2 (builds on round 1)
-    result = addConsumptionsLogic(result.newCards, result.newRewards, { coffee: 10, wine: 0, beer: 0, soda: 0 });
+    result = addConsumptionsLogic(result.newCards, result.newRewards, { coffee: 12, wine: 0, beer: 0, soda: 0 });
     expect(result.earned.coffee).toBe(1);
     expect(result.newRewards.coffee).toBe(2); // 2 unclaimed rewards total
   });
@@ -248,7 +248,7 @@ describe('Loyalty Tier Logic', () => {
       claimedRewards: { coffee: 2, wine: 1, beer: 0, soda: 0 },
     });
 
-    expect(points).toBe(47);
+    expect(points).toBe(55);
   });
 
   it('should assign Bronze below 25 points', () => {

@@ -50,7 +50,7 @@ export const RewardsPage: React.FC = () => {
                 <Gift size={28} className="text-gray-400" />
               </div>
               <p className="text-gray-500 font-serif">Nog geen beloningen verdiend</p>
-              <p className="text-sm text-gray-400 mt-1">Spaar 10 stempels voor een gratis consumptie!</p>
+              <p className="text-sm text-gray-400 mt-1">Spaar 12 stempels voor een gratis consumptie!</p>
             </div>
           ) : (
             <div className="space-y-3">

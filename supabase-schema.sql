@@ -226,10 +226,10 @@ AS $$
     + GREATEST(COALESCE(p_wine_stamps, 0), 0)
     + GREATEST(COALESCE(p_beer_stamps, 0), 0)
     + GREATEST(COALESCE(p_soda_stamps, 0), 0)
-    + ((GREATEST(COALESCE(p_coffee_rewards, 0), 0) + GREATEST(COALESCE(p_coffee_claimed, 0), 0)) * 10)
-    + ((GREATEST(COALESCE(p_wine_rewards, 0), 0) + GREATEST(COALESCE(p_wine_claimed, 0), 0)) * 10)
-    + ((GREATEST(COALESCE(p_beer_rewards, 0), 0) + GREATEST(COALESCE(p_beer_claimed, 0), 0)) * 10)
-    + ((GREATEST(COALESCE(p_soda_rewards, 0), 0) + GREATEST(COALESCE(p_soda_claimed, 0), 0)) * 10);
+    + ((GREATEST(COALESCE(p_coffee_rewards, 0), 0) + GREATEST(COALESCE(p_coffee_claimed, 0), 0)) * 12)
+    + ((GREATEST(COALESCE(p_wine_rewards, 0), 0) + GREATEST(COALESCE(p_wine_claimed, 0), 0)) * 12)
+    + ((GREATEST(COALESCE(p_beer_rewards, 0), 0) + GREATEST(COALESCE(p_beer_claimed, 0), 0)) * 12)
+    + ((GREATEST(COALESCE(p_soda_rewards, 0), 0) + GREATEST(COALESCE(p_soda_claimed, 0), 0)) * 12);
 $$;
 
 CREATE OR REPLACE FUNCTION public.calculate_customer_loyalty_tier(p_loyalty_points INTEGER)
@@ -439,17 +439,17 @@ BEGIN
     END IF;
   END IF;
 
-  coffee_rewards_earned := FLOOR((customer_row.coffee_stamps + actual_coffee) / 10.0);
-  wine_rewards_earned   := FLOOR((customer_row.wine_stamps + actual_wine) / 10.0);
-  beer_rewards_earned   := FLOOR((customer_row.beer_stamps + actual_beer) / 10.0);
-  soda_rewards_earned   := FLOOR((customer_row.soda_stamps + actual_soda) / 10.0);
+  coffee_rewards_earned := FLOOR((customer_row.coffee_stamps + actual_coffee) / 12.0);
+  wine_rewards_earned   := FLOOR((customer_row.wine_stamps + actual_wine) / 12.0);
+  beer_rewards_earned   := FLOOR((customer_row.beer_stamps + actual_beer) / 12.0);
+  soda_rewards_earned   := FLOOR((customer_row.soda_stamps + actual_soda) / 12.0);
 
   UPDATE public.customers
   SET
-    coffee_stamps = MOD(customer_row.coffee_stamps + actual_coffee, 10),
-    wine_stamps = MOD(customer_row.wine_stamps + actual_wine, 10),
-    beer_stamps = MOD(customer_row.beer_stamps + actual_beer, 10),
-    soda_stamps = MOD(customer_row.soda_stamps + actual_soda, 10),
+    coffee_stamps = MOD(customer_row.coffee_stamps + actual_coffee, 12),
+    wine_stamps = MOD(customer_row.wine_stamps + actual_wine, 12),
+    beer_stamps = MOD(customer_row.beer_stamps + actual_beer, 12),
+    soda_stamps = MOD(customer_row.soda_stamps + actual_soda, 12),
     coffee_rewards = customer_row.coffee_rewards + coffee_rewards_earned,
     wine_rewards = customer_row.wine_rewards + wine_rewards_earned,
     beer_rewards = customer_row.beer_rewards + beer_rewards_earned,
@@ -685,11 +685,11 @@ BEGIN
   next_soda_claimed := customer_row.soda_claimed + COALESCE(p_soda_claimed, 0);
   next_total_visits := customer_row.total_visits + COALESCE(p_visit_delta, 0);
 
-  IF next_coffee_stamps < 0 OR next_coffee_stamps > 9
-     OR next_wine_stamps < 0 OR next_wine_stamps > 9
-     OR next_beer_stamps < 0 OR next_beer_stamps > 9
-     OR next_soda_stamps < 0 OR next_soda_stamps > 9 THEN
-    RAISE EXCEPTION 'Stempels op de huidige kaart moeten tussen 0 en 9 blijven';
+  IF next_coffee_stamps < 0 OR next_coffee_stamps > 11
+     OR next_wine_stamps < 0 OR next_wine_stamps > 11
+     OR next_beer_stamps < 0 OR next_beer_stamps > 11
+     OR next_soda_stamps < 0 OR next_soda_stamps > 11 THEN
+    RAISE EXCEPTION 'Stempels op de huidige kaart moeten tussen 0 en 11 blijven';
   END IF;
 
   IF next_coffee_rewards < 0 OR next_wine_rewards < 0 OR next_beer_rewards < 0 OR next_soda_rewards < 0 THEN

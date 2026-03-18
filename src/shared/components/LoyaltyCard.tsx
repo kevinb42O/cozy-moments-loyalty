@@ -63,13 +63,14 @@ function getMotivationText(count: number, type: string): string {
   const emojiMap: Record<string, string> = { coffee: '☕', wine: '🍷', beer: '🍻', soda: '🧃' };
   const drink = drinkMap[type] || 'consumptie';
   const emoji = emojiMap[type] || '🎉';
-  if (count === 0) return `Spaar 10 stempels voor een gratis ${drink}!`;
-  if (count === 1) return `Goed begin! Nog 9 te gaan ${emoji}`;
-  if (count <= 3) return `Lekker bezig! Nog ${10 - count} te gaan`;
-  if (count <= 5) return `Halverwege! Nog ${10 - count} stempels ${emoji}`;
-  if (count <= 7) return `Goed op weg! Nog maar ${10 - count}...`;
-  if (count === 8) return `Bijna! Nog 2 voor een gratis ${drink}! ${emoji}`;
-  if (count === 9) return `Oeh, nog eentje voor een gratis ${drink}! ${emoji}`;
+  if (count === 0) return `Spaar 12 stempels voor een gratis ${drink}!`;
+  if (count === 1) return `Goed begin! Nog 11 te gaan ${emoji}`;
+  if (count <= 3) return `Lekker bezig! Nog ${12 - count} te gaan`;
+  if (count <= 5) return `Goed op weg! Nog ${12 - count} stempels ${emoji}`;
+  if (count <= 7) return `Halverwege! Nog ${12 - count} te gaan ${emoji}`;
+  if (count <= 9) return `Bijna! Nog maar ${12 - count}... ${emoji}`;
+  if (count === 10) return `Bijna! Nog 2 voor een gratis ${drink}! ${emoji}`;
+  if (count === 11) return `Oeh, nog eentje voor een gratis ${drink}! ${emoji}`;
   return `Gefeliciteerd! Je ${drink} is gratis! 🎉`;
 }
 
@@ -78,14 +79,14 @@ function getMotivationText(count: number, type: string): string {
 export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStampPositions, fromCount }) => {
   const config = cardConfig[type];
   const Icon = config.icon;
-  const clampedCount = Math.max(0, Math.min(10, count));
-  const clampedFromCount = fromCount === undefined ? clampedCount : Math.max(0, Math.min(10, fromCount));
+  const clampedCount = Math.max(0, Math.min(12, count));
+  const clampedFromCount = fromCount === undefined ? clampedCount : Math.max(0, Math.min(12, fromCount));
   const shouldAnimateFromPrevious = fromCount !== undefined && clampedFromCount < clampedCount;
-  const targetFillPercent = (clampedCount / 10) * 100;
+  const targetFillPercent = (clampedCount / 12) * 100;
 
   const initialFillPercent = useMemo(() => {
     if (!shouldAnimateFromPrevious) return targetFillPercent;
-    return (clampedFromCount / 10) * 100;
+    return (clampedFromCount / 12) * 100;
   }, [clampedFromCount, shouldAnimateFromPrevious, targetFillPercent]);
 
   const [fillPercent, setFillPercent] = useState(initialFillPercent);
@@ -203,16 +204,16 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({ type, count, bonusStam
             className="px-3 py-1 rounded-full text-[13px] font-bold"
             style={{ background: config.accentLight, color: config.accent }}
           >
-            {displayCount}/10
+            {displayCount}/12
           </div>
         </div>
 
         {/* Stamps */}
-        <div className="grid grid-cols-5 gap-1.5 sm:gap-2 my-0.5 sm:my-1">
-          {Array.from({ length: 10 }).map((_, i) => {
+        <div className="grid grid-cols-6 gap-1.5 sm:gap-2 my-0.5 sm:my-1">
+          {Array.from({ length: 12 }).map((_, i) => {
             const isFilled = i < displayCount;
             const isBonus = isFilled && (bonusStampPositions?.includes(i) ?? false);
-            const isFree = i === 9;
+            const isFree = i === 11;
             const isNewlyAnimatedStamp = shouldAnimateFromPrevious && i >= clampedFromCount && i < displayCount;
             return (
               <div

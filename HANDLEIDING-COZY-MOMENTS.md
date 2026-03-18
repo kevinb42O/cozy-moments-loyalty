@@ -41,7 +41,7 @@ Klanten sparen stempels via QR-codes. Het systeem verwerkt vier dranktypes:
 - bier
 - frisdrank
 
-Per 10 stempels op 1 kaart krijgt de klant 1 gratis consumptie van datzelfde type.
+Per 12 stempels op 1 kaart krijgt de klant 1 gratis consumptie van datzelfde type.
 
 Daarnaast kent het systeem ook een algemeen loyaliteitsniveau toe:
 
@@ -381,7 +381,7 @@ Het systeem voorkomt dat een correctie de data ongeldig maakt.
 
 Concreet:
 
-- stempels op een lopende kaart moeten tussen 0 en 9 blijven
+- stempels op een lopende kaart moeten tussen 0 en 11 blijven
 - beschikbare rewards mogen niet negatief worden
 - ingewisselde rewards mogen niet negatief worden
 - bezoeken mogen niet negatief worden
@@ -528,7 +528,7 @@ Als het klantprofiel niet tijdig laadt:
 ## 5.1 Basisregels
 
 - 1 consumptie geeft 1 stempel op het juiste type
-- 10 stempels op 1 kaart geven 1 reward van dat type
+- 12 stempels op 1 kaart geven 1 reward van dat type
 - resterende stempels lopen door naar de volgende kaart
 - elk dranktype spaart volledig apart
 - rewards blijven apart per dranktype bewaard

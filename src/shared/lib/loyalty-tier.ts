@@ -99,7 +99,7 @@ export const LOYALTY_TIER_CONFIG: Record<LoyaltyTier, LoyaltyTierConfig> = {
 
 export function calculateLifetimeConsumptions(snapshot: LoyaltySnapshot): number {
   return (Object.keys(snapshot.cards) as CardType[]).reduce((sum, type) => {
-    return sum + snapshot.cards[type] + ((snapshot.rewards[type] + snapshot.claimedRewards[type]) * 10);
+    return sum + snapshot.cards[type] + ((snapshot.rewards[type] + snapshot.claimedRewards[type]) * 12);
   }, 0);
 }
 

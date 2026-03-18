@@ -439,10 +439,10 @@ function calcCustomerStats(customer: import('../../shared/store/LoyaltyContext')
   const createdMs = new Date(customer.createdAt).getTime();
   const monthsActive = Math.max(1, (nowMs - createdMs) / MS_PER_MONTH);
   const total: Record<CardType, number> = {
-    coffee: (customer.claimedRewards.coffee + customer.rewards.coffee) * 10 + customer.cards.coffee,
-    wine:   (customer.claimedRewards.wine   + customer.rewards.wine  ) * 10 + customer.cards.wine,
-    beer:   (customer.claimedRewards.beer   + customer.rewards.beer  ) * 10 + customer.cards.beer,
-    soda:   (customer.claimedRewards.soda   + customer.rewards.soda  ) * 10 + customer.cards.soda,
+    coffee: (customer.claimedRewards.coffee + customer.rewards.coffee) * 12 + customer.cards.coffee,
+    wine:   (customer.claimedRewards.wine   + customer.rewards.wine  ) * 12 + customer.cards.wine,
+    beer:   (customer.claimedRewards.beer   + customer.rewards.beer  ) * 12 + customer.cards.beer,
+    soda:   (customer.claimedRewards.soda   + customer.rewards.soda  ) * 12 + customer.cards.soda,
   };
   const avgPerMonth: Record<CardType, number> = {
     coffee: total.coffee / monthsActive,

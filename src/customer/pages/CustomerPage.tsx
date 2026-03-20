@@ -363,7 +363,7 @@ export const CustomerPage: React.FC = () => {
 
               {i === 1 && (
                 <motion.a
-                  href="https://cozy-moments-website.vercel.app/menu"
+                  href="https://www.cozy-moments.be/menu"
                   target="_blank"
                   rel="noopener noreferrer"
                   initial={{ opacity: 0, y: 26 }}

@@ -101,7 +101,7 @@ export const LoginPage: React.FC = () => {
       >
         {/* Logo */}
         <div className="mb-10 flex flex-col items-center text-center">
-          <a href="https://cozy-moments-website.vercel.app" target="_blank" rel="noopener noreferrer">
+          <a href="https://cozy-moments.be" target="_blank" rel="noopener noreferrer">
             <img
               src="/cozylogo.png"
               alt="COZY Moments"
@@ -390,7 +390,7 @@ export const LoginPage: React.FC = () => {
         </p>
         <div className="text-center mt-5">
           <a
-            href="https://cozy-moments-website.vercel.app"
+            href="https://cozy-moments.be"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs text-[var(--color-cozy-coffee)]/85 hover:text-[var(--color-cozy-coffee)] transition-colors"

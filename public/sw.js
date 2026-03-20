@@ -1,13 +1,13 @@
 // Cozy Moments — Customer Service Worker
-const CACHE_NAME = 'cozy-moments-customer-v2';
+const CACHE_NAME = 'cozy-moments-customer-v3';
 const OFFLINE_URL = '/';
 
 // Assets to pre-cache
 const PRE_CACHE = [
   '/',
-  '/cozylogo.png',
   '/icon-192.png',
   '/icon-512.png',
+  '/apple-touch-icon.png',
 ];
 
 // Install — cache shell

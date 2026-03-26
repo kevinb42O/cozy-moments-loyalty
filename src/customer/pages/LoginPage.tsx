@@ -444,142 +444,137 @@ export const LoginPage: React.FC = () => {
 
               {/* Content */}
               <div className="overflow-y-auto px-5 sm:px-6 pb-8 flex-1 text-sm text-gray-600 space-y-6 leading-relaxed wrap-anywhere">
+                <p className="text-xs text-gray-400 italic">Versie 1.1 — van kracht vanaf 26 maart 2026</p>
 
-                <p className="text-xs text-gray-400 italic">Versie 1.0 — van kracht vanaf 3 maart 2026 &nbsp;|&nbsp; Onderneming: Cozy Moments</p>
-
-                {/* 1 */}
                 <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">1. Verwerkingsverantwoordelijke</h3>
-                  <p>
-                    De verwerkingsverantwoordelijke in de zin van de Algemene Verordening Gegevensbescherming (AVG / GDPR, EU 2016/679) is:
-                  </p>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">DEEL 1: ALGEMENE GEBRUIKSVOORWAARDEN</h3>
+                </section>
+
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">1. Bedrijfsgegevens</h3>
+                  <p>Deze digitale spaarkaart wordt beheerd en aangeboden door:</p>
                   <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs wrap-anywhere">
-                    <strong>Cozy Moments</strong><br />
-                    Grote Markt 2, 8370 Blankenberge, Belgie<br />
-                    E-mail: <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a><br />
-                    Website: <a href="https://www.cozy-moments.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline break-all">www.cozy-moments.be</a>
+                    <strong>Naam:</strong> Cozy Moments (Uitbater: Janssens, Sixtine)<br />
+                    <strong>Adres:</strong> Grote Markt 2/0002, 8370 Blankenberge, België<br />
+                    <strong>Ondernemingsnummer (BTW):</strong> BE1021.623.893<br />
+                    <strong>E-mail:</strong> <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a>
                   </p>
                 </section>
 
-                {/* 2 */}
                 <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">2. Welke gegevens verwerken wij?</h3>
-                  <p>Via de digitale spaarkaart verwerken wij de volgende persoonsgegevens:</p>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">2. Toegang en Leeftijdsgrens</h3>
+                  <p>Door een account aan te maken, ga je akkoord met deze voorwaarden.</p>
+                  <p className="mt-2">Je moet minstens 16 jaar oud zijn om een account aan te maken.</p>
+                  <p className="mt-2">
+                    Voor het sparen en inwisselen van stempels voor alcoholische dranken (Wijn Kaart, Bier Kaart) geldt de absolute wettelijke minimumleeftijd van 18 jaar. Bij twijfel kan het personeel om een identiteitsbewijs vragen.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">3. Werking van de Spaarkaart &amp; Waarde</h3>
                   <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li>Naam (voornaam en/of familienaam)</li>
-                    <li>E-mailadres</li>
-                    <li>Google-accountinformatie (enkel bij aanmelding via Google: profielnaam en e-mailadres)</li>
-                    <li>Spaarstempels en beloningshistoriek (koffie, wijn, bier)</li>
-                    <li>Datum en tijdstip van aanmaak van het account</li>
-                    <li>Technische gegevens: IP-adres, browsertype en sessie-informatie (verkregen via Supabase Auth)</li>
+                    <li>De digitale spaarkaart is strikt persoonlijk en gekoppeld aan jouw account.</li>
+                    <li>Spaarstempels en beloningen hebben geen contante waarde en kunnen in geen enkel geval worden ingewisseld voor geld.</li>
+                    <li>Stempels zijn niet overdraagbaar naar andere accounts of personen.</li>
+                    <li>Het combineren van volle spaarkaarten met andere acties of kortingen is niet mogelijk, tenzij uitdrukkelijk anders vermeld.</li>
                   </ul>
                 </section>
 
-                {/* 3 */}
                 <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">3. Doeleinden en rechtsgronden van verwerking</h3>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">4. Misbruik en Fraude</h3>
+                  <p>
+                    Cozy Moments behoudt zich het recht voor om bij een vermoeden van fraude (bijv. het onrechtmatig scannen van QR-codes, manipulatie van de app, of het aanmaken van meerdere accounts per persoon) het account onmiddellijk en zonder voorafgaande waarschuwing te blokkeren of te verwijderen. Alle opgebouwde stempels komen hierbij definitief te vervallen.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">5. Wijziging en Stopzetting</h3>
+                  <p>
+                    Cozy Moments heeft te allen tijde het recht om de voorwaarden van het spaarprogramma te wijzigen (bijv. het aantal benodigde stempels of de beloningen aanpassen) of het programma in zijn geheel stop te zetten. In geval van stopzetting vervallen alle niet-ingewisselde stempels en beloningen, zonder recht op enige vorm van compensatie.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">DEEL 2: PRIVACYBELEID (GDPR)</h3>
+                </section>
+
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">1. Verwerkingsverantwoordelijke</h3>
+                  <p>
+                    Cozy Moments (zie contactgegevens in Deel 1) is de verwerkingsverantwoordelijke voor jouw persoonsgegevens in de zin van de Algemene Verordening Gegevensbescherming (AVG / GDPR).
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">2. Welke gegevens verwerken wij?</h3>
+                  <p>Via de digitale spaarkaart verwerken wij de volgende gegevens:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li>Naam en e-mailadres.</li>
+                    <li>Google-accountinformatie (enkel bij aanmelding via Google: profielnaam en e-mailadres).</li>
+                    <li>Spaarstempels, bezoeken en beloningshistoriek.</li>
+                    <li>Technische gegevens (IP-adres en sessie-informatie voor een veilige login).</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">3. Doeleinden en Rechtsgronden</h3>
                   <div className="space-y-3">
                     <div className="bg-gray-50 rounded-xl p-4">
                       <p className="font-semibold text-[var(--color-cozy-text)] text-xs uppercase tracking-wide mb-1">Uitvoering van de overeenkomst (art. 6.1.b AVG)</p>
-                      <p>Het beheren van uw digitale spaarkaart, het registreren van consumptie-stempels en het toekennen van gratis consumpties als beloning.</p>
+                      <p>Het beheren van jouw account, het registreren van stempels en het toekennen van gratis consumpties.</p>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-4">
                       <p className="font-semibold text-[var(--color-cozy-text)] text-xs uppercase tracking-wide mb-1">Gerechtvaardigd belang (art. 6.1.f AVG)</p>
-                      <p>Het beveiligen en verbeteren van onze digitale diensten, het voorkomen van misbruik en het bijhouden van statistieken over het gebruik van het spaarprogramma.</p>
+                      <p>Het beveiligen van de applicatie, het voorkomen van fraude, en het bijhouden van anonieme statistieken ter verbetering van onze diensten.</p>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="font-semibold text-[var(--color-cozy-text)] text-xs uppercase tracking-wide mb-1">Toestemming (art. 6.1.a AVG) — Direct marketing</p>
+                      <p className="font-semibold text-[var(--color-cozy-text)] text-xs uppercase tracking-wide mb-1">Toestemming (art. 6.1.a AVG) - Direct Marketing</p>
                       <p>
-                        Door gebruik te maken van de digitale spaarkaart en in te loggen, geeft u toestemming dat Cozy Moments uw e-mailadres mag gebruiken om u occasioneel te informeren over:
-                      </p>
-                      <ul className="list-disc pl-5 mt-2 space-y-1">
-                        <li>Promoties en kortingsacties</li>
-                        <li>Nieuwe producten of seizoensaanbiedingen</li>
-                        <li>Updates aan het spaarprogramma</li>
-                        <li>Uitnodigingen voor evenementen</li>
-                      </ul>
-                      <p className="mt-2 text-xs text-gray-500">
-                        U kunt deze toestemming te allen tijde intrekken door te klikken op de afmeldlink in elke e-mail die wij u sturen, of door ons te contacteren via <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a>. Het intrekken van toestemming heeft geen invloed op de rechtmatigheid van de verwerking voor de intrekking.
+                        Enkel wanneer jij hier uitdrukkelijk en actief voor hebt gekozen (bijv. via een vinkje bij registratie), gebruiken wij jouw e-mailadres om je te informeren over promoties, nieuwe producten of evenementen. Je kan deze toestemming op elk moment intrekken via de uitschrijflink in onze e-mails of door ons te mailen via <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a>.
                       </p>
                     </div>
                   </div>
                 </section>
 
-                {/* 4 */}
                 <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">4. Bewaartermijnen</h3>
-                  <p>Uw persoonsgegevens worden niet langer bewaard dan noodzakelijk voor de doeleinden waarvoor ze zijn verzameld:</p>
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li><strong>Accountgegevens en spaarstempels:</strong> zolang uw account actief is, en tot maximaal 3 jaar na uw laatste aanmelding.</li>
-                    <li><strong>Marketing-communicatie:</strong> tot u uw toestemming intrekt.</li>
-                    <li><strong>Technische logingegevens:</strong> maximaal 12 maanden.</li>
-                  </ul>
-                  <p className="mt-2">Na afloop van de bewaartermijn worden uw gegevens veilig gewist of anoniem gemaakt.</p>
-                </section>
-
-                {/* 5 */}
-                <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">5. Doorgifte aan derden</h3>
-                  <p>Wij geven uw persoonsgegevens niet door aan derden voor commerciële doeleinden zonder uw uitdrukkelijke toestemming. Wij maken gebruik van de volgende verwerkers:</p>
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li><strong>Supabase Inc.</strong> (VS) — opslag van gebruikersgegevens en authenticatie, met passende waarborgen conform de AVG (Standard Contractual Clauses).</li>
-                    <li><strong>Google LLC</strong> — optionele aanmelding via Google OAuth. Raadpleeg het <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline break-all">privacybeleid van Google</a>.</li>
-                    <li><strong>Vercel Inc.</strong> — hosting van de webapplicatie.</li>
-                  </ul>
-                  <p className="mt-2">Al onze verwerkers zijn contractueel gebonden aan strikte geheimhoudings- en beveiligingsvereisten.</p>
-                </section>
-
-                {/* 6 */}
-                <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">6. Uw rechten als betrokkene</h3>
-                  <p>Op grond van de AVG heeft u de volgende rechten:</p>
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li><strong>Recht op inzage (art. 15 AVG):</strong> u kunt opvragen welke gegevens wij van u verwerken.</li>
-                    <li><strong>Recht op rectificatie (art. 16 AVG):</strong> u kunt onjuiste gegevens laten corrigeren.</li>
-                    <li><strong>Recht op gegevenswissing (art. 17 AVG):</strong> u kunt vragen uw account en gegevens volledig te verwijderen.</li>
-                    <li><strong>Recht op beperking van verwerking (art. 18 AVG).</strong></li>
-                    <li><strong>Recht op gegevensoverdraagbaarheid (art. 20 AVG):</strong> u kunt uw gegevens in een machineleesbaar formaat opvragen.</li>
-                    <li><strong>Recht van bezwaar (art. 21 AVG):</strong> u kunt bezwaar maken tegen verwerking op basis van gerechtvaardigd belang, in het bijzonder tegen direct marketing.</li>
-                    <li><strong>Recht op intrekking van toestemming (art. 7.3 AVG):</strong> u kunt uw toestemming voor marketing te allen tijde intrekken.</li>
-                  </ul>
-                  <p className="mt-2">
-                    Om een van bovenstaande rechten uit te oefenen, stuurt u een e-mail naar <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a>. Wij behandelen uw verzoek binnen de wettelijke termijn van 30 kalenderdagen.
-                  </p>
-                </section>
-
-                {/* 7 */}
-                <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">7. Klachtenrecht</h3>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">4. Cookies en Lokale Opslag (Local Storage)</h3>
                   <p>
-                    Indien u van mening bent dat uw persoonsgegevens onrechtmatig worden verwerkt, heeft u het recht om een klacht in te dienen bij de bevoegde toezichthoudende autoriteit in België:
-                  </p>
-                  <p className="mt-2 bg-gray-50 rounded-xl p-4 text-xs wrap-anywhere">
-                    <strong>Gegevensbeschermingsautoriteit (GBA)</strong><br />
-                    Drukpersstraat 35, 1000 Brussel<br />
-                    <a href="https://www.gegevensbeschermingsautoriteit.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline break-all">www.gegevensbeschermingsautoriteit.be</a><br />
-                    Tel: +32 2 274 48 00
+                    Om te voorkomen dat je bij elk bezoek opnieuw moet inloggen, maakt onze applicatie (via Supabase Auth) uitsluitend gebruik van functionele &apos;Local Storage&apos; en beveiligde sessie-tokens op jouw toestel. Wij gebruiken geen tracking- of advertentiecookies.
                   </p>
                 </section>
 
-                {/* 8 */}
                 <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">8. Beveiliging</h3>
-                  <p>
-                    Cozy Moments neemt passende technische en organisatorische maatregelen om uw persoonsgegevens te beschermen tegen ongeoorloofde toegang, verlies, vernietiging of openbaarmaking. Hierbij maken wij gebruik van versleutelde verbindingen (HTTPS/TLS), veilige authenticatiemethoden en beperkte toegangsrechten.
-                  </p>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">5. Bewaartermijnen</h3>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li><strong>Accountgegevens:</strong> Zolang je account actief is, tot maximaal 3 jaar na je laatste login. Daarna worden je gegevens veilig gewist of geanonimiseerd.</li>
+                    <li><strong>Marketing:</strong> Tot je jouw toestemming intrekt.</li>
+                    <li><strong>Technische logboeken:</strong> Maximaal 12 maanden ter beveiliging van het systeem.</li>
+                  </ul>
                 </section>
 
-                {/* 9 */}
                 <section>
-                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">9. Wijzigingen aan dit beleid</h3>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">6. Doorgifte aan derden</h3>
+                  <p>Wij verkopen jouw gegevens nooit door. Wij werken enkel samen met streng beveiligde technische partners (verwerkers) die contractueel gebonden zijn aan de AVG:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li><strong>Supabase Inc. (VS):</strong> Database en veilige authenticatie (beschermd via Standard Contractual Clauses).</li>
+                    <li><strong>Google LLC:</strong> Optionele aanmelding via Google OAuth.</li>
+                    <li><strong>Vercel Inc.:</strong> Hosting van de applicatie.</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">7. Jouw rechten</h3>
                   <p>
-                    Wij behouden ons het recht voor dit privacybeleid te allen tijde te wijzigen. Bij wezenlijke wijzigingen zullen wij u hiervan op de hoogte stellen via de app of per e-mail. De meest recente versie is steeds beschikbaar in de applicatie.
+                    Je hebt het recht om jouw gegevens in te zien, te laten corrigeren, of te laten verwijderen. Daarnaast heb je het recht op beperking van de verwerking, gegevensoverdraagbaarheid en het recht om bezwaar te maken tegen verwerking voor marketingdoeleinden. Stuur hiervoor een e-mail naar <a href="mailto:info@cozy-moments.be" className="text-[var(--color-cozy-coffee)] underline break-all">info@cozy-moments.be</a>. Wij behandelen je verzoek binnen 30 dagen.
                   </p>
                 </section>
 
-                <p className="text-xs text-gray-400 pt-4 border-t border-gray-100">
-                  Door gebruik te maken van de digitale spaarkaart van Cozy Moments bevestigt u deze voorwaarden gelezen en begrepen te hebben.
-                </p>
+                <section>
+                  <h3 className="font-display font-bold text-[var(--color-cozy-text)] mb-2">8. Klachtenrecht</h3>
+                  <p>
+                    Indien je van mening bent dat wij jouw gegevens onrechtmatig verwerken, heb je het recht een klacht in te dienen bij de Gegevensbeschermingsautoriteit (GBA): Drukpersstraat 35, 1000 Brussel (<a href="https://www.gegevensbeschermingsautoriteit.be" target="_blank" rel="noopener noreferrer" className="text-[var(--color-cozy-coffee)] underline break-all">www.gegevensbeschermingsautoriteit.be</a>).
+                  </p>
+                </section>
               </div>
 
               {/* Footer button */}

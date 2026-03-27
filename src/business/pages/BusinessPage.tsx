@@ -52,6 +52,7 @@ import {
   createDefaultDrinkMenuSections,
   createEmptyDrinkMenuItem,
   createEmptyDrinkMenuSection,
+  applyLegacyWebsiteGroupsToDrinkMenuSections,
   getAutomaticPromoDrinkMenuItemIds,
   getMultiPromoDrinkMenuItemIds,
   normalizeActivePromos,
@@ -1063,6 +1064,52 @@ export const BusinessPage: React.FC = () => {
         groups,
       };
     }));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuAssignUngroupedToDefaultGroup = useCallback((sectionId: string) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      const existingGroups = section.groups ?? [];
+      const groupedItemIds = new Set(existingGroups.flatMap((group) => group.itemIds));
+      const ungroupedItemIds = section.items
+        .map((item) => item.id)
+        .filter((itemId) => !groupedItemIds.has(itemId));
+
+      if (ungroupedItemIds.length === 0) {
+        return section;
+      }
+
+      const existingOverigeGroup = existingGroups.find((group) => group.title.trim().toLowerCase() === 'overige');
+
+      if (existingOverigeGroup) {
+        return {
+          ...section,
+          groups: existingGroups.map((group) => (
+            group.id === existingOverigeGroup.id
+              ? { ...group, itemIds: [...group.itemIds, ...ungroupedItemIds] }
+              : group
+          )),
+        };
+      }
+
+      return {
+        ...section,
+        groups: [
+          ...existingGroups,
+          {
+            id: crypto.randomUUID(),
+            title: 'Overige',
+            itemIds: ungroupedItemIds,
+          },
+        ],
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuAutofillLegacyGroups = useCallback(() => {
+    updateDrinkMenuDraft((current) => applyLegacyWebsiteGroupsToDrinkMenuSections(current));
+    setDrinkMenuSuccess('Subtitels uit de bestaande website-indeling werden automatisch ingevuld waar mogelijk. Controleer en klik daarna op Opslaan.');
   }, [updateDrinkMenuDraft]);
 
   const handleDrinkMenuItemUpdate = useCallback((sectionId: string, itemId: string, patch: Partial<Pick<DrinkMenuItem, 'name' | 'price' | 'details' | 'isVisible'>>) => {
@@ -3332,6 +3379,8 @@ export const BusinessPage: React.FC = () => {
               onUpdateGroup={handleDrinkMenuUpdateGroup}
               onAssignItemToGroup={handleDrinkMenuAssignItemToGroup}
               onMoveGroupedItem={handleDrinkMenuMoveGroupedItem}
+              onAssignUngroupedToDefaultGroup={handleDrinkMenuAssignUngroupedToDefaultGroup}
+              onAutofillLegacyGroups={handleDrinkMenuAutofillLegacyGroups}
               onAddItem={handleDrinkMenuAddItem}
               onMoveItem={handleDrinkMenuMoveItem}
               onRemoveItem={handleDrinkMenuRemoveItem}

@@ -36,6 +36,8 @@ interface DrinkMenuEditorProps {
   onUpdateGroup: (sectionId: string, groupId: string, title: string) => void;
   onAssignItemToGroup: (sectionId: string, itemId: string, groupId: string | null, targetIndex?: number) => void;
   onMoveGroupedItem: (sectionId: string, groupId: string, itemId: string, direction: -1 | 1) => void;
+  onAssignUngroupedToDefaultGroup: (sectionId: string) => void;
+  onAutofillLegacyGroups: () => void;
   onAddItem: (sectionId: string) => void;
   onMoveItem: (sectionId: string, itemId: string, direction: -1 | 1) => void;
   onRemoveItem: (sectionId: string, itemId: string) => void;
@@ -155,6 +157,8 @@ export function DrinkMenuEditor({
   onUpdateGroup,
   onAssignItemToGroup,
   onMoveGroupedItem,
+  onAssignUngroupedToDefaultGroup,
+  onAutofillLegacyGroups,
   onAddItem,
   onMoveItem,
   onRemoveItem,
@@ -187,6 +191,18 @@ export function DrinkMenuEditor({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={onAutofillLegacyGroups}
+              disabled={saving || sections.length === 0}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                isDarkMode ? 'border border-white/10 bg-white/5 text-[#e6ecf5] hover:bg-white/10' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              )}
+            >
+              <Plus size={15} />
+              Importeer bestaande subtitels
+            </button>
             <button
               type="button"
               onClick={onReset}
@@ -363,7 +379,7 @@ export function DrinkMenuEditor({
 
                     {groups.length === 0 && (
                       <p className={cn('rounded-2xl border border-dashed px-3 py-3 text-sm', isDarkMode ? 'border-white/15 text-[#9fb0ca]' : 'border-[#e8ddcb] text-gray-500')}>
-                        Nog geen subtitels. Voeg er eentje toe om producten onder subtitels te groeperen.
+                        Nog geen subtitels. Klik bovenaan op "Importeer bestaande subtitels" of maak er zelf eentje aan.
                       </p>
                     )}
 
@@ -475,12 +491,26 @@ export function DrinkMenuEditor({
                         onAssignItemToGroup(section.id, payload.itemId, null);
                       }}
                     >
-                      <p className={cn('mb-2 text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
-                        Niet in subtitel
-                      </p>
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <p className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
+                          Nog te plaatsen
+                        </p>
+                        {ungroupedItems.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => onAssignUngroupedToDefaultGroup(section.id)}
+                            className={cn(
+                              'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                              isDarkMode ? 'border border-white/10 bg-white/5 text-[#e6ecf5] hover:bg-white/10' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                            )}
+                          >
+                            Zet alles in Overige
+                          </button>
+                        )}
+                      </div>
                       {ungroupedItems.length === 0 ? (
                         <p className={cn('text-xs', isDarkMode ? 'text-[#9fb0ca]' : 'text-gray-500')}>
-                          Alle producten zitten in een subtitel.
+                          Top, alle producten zitten in een subtitel.
                         </p>
                       ) : (
                         <div className="flex flex-wrap gap-2">

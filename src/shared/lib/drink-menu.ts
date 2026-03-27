@@ -29,6 +29,11 @@ export interface DrinkMenuSection {
   groups?: DrinkMenuGroup[];
 }
 
+type SectionGroupDefinition = {
+  title: string;
+  itemNames: string[];
+};
+
 function createId(prefix: string) {
   return `${prefix}-${crypto.randomUUID()}`;
 }
@@ -128,6 +133,363 @@ function normalizeSection(raw: unknown, index: number): DrinkMenuSection {
     items,
     groups: groups.length > 0 ? groups : undefined,
   };
+}
+
+function normalizeComparableText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replaceAll(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, '-')
+    .replaceAll(/^-+|-+$/g, '');
+}
+
+const LEGACY_SECTION_GROUP_DEFINITIONS: Record<string, SectionGroupDefinition[]> = {
+  'koffie-choco-melk': [
+    {
+      title: 'Koffie klassiekers',
+      itemNames: [
+        'Koffie*',
+        'Deca*',
+        'Espresso',
+        'Dubbele Espresso',
+        'Americano',
+        'Cappuccino Melkschuim*',
+        'Cappuccino Slagroom',
+        'Latte Macchiato*',
+        'Koffie Verkeerd*',
+      ],
+    },
+    {
+      title: 'Iced coffee & smaken',
+      itemNames: [
+        'Iced Coffee',
+        '+ Hazelnootsiroop',
+        '+ Caramelsiroop',
+        '+ Speculoossiroop',
+        '+ Vanillesiroop',
+        '+ Witte Chocoladesiroop',
+        '+ Creme Brulee siroop',
+        '+ Chocolate Cookie siroop',
+        '+ Amaretto Siroop (0% alcohol)',
+      ],
+    },
+    {
+      title: 'Coffee specials',
+      itemNames: [
+        'Italian Coffee (Amaretto)',
+        'French Coffee (Cointreau)',
+        'Spanish Coffee (Licor 43)',
+        'Irish Coffee (Irish Whiskey)',
+        'Espresso Martini',
+      ],
+    },
+    {
+      title: 'Warme chocolade',
+      itemNames: [
+        'Warme Hotcemel',
+        'Warme Cecemel',
+        'Warme Chocolademelk Baru',
+        'Warme Melk + Callebaut Chocolade*',
+        '+ Slagroom',
+        '+ Mini Marshmallows',
+      ],
+    },
+    {
+      title: 'Melkdranken',
+      itemNames: ['Cecemel (koud)', 'Fristi', 'Melk*'],
+    },
+  ],
+  'thee-chai-matcha': [
+    {
+      title: 'Losse thee',
+      itemNames: [
+        'Earl Grey',
+        'Sencha Lemon',
+        'Fruity Forest',
+        'Ruby Rooibos',
+        'Champaign All Day',
+        'Sea of Blossoms',
+        'Subtiele Munt Thee',
+        'Kamille Linde Thee',
+        'Rozenbottel Thee',
+      ],
+    },
+    {
+      title: 'Chai specials',
+      itemNames: [
+        'Vanille Chai Latte Baru',
+        'Spiced Chai Latte Baru',
+        'Pumpkin Spiced Latte Baru',
+        'Pink Chai Latte Baru',
+      ],
+    },
+    {
+      title: 'Matcha bar',
+      itemNames: [
+        'Matcha Latte Baru',
+        'Premium Matcha Latte*',
+        'Ceremonial Matcha Latte*',
+        'Iced Premium Matcha Latte*',
+        'Iced Ceremonial Matcha Latte*',
+      ],
+    },
+    {
+      title: 'Fruit add-ons',
+      itemNames: ['+ Raspberry', '+ Strawberry', '+ Mango'],
+    },
+  ],
+  '0-0-alcohol': [
+    {
+      title: 'Alcoholvrije bieren',
+      itemNames: [
+        'Stella 0,0',
+        'Liefmans Fruitesse 0,0',
+        'Liefmans Peach 0,0',
+        'Lindemans kriek 0,0',
+        'Lindemans Pecheresse 0,0',
+        'Coast Zero',
+        'Carlsberg 0,0',
+        'Sport Zot Alcoholvrij',
+        'Kasteelbier Rouge 0,0',
+        'Kasteelbier Tropical 0,0',
+        'Leffe Blond/Bruin 0,0',
+        'Hoegaarden Citrus 0,0',
+        'Tripel Karmeliet Alcoholvrij',
+      ],
+    },
+    {
+      title: 'Alcoholvrije wijnen',
+      itemNames: ['Keth Pinot Blanc 0,0', 'Divin Pinot Noir 0,0'],
+    },
+    {
+      title: 'Mocktails & specials',
+      itemNames: [
+        'Virgin Mojito',
+        'Virgin Pina Colada',
+        'Kidibul',
+        'Funny Pisang Orange',
+        "Gordon's 0,0 Premium Pink Gin (inclusief tonic)",
+      ],
+    },
+  ],
+  'alcoholische-sterke-dranken': [
+    {
+      title: 'Aperitief & bitter',
+      itemNames: [
+        'Martini Bianco',
+        'Martini Rosso',
+        'Kir',
+        'Kir Royal',
+        'Picon Vin Blanc',
+        'Rode Porto Martinez',
+        'Rode Porto Smith Woodhouse',
+        'Rode Sherry Colosia Oloroso',
+        'Witte Porto Martinez',
+        'Ricard Pastis',
+        'Pineau des Charentes',
+        'Campari',
+      ],
+    },
+    {
+      title: 'Likeuren',
+      itemNames: [
+        'Amaretto Disaronno',
+        'Baileys',
+        'Cointreau',
+        'Grand Marnier',
+        'Licor 43',
+        'Passoa',
+        'Pisang',
+        'Safari',
+        'Limoncello',
+        'Malibu',
+      ],
+    },
+    {
+      title: 'Gin',
+      itemNames: ['Bulldog', "Hendrick's", 'Copperhead', 'Gin Mare', 'Gin Mare Capri', 'Tanqueray', 'Fever Tree (supplement)', '+ Fever Tree'],
+    },
+    {
+      title: 'Cognac',
+      itemNames: ['Martell', 'Bisquit & Dubouche', 'Bisquit & Dubouché'],
+    },
+    {
+      title: 'Vodka',
+      itemNames: [
+        'Eristoff',
+        'Eristoff Red',
+        'Eristoff Passion',
+        'AU Vodka Blue Raspberry',
+        'AU Vodka Pink Lemonade',
+        'Grey Goose',
+      ],
+    },
+    {
+      title: 'Whisky',
+      itemNames: [
+        'Johnnie Walker Red',
+        'Johnnie Walker Black',
+        'Johnnie Walker Ruby',
+        'Johnnie Walker Blue baby',
+        'Johnnie Walker Blue',
+        'J&B',
+        'Glenfiddich 12',
+        'Chivas Regal',
+        'Oban',
+      ],
+    },
+    {
+      title: 'Rum',
+      itemNames: [
+        'Bacardi Carta Blanca',
+        'Bacardi Carta Negra',
+        'Bacardi Carta Oro',
+        'Bacardi Anejo Cuatro',
+        'Bacardi Añejo Cuatro',
+        'Bacardi Reserva Ocho',
+        'Havana Club Anejo 7 Anos',
+        'Havana Club Añejo 7 Años',
+        'Rhum J.M. Jardin Fruite',
+        'Rhum J.M. Jardin Fruité',
+        'Rhum J.M. Fumee Volcanique',
+        'Rhum J.M. Fumée Volcanique',
+        'The Kraken Black Spiced Rum',
+        'Sister Isles Rum',
+        'Saint James Royal Ambre',
+        'Saint James Royal Ambré',
+        'Captain Morgan Dark Rum',
+        'Red Rope Cocoa Rum',
+        'Dictador Colombiana',
+        'Diplomatico Reserva Exclusiva',
+        'Appleton Estate Signature Rum',
+      ],
+    },
+  ],
+  cocktails: [
+    {
+      title: 'Klassiekers',
+      itemNames: ['Mojito', 'Pornstar Martini', 'Negroni', 'Lazy Red Cheeks'],
+    },
+    {
+      title: 'Spritz & fruity',
+      itemNames: ['Aperol Spritz', 'Limoncello Spritz', 'Sex On The Beach'],
+    },
+  ],
+};
+
+const LEGACY_SECTION_GROUP_ALIASES: Record<string, string[]> = {
+  'koffie-choco-melk': ['koffie-choco-melk', 'koffie-choco-en-melk', 'koffie-melk', 'koffie-choco'],
+  'thee-chai-matcha': ['thee-chai-matcha', 'thee-chai-en-matcha', 'thee-matcha', 'chai-matcha'],
+  '0-0-alcohol': ['0-0-alcohol', '0-0-dranken', '0-0', 'alcoholvrij', 'alcohol-vrij', 'nul-nul-alcohol'],
+  'alcoholische-sterke-dranken': [
+    'alcoholische-sterke-dranken',
+    'sterke-dranken',
+    'sterkedrank',
+    'sterke',
+    'spirits',
+    'alcoholische-sterke-dranken',
+  ],
+  cocktails: ['cocktails', 'cocktail'],
+};
+
+function resolveLegacySectionGroupKey(section: DrinkMenuSection): string | null {
+  const comparableFields = [section.id, section.title, section.sectionCode].map(normalizeComparableText);
+
+  for (const key of Object.keys(LEGACY_SECTION_GROUP_DEFINITIONS)) {
+    const normalizedKey = normalizeComparableText(key);
+    if (comparableFields.includes(normalizedKey)) {
+      return key;
+    }
+
+    const aliases = LEGACY_SECTION_GROUP_ALIASES[key] ?? [key];
+    const normalizedAliases = aliases.map(normalizeComparableText);
+
+    if (comparableFields.some((field) => (
+      normalizedAliases.includes(field)
+      || normalizedAliases.some((alias) => field.includes(alias) || alias.includes(field))
+    ))) {
+      return key;
+    }
+  }
+
+  for (const key of Object.keys(LEGACY_SECTION_GROUP_DEFINITIONS)) {
+    const aliases = LEGACY_SECTION_GROUP_ALIASES[key] ?? [key];
+    const normalizedAliases = aliases.map(normalizeComparableText);
+
+    const tokens = normalizedAliases
+      .flatMap((alias) => alias.split('-'))
+      .filter((token) => token.length >= 3);
+
+    const haystack = comparableFields.join(' ');
+    const tokenScore = tokens.reduce((score, token) => (haystack.includes(token) ? score + 1 : score), 0);
+
+    if (tokenScore >= 2) {
+      return key;
+    }
+  }
+
+  return null;
+}
+
+function toLegacyGroupId(section: DrinkMenuSection, groupTitle: string, index: number) {
+  const normalizedTitle = normalizeComparableText(groupTitle);
+  if (normalizedTitle) {
+    return `${section.id}-group-${normalizedTitle}`;
+  }
+  return `${section.id}-group-${index + 1}`;
+}
+
+export function applyLegacyWebsiteGroupsToDrinkMenuSections(
+  sections: DrinkMenuSection[],
+  options?: { overwriteExisting?: boolean },
+) {
+  const overwriteExisting = options?.overwriteExisting ?? false;
+
+  return sections.map((section) => {
+    if (!overwriteExisting && (section.groups?.length ?? 0) > 0) {
+      return section;
+    }
+
+    const groupKey = resolveLegacySectionGroupKey(section);
+    const definitions = groupKey ? LEGACY_SECTION_GROUP_DEFINITIONS[groupKey] ?? [] : [];
+
+    if (definitions.length === 0) {
+      return section;
+    }
+
+    const itemByName = new Map(section.items.map((item) => [normalizeComparableText(item.name), item]));
+    const usedItemIds = new Set<string>();
+
+    const groups = definitions
+      .map((definition, groupIndex) => {
+        const itemIds = definition.itemNames
+          .map((itemName) => itemByName.get(normalizeComparableText(itemName))?.id)
+          .filter((itemId): itemId is string => Boolean(itemId) && !usedItemIds.has(itemId));
+
+        itemIds.forEach((itemId) => usedItemIds.add(itemId));
+
+        if (itemIds.length === 0) {
+          return null;
+        }
+
+        return {
+          id: toLegacyGroupId(section, definition.title, groupIndex),
+          title: definition.title,
+          itemIds,
+        } as DrinkMenuGroup;
+      })
+      .filter((group): group is DrinkMenuGroup => Boolean(group));
+
+    if (groups.length === 0) {
+      return section;
+    }
+
+    return {
+      ...section,
+      groups,
+    };
+  });
 }
 
 const DEFAULT_DRINK_MENU_SECTIONS: DrinkMenuSection[] = [

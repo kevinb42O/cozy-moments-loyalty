@@ -60,6 +60,7 @@ import {
   serializeDrinkMenuSections,
   MAX_ACTIVE_PROMOS,
   type ActivePromo,
+  type DrinkMenuGroup,
   type DrinkMenuItem,
   type DrinkMenuSection,
 } from '../../shared/lib/drink-menu';
@@ -927,6 +928,141 @@ export const BusinessPage: React.FC = () => {
         ? { ...section, items: [...section.items, createEmptyDrinkMenuItem()] }
         : section
     )));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuAddGroup = useCallback((sectionId: string) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      const nextGroups = [...(section.groups ?? []), {
+        id: crypto.randomUUID(),
+        title: `Subtitel ${(section.groups?.length ?? 0) + 1}`,
+        itemIds: [],
+      } as DrinkMenuGroup];
+
+      return {
+        ...section,
+        groups: nextGroups,
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuUpdateGroup = useCallback((sectionId: string, groupId: string, title: string) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      return {
+        ...section,
+        groups: (section.groups ?? []).map((group) => (
+          group.id === groupId ? { ...group, title } : group
+        )),
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuRemoveGroup = useCallback((sectionId: string, groupId: string) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      return {
+        ...section,
+        groups: (section.groups ?? []).filter((group) => group.id !== groupId),
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuMoveGroup = useCallback((sectionId: string, groupId: string, direction: -1 | 1) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      const groups = section.groups ?? [];
+      const currentIndex = groups.findIndex((group) => group.id === groupId);
+      const nextIndex = currentIndex + direction;
+
+      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= groups.length) {
+        return section;
+      }
+
+      const nextGroups = [...groups];
+      const [group] = nextGroups.splice(currentIndex, 1);
+      nextGroups.splice(nextIndex, 0, group);
+
+      return {
+        ...section,
+        groups: nextGroups,
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
+  const handleDrinkMenuAssignItemToGroup = useCallback(
+    (sectionId: string, itemId: string, targetGroupId: string | null, targetIndex?: number) => {
+      updateDrinkMenuDraft((current) => current.map((section) => {
+        if (section.id !== sectionId) return section;
+
+        const groups = (section.groups ?? []).map((group) => ({
+          ...group,
+          itemIds: group.itemIds.filter((existingItemId) => existingItemId !== itemId),
+        }));
+
+        if (!targetGroupId) {
+          return {
+            ...section,
+            groups,
+          };
+        }
+
+        const targetGroup = groups.find((group) => group.id === targetGroupId);
+        if (!targetGroup) {
+          return {
+            ...section,
+            groups,
+          };
+        }
+
+        const insertionIndex = typeof targetIndex === 'number'
+          ? Math.max(0, Math.min(targetGroup.itemIds.length, targetIndex))
+          : targetGroup.itemIds.length;
+
+        targetGroup.itemIds.splice(insertionIndex, 0, itemId);
+
+        return {
+          ...section,
+          groups,
+        };
+      }));
+    },
+    [updateDrinkMenuDraft],
+  );
+
+  const handleDrinkMenuMoveGroupedItem = useCallback((sectionId: string, groupId: string, itemId: string, direction: -1 | 1) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      const groups = (section.groups ?? []).map((group) => {
+        if (group.id !== groupId) return group;
+
+        const currentIndex = group.itemIds.findIndex((id) => id === itemId);
+        const nextIndex = currentIndex + direction;
+
+        if (currentIndex < 0 || nextIndex < 0 || nextIndex >= group.itemIds.length) {
+          return group;
+        }
+
+        const nextItemIds = [...group.itemIds];
+        const [movedItemId] = nextItemIds.splice(currentIndex, 1);
+        nextItemIds.splice(nextIndex, 0, movedItemId);
+
+        return {
+          ...group,
+          itemIds: nextItemIds,
+        };
+      });
+
+      return {
+        ...section,
+        groups,
+      };
+    }));
   }, [updateDrinkMenuDraft]);
 
   const handleDrinkMenuItemUpdate = useCallback((sectionId: string, itemId: string, patch: Partial<Pick<DrinkMenuItem, 'name' | 'price' | 'details' | 'isVisible'>>) => {
@@ -3190,6 +3326,12 @@ export const BusinessPage: React.FC = () => {
               onReset={resetDrinkMenuDraft}
               onSave={saveDrinkMenu}
               onUpdateSection={handleDrinkMenuSectionUpdate}
+              onAddGroup={handleDrinkMenuAddGroup}
+              onMoveGroup={handleDrinkMenuMoveGroup}
+              onRemoveGroup={handleDrinkMenuRemoveGroup}
+              onUpdateGroup={handleDrinkMenuUpdateGroup}
+              onAssignItemToGroup={handleDrinkMenuAssignItemToGroup}
+              onMoveGroupedItem={handleDrinkMenuMoveGroupedItem}
               onAddItem={handleDrinkMenuAddItem}
               onMoveItem={handleDrinkMenuMoveItem}
               onRemoveItem={handleDrinkMenuRemoveItem}

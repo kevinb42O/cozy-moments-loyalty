@@ -6,6 +6,12 @@ export interface DrinkMenuItem {
   isVisible: boolean;
 }
 
+export interface DrinkMenuGroup {
+  id: string;
+  title: string;
+  itemIds: string[];
+}
+
 export interface ActivePromo {
   productId: string;
   promoMessage: string;
@@ -20,6 +26,7 @@ export interface DrinkMenuSection {
   title: string;
   isVisible: boolean;
   items: DrinkMenuItem[];
+  groups?: DrinkMenuGroup[];
 }
 
 function createId(prefix: string) {
@@ -36,6 +43,14 @@ function cloneItem(item: DrinkMenuItem): DrinkMenuItem {
   };
 }
 
+function cloneGroup(group: DrinkMenuGroup): DrinkMenuGroup {
+  return {
+    id: group.id,
+    title: group.title,
+    itemIds: [...group.itemIds],
+  };
+}
+
 function cloneSection(section: DrinkMenuSection): DrinkMenuSection {
   return {
     id: section.id,
@@ -43,6 +58,7 @@ function cloneSection(section: DrinkMenuSection): DrinkMenuSection {
     title: section.title,
     isVisible: section.isVisible,
     items: section.items.map(cloneItem),
+    groups: section.groups?.map(cloneGroup),
   };
 }
 
@@ -66,17 +82,51 @@ function normalizeItem(raw: unknown, index: number): DrinkMenuItem {
   };
 }
 
+function normalizeGroups(raw: unknown, items: DrinkMenuItem[], sectionIndex: number): DrinkMenuGroup[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const validItemIds = new Set(items.map((item) => item.id));
+  const globallyUsedItemIds = new Set<string>();
+
+  return raw.flatMap((group, groupIndex) => {
+    const candidate = group && typeof group === 'object' ? group as Record<string, unknown> : {};
+    const itemIdsRaw = Array.isArray(candidate.itemIds)
+      ? candidate.itemIds.filter((itemId): itemId is string => typeof itemId === 'string')
+      : [];
+
+    const normalizedItemIds: string[] = [];
+    itemIdsRaw.forEach((itemId) => {
+      if (!validItemIds.has(itemId) || globallyUsedItemIds.has(itemId)) {
+        return;
+      }
+      globallyUsedItemIds.add(itemId);
+      normalizedItemIds.push(itemId);
+    });
+
+    return [{
+      id: normalizeText(candidate.id) || `drink-group-${sectionIndex + 1}-${groupIndex + 1}`,
+      title: normalizeText(candidate.title) || `Subtitel ${groupIndex + 1}`,
+      itemIds: normalizedItemIds,
+    }];
+  });
+}
+
 function normalizeSection(raw: unknown, index: number): DrinkMenuSection {
   const candidate = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+  const items = Array.isArray(candidate.items)
+    ? candidate.items.map((item, itemIndex) => normalizeItem(item, itemIndex))
+    : [];
+  const groups = normalizeGroups(candidate.groups, items, index);
 
   return {
     id: normalizeText(candidate.id) || `drink-section-${index + 1}`,
     sectionCode: normalizeText(candidate.sectionCode),
     title: normalizeText(candidate.title) || `Nieuwe sectie ${index + 1}`,
     isVisible: normalizeBoolean(candidate.isVisible, true),
-    items: Array.isArray(candidate.items)
-      ? candidate.items.map((item, itemIndex) => normalizeItem(item, itemIndex))
-      : [],
+    items,
+    groups: groups.length > 0 ? groups : undefined,
   };
 }
 
@@ -592,6 +642,7 @@ export function createEmptyDrinkMenuSection(): DrinkMenuSection {
     title: 'Nieuwe sectie',
     isVisible: true,
     items: [createEmptyDrinkMenuItem()],
+    groups: [],
   };
 }
 
@@ -615,6 +666,11 @@ export function serializeDrinkMenuSections(sections: DrinkMenuSection[]) {
       price: item.price,
       details: item.details,
       isVisible: item.isVisible,
+    })),
+    groups: section.groups?.map((group) => ({
+      id: group.id,
+      title: group.title,
+      itemIds: [...group.itemIds],
     })),
   }));
 }

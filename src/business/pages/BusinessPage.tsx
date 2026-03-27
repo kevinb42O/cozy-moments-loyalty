@@ -930,6 +930,25 @@ export const BusinessPage: React.FC = () => {
     )));
   }, [updateDrinkMenuDraft]);
 
+  const handleDrinkMenuAddItemToGroup = useCallback((sectionId: string, groupId: string) => {
+    updateDrinkMenuDraft((current) => current.map((section) => {
+      if (section.id !== sectionId) return section;
+
+      const newItem = createEmptyDrinkMenuItem();
+      const nextGroups = (section.groups ?? []).map((group) => (
+        group.id === groupId
+          ? { ...group, itemIds: [...group.itemIds, newItem.id] }
+          : group
+      ));
+
+      return {
+        ...section,
+        items: [...section.items, newItem],
+        groups: nextGroups,
+      };
+    }));
+  }, [updateDrinkMenuDraft]);
+
   const handleDrinkMenuAddGroup = useCallback((sectionId: string) => {
     updateDrinkMenuDraft((current) => current.map((section) => {
       if (section.id !== sectionId) return section;
@@ -3371,6 +3390,7 @@ export const BusinessPage: React.FC = () => {
               onMoveGroup={handleDrinkMenuMoveGroup}
               onRemoveGroup={handleDrinkMenuRemoveGroup}
               onUpdateGroup={handleDrinkMenuUpdateGroup}
+              onAddItemToGroup={handleDrinkMenuAddItemToGroup}
               onAssignItemToGroup={handleDrinkMenuAssignItemToGroup}
               onMoveGroupedItem={handleDrinkMenuMoveGroupedItem}
               onAssignUngroupedToDefaultGroup={handleDrinkMenuAssignUngroupedToDefaultGroup}

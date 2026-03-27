@@ -34,6 +34,7 @@ interface DrinkMenuEditorProps {
   onMoveGroup: (sectionId: string, groupId: string, direction: -1 | 1) => void;
   onRemoveGroup: (sectionId: string, groupId: string) => void;
   onUpdateGroup: (sectionId: string, groupId: string, title: string) => void;
+  onAddItemToGroup: (sectionId: string, groupId: string) => void;
   onAssignItemToGroup: (sectionId: string, itemId: string, groupId: string | null, targetIndex?: number) => void;
   onMoveGroupedItem: (sectionId: string, groupId: string, itemId: string, direction: -1 | 1) => void;
   onAssignUngroupedToDefaultGroup: (sectionId: string) => void;
@@ -154,6 +155,7 @@ export function DrinkMenuEditor({
   onMoveGroup,
   onRemoveGroup,
   onUpdateGroup,
+  onAddItemToGroup,
   onAssignItemToGroup,
   onMoveGroupedItem,
   onAssignUngroupedToDefaultGroup,
@@ -496,6 +498,20 @@ export function DrinkMenuEditor({
                                   ))}
                                 </div>
                               )}
+                            </div>
+
+                            <div className="mt-3">
+                              <button
+                                type="button"
+                                onClick={() => onAddItemToGroup(section.id, group.id)}
+                                className={cn(
+                                  'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                                  isDarkMode ? 'border border-dashed border-white/15 bg-white/5 text-[#f4f2ea] hover:bg-white/10' : 'border border-dashed border-[#d8c9a8] bg-[#fcf8f2] text-[var(--color-cozy-text)] hover:bg-[#f5ecdf]'
+                                )}
+                              >
+                                <Plus size={12} />
+                                Voeg product toe
+                              </button>
                             </div>
                           </div>
                         );

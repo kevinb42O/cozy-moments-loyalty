@@ -415,14 +415,14 @@ export function DrinkMenuEditor({
                             >
                               {groupItems.length === 0 ? (
                                 <p className={cn('text-xs', isDarkMode ? 'text-[#9fb0ca]' : 'text-gray-500')}>
-                                  Sleep producten hierheen of kies de subtitel in de productkaart.
+                                  Sleep producten hierheen of voeg producten toe.
                                 </p>
                               ) : (
                                 <div className="space-y-2">
                                   {groupItems.map((item, itemIndex) => (
                                     <div
                                       key={item.id}
-                                      className={cn('flex items-center gap-2 rounded-xl border px-3 py-2 text-sm', isDarkMode ? 'border-white/10 bg-[#111826] text-[#f4f2ea]' : 'border-[#ece2d3] bg-white text-[var(--color-cozy-text)]')}
+                                      className={cn('rounded-xl border px-3 py-2 text-sm', isDarkMode ? 'border-white/10 bg-[#111826] text-[#f4f2ea]' : 'border-[#ece2d3] bg-white text-[var(--color-cozy-text)]')}
                                       draggable
                                       onDragStart={(event) => {
                                         event.dataTransfer.effectAllowed = 'move';
@@ -440,19 +440,58 @@ export function DrinkMenuEditor({
                                         onAssignItemToGroup(section.id, payload.itemId, group.id, itemIndex);
                                       }}
                                     >
-                                      <span className="min-w-0 flex-1 truncate">{item.name || 'Naamloos product'}</span>
-                                      <span className={cn('text-xs font-semibold', isDarkMode ? 'text-[#d8c9a8]' : 'text-[var(--color-cozy-olive)]')}>
-                                        {item.price || 'Prijs leeg'}
-                                      </span>
-                                      <button type="button" onClick={() => onMoveGroupedItem(section.id, group.id, item.id, -1)} disabled={itemIndex === 0} className={cn('rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                                        <ArrowUp size={12} />
-                                      </button>
-                                      <button type="button" onClick={() => onMoveGroupedItem(section.id, group.id, item.id, 1)} disabled={itemIndex === groupItems.length - 1} className={cn('rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                                        <ArrowDown size={12} />
-                                      </button>
-                                      <button type="button" onClick={() => onAssignItemToGroup(section.id, item.id, null)} className={cn('rounded-full p-1.5 transition-colors', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                                        <EyeOff size={12} />
-                                      </button>
+                                      <div className="grid gap-2 lg:grid-cols-[minmax(0,1.5fr)_120px_180px_auto]">
+                                        <input
+                                          value={item.name}
+                                          onChange={(event) => onUpdateItem(section.id, item.id, { name: event.target.value })}
+                                          placeholder="Productnaam"
+                                          className={cn(
+                                            'w-full rounded-xl border px-3 py-2 text-sm outline-none',
+                                            isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
+                                          )}
+                                        />
+                                        <input
+                                          value={item.price}
+                                          onChange={(event) => onUpdateItem(section.id, item.id, { price: event.target.value })}
+                                          placeholder="€ 0,00"
+                                          className={cn(
+                                            'w-full rounded-xl border px-3 py-2 text-sm outline-none',
+                                            isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
+                                          )}
+                                        />
+                                        <select
+                                          value={group.id}
+                                          onChange={(event) => {
+                                            const targetGroupId = event.target.value || null;
+                                            onAssignItemToGroup(section.id, item.id, targetGroupId);
+                                          }}
+                                          className={cn(
+                                            'w-full rounded-xl border px-3 py-2 text-sm outline-none',
+                                            isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] focus:border-[var(--color-cozy-olive)]'
+                                          )}
+                                        >
+                                          <option value="">Geen subtitel</option>
+                                          {groups.map((selectGroup) => (
+                                            <option key={selectGroup.id} value={selectGroup.id}>
+                                              {selectGroup.title || 'Subtitel'}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <div className="flex flex-wrap items-center justify-end gap-1">
+                                          <button type="button" onClick={() => onUpdateItem(section.id, item.id, { isVisible: !item.isVisible })} className={cn('rounded-full p-1.5 transition-colors', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                                            {item.isVisible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                          </button>
+                                          <button type="button" onClick={() => onMoveGroupedItem(section.id, group.id, item.id, -1)} disabled={itemIndex === 0} className={cn('rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                                            <ArrowUp size={12} />
+                                          </button>
+                                          <button type="button" onClick={() => onMoveGroupedItem(section.id, group.id, item.id, 1)} disabled={itemIndex === groupItems.length - 1} className={cn('rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                                            <ArrowDown size={12} />
+                                          </button>
+                                          <button type="button" onClick={() => onRemoveItem(section.id, item.id)} className={cn('rounded-full p-1.5 transition-colors', isDarkMode ? 'bg-red-500/10 text-red-200 hover:bg-red-500/20' : 'bg-red-50 text-red-500 hover:bg-red-100')}>
+                                            <Trash2 size={12} />
+                                          </button>
+                                        </div>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -499,138 +538,81 @@ export function DrinkMenuEditor({
                           Top, alle producten zitten in een subtitel.
                         </p>
                       ) : (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="space-y-2">
                           {ungroupedItems.map((item) => (
-                            <span
+                            <div
                               key={item.id}
-                              className={cn('inline-flex items-center rounded-full px-3 py-1 text-xs font-medium', isDarkMode ? 'bg-white/10 text-[#e6ecf5]' : 'bg-white text-gray-700 border border-gray-200')}
+                              className={cn('rounded-xl border px-3 py-2 text-sm', isDarkMode ? 'border-white/10 bg-[#111826] text-[#f4f2ea]' : 'border-[#ece2d3] bg-white text-[var(--color-cozy-text)]')}
                               draggable
                               onDragStart={(event) => {
                                 event.dataTransfer.effectAllowed = 'move';
                                 event.dataTransfer.setData('application/json', JSON.stringify({ sectionId: section.id, itemId: item.id, fromGroupId: null } satisfies DragItemPayload));
                               }}
                             >
-                              {item.name || 'Naamloos product'}
-                            </span>
+                              <div className="grid gap-2 lg:grid-cols-[minmax(0,1.5fr)_120px_180px_auto]">
+                                <input
+                                  value={item.name}
+                                  onChange={(event) => onUpdateItem(section.id, item.id, { name: event.target.value })}
+                                  placeholder="Productnaam"
+                                  className={cn(
+                                    'w-full rounded-xl border px-3 py-2 text-sm outline-none',
+                                    isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
+                                  )}
+                                />
+                                <input
+                                  value={item.price}
+                                  onChange={(event) => onUpdateItem(section.id, item.id, { price: event.target.value })}
+                                  placeholder="€ 0,00"
+                                  className={cn(
+                                    'w-full rounded-xl border px-3 py-2 text-sm outline-none',
+                                    isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
+                                  )}
+                                />
+                                <select
+                                  value=""
+                                  onChange={(event) => {
+                                    const targetGroupId = event.target.value || null;
+                                    onAssignItemToGroup(section.id, item.id, targetGroupId);
+                                  }}
+                                  className={cn(
+                                    'w-full rounded-xl border px-3 py-2 text-sm outline-none',
+                                    isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] focus:border-[var(--color-cozy-olive)]'
+                                  )}
+                                >
+                                  <option value="">Geen subtitel</option>
+                                  {groups.map((selectGroup) => (
+                                    <option key={selectGroup.id} value={selectGroup.id}>
+                                      {selectGroup.title || 'Subtitel'}
+                                    </option>
+                                  ))}
+                                </select>
+                                <div className="flex flex-wrap items-center justify-end gap-1">
+                                  <button type="button" onClick={() => onUpdateItem(section.id, item.id, { isVisible: !item.isVisible })} className={cn('rounded-full p-1.5 transition-colors', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                                    {item.isVisible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                  </button>
+                                  <button type="button" onClick={() => onMoveItem(section.id, item.id, -1)} disabled={section.items.findIndex((candidate) => candidate.id === item.id) === 0} className={cn('rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                                    <ArrowUp size={12} />
+                                  </button>
+                                  <button type="button" onClick={() => onMoveItem(section.id, item.id, 1)} disabled={section.items.findIndex((candidate) => candidate.id === item.id) === section.items.length - 1} className={cn('rounded-full p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+                                    <ArrowDown size={12} />
+                                  </button>
+                                  <button type="button" onClick={() => onRemoveItem(section.id, item.id)} className={cn('rounded-full p-1.5 transition-colors', isDarkMode ? 'bg-red-500/10 text-red-200 hover:bg-red-500/20' : 'bg-red-50 text-red-500 hover:bg-red-100')}>
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="order-1 space-y-3">
-                    <h3 className={cn('text-sm font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
-                      Producten aanpassen
-                    </h3>
-                    {section.items.map((item, itemIndex) => {
-                      const isPromoActive = activePromoItemIdSet.has(item.id);
-                      const assignedGroupId = itemGroupLookup.get(item.id) ?? '';
-
-                      return (
-                        <motion.div
-                          key={item.id}
-                          layout
-                          className={cn(
-                            'rounded-[24px] border p-4 transition-opacity',
-                            item.isVisible ? 'opacity-100' : 'opacity-70',
-                            isPromoActive
-                              ? (isDarkMode ? 'border-amber-300/35 bg-amber-500/10' : 'border-amber-200 bg-amber-50/80')
-                              : (isDarkMode ? 'border-white/10 bg-[#111826]' : 'border-[#efe6d8] bg-[#fffdf9]')
-                          )}
-                        >
-                          {isPromoActive && (
-                            <div className={cn('mb-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold', isDarkMode ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-100 text-amber-800')}>
-                              Actief in open fles promo
-                            </div>
-                          )}
-
-                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_150px_220px_auto]">
-                            <label className="space-y-1.5">
-                              <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
-                                Product
-                              </span>
-                              <input
-                                value={item.name}
-                                onChange={(event) => onUpdateItem(section.id, item.id, { name: event.target.value })}
-                                placeholder="Bijv. Espresso Martini"
-                                className={cn(
-                                  'w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors',
-                                  isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
-                                )}
-                              />
-                            </label>
-
-                            <label className="space-y-1.5">
-                              <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
-                                Prijs
-                              </span>
-                              <input
-                                value={item.price}
-                                onChange={(event) => onUpdateItem(section.id, item.id, { price: event.target.value })}
-                                placeholder="€ 0,00 of Op aanvraag"
-                                className={cn(
-                                  'w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors',
-                                  isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] placeholder:text-[#64748b] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]'
-                                )}
-                              />
-                            </label>
-
-                            <label className="space-y-1.5">
-                              <span className={cn('text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-400')}>
-                                Subtitel
-                              </span>
-                              <select
-                                value={assignedGroupId}
-                                onChange={(event) => {
-                                  const groupId = event.target.value || null;
-                                  onAssignItemToGroup(section.id, item.id, groupId);
-                                }}
-                                className={cn(
-                                  'w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors',
-                                  isDarkMode ? 'border-white/10 bg-[#0d1420] text-[#f4f2ea] focus:border-[#d8c9a8]' : 'border-gray-200 bg-white text-[var(--color-cozy-text)] focus:border-[var(--color-cozy-olive)]'
-                                )}
-                              >
-                                <option value="">Geen subtitel</option>
-                                {groups.map((group) => (
-                                  <option key={group.id} value={group.id}>
-                                    {group.title || 'Subtitel'}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <div className="flex flex-wrap items-end gap-2 lg:justify-end">
-                              <button
-                                type="button"
-                                onClick={() => onUpdateItem(section.id, item.id, { isVisible: !item.isVisible })}
-                                className={cn(
-                                  'rounded-full p-2 transition-colors',
-                                  isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                )}
-                              >
-                                {item.isVisible ? <Eye size={15} /> : <EyeOff size={15} />}
-                              </button>
-                              <button type="button" onClick={() => onMoveItem(section.id, item.id, -1)} disabled={itemIndex === 0} className={cn('rounded-full p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                                <ArrowUp size={15} />
-                              </button>
-                              <button type="button" onClick={() => onMoveItem(section.id, item.id, 1)} disabled={itemIndex === section.items.length - 1} className={cn('rounded-full p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40', isDarkMode ? 'bg-white/5 text-[#d9e2f1] hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-                                <ArrowDown size={15} />
-                              </button>
-                              <button type="button" onClick={() => onRemoveItem(section.id, item.id)} className={cn('rounded-full p-2 transition-colors', isDarkMode ? 'bg-red-500/10 text-red-200 hover:bg-red-500/20' : 'bg-red-50 text-red-500 hover:bg-red-100')}>
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
                   <button
                     type="button"
                     onClick={() => onAddItem(section.id)}
                     className={cn(
-                      'order-2 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+                      'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
                       isDarkMode ? 'border border-dashed border-white/15 bg-white/5 text-[#f4f2ea] hover:bg-white/10' : 'border border-dashed border-[#d8c9a8] bg-[#fcf8f2] text-[var(--color-cozy-text)] hover:bg-[#f5ecdf]'
                     )}
                   >
@@ -638,7 +620,7 @@ export function DrinkMenuEditor({
                     Product toevoegen
                   </button>
 
-                  <div className={cn('order-3 rounded-3xl border px-4 py-4', isDarkMode ? 'border-white/10 bg-[#111826]' : 'border-[#efe6d8] bg-[#fffdf9]')}>
+                  <div className={cn('rounded-3xl border px-4 py-4', isDarkMode ? 'border-white/10 bg-[#111826]' : 'border-[#efe6d8] bg-[#fffdf9]')}>
                     <h3 className={cn('mb-4 text-sm font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
                       Live preview website-layout
                     </h3>

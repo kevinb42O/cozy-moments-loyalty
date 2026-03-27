@@ -52,7 +52,6 @@ import {
   createDefaultDrinkMenuSections,
   createEmptyDrinkMenuItem,
   createEmptyDrinkMenuSection,
-  applyLegacyWebsiteGroupsToDrinkMenuSections,
   getAutomaticPromoDrinkMenuItemIds,
   getMultiPromoDrinkMenuItemIds,
   normalizeActivePromos,
@@ -1105,11 +1104,6 @@ export const BusinessPage: React.FC = () => {
         ],
       };
     }));
-  }, [updateDrinkMenuDraft]);
-
-  const handleDrinkMenuAutofillLegacyGroups = useCallback(() => {
-    updateDrinkMenuDraft((current) => applyLegacyWebsiteGroupsToDrinkMenuSections(current));
-    setDrinkMenuSuccess('Subtitels uit de bestaande website-indeling werden automatisch ingevuld waar mogelijk. Controleer en klik daarna op Opslaan.');
   }, [updateDrinkMenuDraft]);
 
   const handleDrinkMenuItemUpdate = useCallback((sectionId: string, itemId: string, patch: Partial<Pick<DrinkMenuItem, 'name' | 'price' | 'details' | 'isVisible'>>) => {
@@ -3380,7 +3374,6 @@ export const BusinessPage: React.FC = () => {
               onAssignItemToGroup={handleDrinkMenuAssignItemToGroup}
               onMoveGroupedItem={handleDrinkMenuMoveGroupedItem}
               onAssignUngroupedToDefaultGroup={handleDrinkMenuAssignUngroupedToDefaultGroup}
-              onAutofillLegacyGroups={handleDrinkMenuAutofillLegacyGroups}
               onAddItem={handleDrinkMenuAddItem}
               onMoveItem={handleDrinkMenuMoveItem}
               onRemoveItem={handleDrinkMenuRemoveItem}

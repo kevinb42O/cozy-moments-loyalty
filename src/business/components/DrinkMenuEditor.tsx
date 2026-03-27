@@ -37,7 +37,6 @@ interface DrinkMenuEditorProps {
   onAssignItemToGroup: (sectionId: string, itemId: string, groupId: string | null, targetIndex?: number) => void;
   onMoveGroupedItem: (sectionId: string, groupId: string, itemId: string, direction: -1 | 1) => void;
   onAssignUngroupedToDefaultGroup: (sectionId: string) => void;
-  onAutofillLegacyGroups: () => void;
   onAddItem: (sectionId: string) => void;
   onMoveItem: (sectionId: string, itemId: string, direction: -1 | 1) => void;
   onRemoveItem: (sectionId: string, itemId: string) => void;
@@ -158,7 +157,6 @@ export function DrinkMenuEditor({
   onAssignItemToGroup,
   onMoveGroupedItem,
   onAssignUngroupedToDefaultGroup,
-  onAutofillLegacyGroups,
   onAddItem,
   onMoveItem,
   onRemoveItem,
@@ -191,18 +189,6 @@ export function DrinkMenuEditor({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={onAutofillLegacyGroups}
-              disabled={saving || sections.length === 0}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                isDarkMode ? 'border border-white/10 bg-white/5 text-[#e6ecf5] hover:bg-white/10' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              )}
-            >
-              <Plus size={15} />
-              Importeer bestaande subtitels
-            </button>
             <button
               type="button"
               onClick={onReset}
@@ -316,7 +302,7 @@ export function DrinkMenuEditor({
               </button>
 
               {openSectionId === section.id && (
-                <div className="mt-5 space-y-6">
+                <div className="mt-5 flex flex-col gap-6">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="flex-1">
                       <label className="space-y-1.5">
@@ -379,7 +365,7 @@ export function DrinkMenuEditor({
 
                     {groups.length === 0 && (
                       <p className={cn('rounded-2xl border border-dashed px-3 py-3 text-sm', isDarkMode ? 'border-white/15 text-[#9fb0ca]' : 'border-[#e8ddcb] text-gray-500')}>
-                        Nog geen subtitels. Klik bovenaan op "Importeer bestaande subtitels" of maak er zelf eentje aan.
+                        Nog geen subtitels. Maak er eentje aan met "Subtitel toevoegen".
                       </p>
                     )}
 
@@ -532,51 +518,10 @@ export function DrinkMenuEditor({
                     </div>
                   </div>
 
-                  <div className={cn('rounded-3xl border px-4 py-4', isDarkMode ? 'border-white/10 bg-[#111826]' : 'border-[#efe6d8] bg-[#fffdf9]')}>
-                    <h3 className={cn('mb-4 text-sm font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
-                      Live preview website-layout
+                  <div className="order-1 space-y-3">
+                    <h3 className={cn('text-sm font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
+                      Producten aanpassen
                     </h3>
-
-                    {section.items.length === 0 ? (
-                      <p className={cn('text-sm', isDarkMode ? 'text-[#9fb0ca]' : 'text-gray-500')}>
-                        Voeg eerst producten toe om een preview te zien.
-                      </p>
-                    ) : (
-                      <div className="space-y-8">
-                        {groups.map((group) => renderPreviewGroup(group, section.items, itemById, isDarkMode, section.id, onAssignItemToGroup))}
-                        {ungroupedItems.length > 0 && (
-                          <div>
-                            <h4 className={cn('mb-4 text-xs font-semibold uppercase tracking-[0.24em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
-                              Overige
-                            </h4>
-                            <div className="grid grid-cols-1 gap-x-10 gap-y-2 md:grid-cols-2">
-                              {ungroupedItems.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className={cn(
-                                    'flex items-center justify-between rounded-2xl border px-4 py-3 text-sm',
-                                    isDarkMode ? 'border-white/10 bg-[#111826] text-[#f4f2ea]' : 'border-[#efe6d8] bg-[#fffdf9] text-[var(--color-cozy-text)]'
-                                  )}
-                                  draggable
-                                  onDragStart={(event) => {
-                                    event.dataTransfer.effectAllowed = 'move';
-                                    event.dataTransfer.setData('application/json', JSON.stringify({ sectionId: section.id, itemId: item.id, fromGroupId: null } satisfies DragItemPayload));
-                                  }}
-                                >
-                                  <span className="truncate pr-4">{item.name || 'Naamloos product'}</span>
-                                  <span className={cn('shrink-0 text-xs font-semibold', isDarkMode ? 'text-[#d8c9a8]' : 'text-[var(--color-cozy-olive)]')}>
-                                    {item.price || 'Prijs leeg'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
                     {section.items.map((item, itemIndex) => {
                       const isPromoActive = activePromoItemIdSet.has(item.id);
                       const assignedGroupId = itemGroupLookup.get(item.id) ?? '';
@@ -685,13 +630,57 @@ export function DrinkMenuEditor({
                     type="button"
                     onClick={() => onAddItem(section.id)}
                     className={cn(
-                      'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+                      'order-2 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
                       isDarkMode ? 'border border-dashed border-white/15 bg-white/5 text-[#f4f2ea] hover:bg-white/10' : 'border border-dashed border-[#d8c9a8] bg-[#fcf8f2] text-[var(--color-cozy-text)] hover:bg-[#f5ecdf]'
                     )}
                   >
                     <Plus size={15} />
                     Product toevoegen
                   </button>
+
+                  <div className={cn('order-3 rounded-3xl border px-4 py-4', isDarkMode ? 'border-white/10 bg-[#111826]' : 'border-[#efe6d8] bg-[#fffdf9]')}>
+                    <h3 className={cn('mb-4 text-sm font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
+                      Live preview website-layout
+                    </h3>
+
+                    {section.items.length === 0 ? (
+                      <p className={cn('text-sm', isDarkMode ? 'text-[#9fb0ca]' : 'text-gray-500')}>
+                        Voeg eerst producten toe om een preview te zien.
+                      </p>
+                    ) : (
+                      <div className="space-y-8">
+                        {groups.map((group) => renderPreviewGroup(group, section.items, itemById, isDarkMode, section.id, onAssignItemToGroup))}
+                        {ungroupedItems.length > 0 && (
+                          <div>
+                            <h4 className={cn('mb-4 text-xs font-semibold uppercase tracking-[0.24em]', isDarkMode ? 'text-[#97a8c4]' : 'text-gray-500')}>
+                              Overige
+                            </h4>
+                            <div className="grid grid-cols-1 gap-x-10 gap-y-2 md:grid-cols-2">
+                              {ungroupedItems.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className={cn(
+                                    'flex items-center justify-between rounded-2xl border px-4 py-3 text-sm',
+                                    isDarkMode ? 'border-white/10 bg-[#111826] text-[#f4f2ea]' : 'border-[#efe6d8] bg-[#fffdf9] text-[var(--color-cozy-text)]'
+                                  )}
+                                  draggable
+                                  onDragStart={(event) => {
+                                    event.dataTransfer.effectAllowed = 'move';
+                                    event.dataTransfer.setData('application/json', JSON.stringify({ sectionId: section.id, itemId: item.id, fromGroupId: null } satisfies DragItemPayload));
+                                  }}
+                                >
+                                  <span className="truncate pr-4">{item.name || 'Naamloos product'}</span>
+                                  <span className={cn('shrink-0 text-xs font-semibold', isDarkMode ? 'text-[#d8c9a8]' : 'text-[var(--color-cozy-olive)]')}>
+                                    {item.price || 'Prijs leeg'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </motion.div>

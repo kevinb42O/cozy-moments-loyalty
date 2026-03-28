@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ArrowDown, ArrowLeftRight, ArrowUp, ChevronDown, ImagePlus, Minus, MonitorPlay, Play, Plus, RotateCcw, Save, Upload } from 'lucide-react';
+import { ArrowDown, ArrowLeftRight, ArrowUp, ChevronDown, Film, ImagePlus, Minus, MonitorPlay, Play, Plus, RotateCcw, Save, Upload } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   MAX_SLIDE_DURATION_MS,
@@ -26,6 +26,9 @@ type ScreensaverEditorProps = {
   slides: ScreensaverSlideConfig[];
   dirty: boolean;
   saving: boolean;
+  exportingMp4: boolean;
+  exportingPreset: 'standard' | 'full-hd' | null;
+  exportProgress: number | null;
   uploadingTarget: string | null;
   error: string | null;
   success: string | null;
@@ -36,6 +39,8 @@ type ScreensaverEditorProps = {
   onResetImage: (slideId: string, role: ScreensaverImageRole) => void;
   onResetAll: () => void;
   onPreview: () => void;
+  onExportMp4: () => Promise<void>;
+  onExportMp4FullHd: () => Promise<void>;
   onSave: () => Promise<void>;
 };
 
@@ -54,6 +59,9 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
   slides,
   dirty,
   saving,
+  exportingMp4,
+  exportingPreset,
+  exportProgress,
   uploadingTarget,
   error,
   success,
@@ -64,6 +72,8 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
   onResetImage,
   onResetAll,
   onPreview,
+  onExportMp4,
+  onExportMp4FullHd,
   onSave,
 }) => {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -118,6 +128,46 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
               >
                 <RotateCcw size={16} />
                 Reset standaard
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void onExportMp4();
+                }}
+                disabled={exportingMp4}
+                className={cn(
+                  'inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
+                  exportingMp4
+                    ? (isDarkMode ? 'cursor-wait border-white/10 bg-[#2c3340] text-[#93a3ba]' : 'cursor-wait border-gray-200 bg-gray-100 text-gray-500')
+                    : (isDarkMode ? 'border-white/15 bg-[#1f2734] text-[#d8dee8] hover:bg-[#253042]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50')
+                )}
+              >
+                <Film size={16} />
+                {exportingMp4 && exportingPreset === 'standard'
+                  ? (exportProgress !== null ? `Exporteren... ${Math.round(exportProgress * 100)}%` : 'Exporteren...')
+                  : 'Exporteer MP4 (4:3)'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  void onExportMp4FullHd();
+                }}
+                disabled={exportingMp4}
+                className={cn(
+                  'inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
+                  exportingMp4
+                    ? (isDarkMode ? 'cursor-wait border-white/10 bg-[#2c3340] text-[#93a3ba]' : 'cursor-wait border-gray-200 bg-gray-100 text-gray-500')
+                    : (isDarkMode ? 'border-white/15 bg-[#1f2734] text-[#d8dee8] hover:bg-[#253042]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50')
+                )}
+              >
+                <Film size={16} />
+                {exportingMp4 && exportingPreset === 'full-hd'
+                  ? (exportProgress !== null ? `Exporteren... ${Math.round(exportProgress * 100)}%` : 'Exporteren...')
+                  : 'Exporteer MP4 Full HD'}
               </button>
             </div>
 

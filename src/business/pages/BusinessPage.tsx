@@ -7,6 +7,7 @@ import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/Loyalty
 import { Screensaver } from '../components/Screensaver';
 import { ScreensaverEditor } from '../components/ScreensaverEditor';
 import { DrinkMenuEditor } from '../components/DrinkMenuEditor';
+import { exportScreensaverToMp4 } from '../lib/screensaver-mp4-export';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
 import {
@@ -539,6 +540,9 @@ export const BusinessPage: React.FC = () => {
   const [screensaverEditing, setScreensaverEditing] = useState(false);
   const [screensaverSaving, setScreensaverSaving] = useState(false);
   const [screensaverUploadingTarget, setScreensaverUploadingTarget] = useState<string | null>(null);
+  const [screensaverExportingMp4, setScreensaverExportingMp4] = useState(false);
+  const [screensaverExportPreset, setScreensaverExportPreset] = useState<'standard' | 'full-hd' | null>(null);
+  const [screensaverExportProgress, setScreensaverExportProgress] = useState<number | null>(null);
   const [screensaverError, setScreensaverError] = useState<string | null>(null);
   const [screensaverSuccess, setScreensaverSuccess] = useState<string | null>(null);
   const [screensaverPreviewSlides, setScreensaverPreviewSlides] = useState<ScreensaverSlideConfig[] | null>(null);
@@ -823,6 +827,59 @@ export const BusinessPage: React.FC = () => {
     void warmScreensaverImageCache(previewSlides);
     setScreensaverPreviewRequest((current) => current + 1);
   }, [screensaverDraft]);
+
+  const handleScreensaverExportMp4WithPreset = useCallback(async (preset: 'standard' | 'full-hd') => {
+    setScreensaverError(null);
+    setScreensaverSuccess(null);
+    setScreensaverExportingMp4(true);
+    setScreensaverExportPreset(preset);
+    setScreensaverExportProgress(0);
+
+    const exportSlides = normalizeScreensaverConfig(screensaverDraft);
+    const config = preset === 'full-hd'
+      ? { width: 1920, height: 1080, fps: 30, bitrate: 12_000_000, label: 'Full HD', suffix: 'full-hd-1080p' }
+      : { width: 1280, height: 960, fps: 30, bitrate: 8_000_000, label: 'Standaard', suffix: 'standard-4x3' };
+
+    try {
+      const mp4Blob = await exportScreensaverToMp4({
+        slides: exportSlides,
+        width: config.width,
+        height: config.height,
+        fps: config.fps,
+        bitrate: config.bitrate,
+        onProgress: (progress) => {
+          setScreensaverExportProgress(progress);
+        },
+      });
+
+      const timestamp = new Date().toISOString().replace(/[.:]/g, '-');
+      const downloadUrl = URL.createObjectURL(mp4Blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `cozy-screensaver-${config.suffix}-${timestamp}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+
+      setScreensaverSuccess(`MP4-export (${config.label}) voltooid. Het bestand is gedownload naar je toestel.`);
+    } catch (error) {
+      console.error('Kon screensaver niet exporteren naar MP4:', error);
+      setScreensaverError(error instanceof Error ? error.message : 'De MP4-export is mislukt.');
+    } finally {
+      setScreensaverExportingMp4(false);
+      setScreensaverExportPreset(null);
+      setScreensaverExportProgress(null);
+    }
+  }, [screensaverDraft]);
+
+  const handleScreensaverExportMp4 = useCallback(async () => {
+    await handleScreensaverExportMp4WithPreset('standard');
+  }, [handleScreensaverExportMp4WithPreset]);
+
+  const handleScreensaverExportMp4FullHd = useCallback(async () => {
+    await handleScreensaverExportMp4WithPreset('full-hd');
+  }, [handleScreensaverExportMp4WithPreset]);
 
   const handleScreensaverUpload = useCallback(async (slideId: string, role: ScreensaverImageRole, file: File) => {
     if (!supabase) {
@@ -3354,6 +3411,9 @@ export const BusinessPage: React.FC = () => {
               slides={screensaverDraft}
               dirty={screensaverDirty}
               saving={screensaverSaving}
+              exportingMp4={screensaverExportingMp4}
+              exportingPreset={screensaverExportPreset}
+              exportProgress={screensaverExportProgress}
               uploadingTarget={screensaverUploadingTarget}
               error={screensaverError}
               success={screensaverSuccess}
@@ -3364,6 +3424,8 @@ export const BusinessPage: React.FC = () => {
               onResetImage={handleScreensaverResetImage}
               onResetAll={handleScreensaverResetAll}
               onPreview={handleScreensaverPreview}
+              onExportMp4={handleScreensaverExportMp4}
+              onExportMp4FullHd={handleScreensaverExportMp4FullHd}
               onSave={saveScreensaver}
             />
           </motion.div>

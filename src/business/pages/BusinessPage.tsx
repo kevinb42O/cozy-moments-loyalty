@@ -946,7 +946,7 @@ export const BusinessPage: React.FC = () => {
     setDrinkMenuEditing(true);
     setDrinkMenuError(null);
     setDrinkMenuSuccess(null);
-    setDrinkMenuDraft((current) => normalizeDrinkMenuSections(updater(current), []));
+    setDrinkMenuDraft((current) => updater(current));
   }, []);
 
   const handleDrinkMenuSectionUpdate = useCallback((sectionId: string, patch: Partial<Pick<DrinkMenuSection, 'sectionCode' | 'title' | 'isVisible'>>) => {

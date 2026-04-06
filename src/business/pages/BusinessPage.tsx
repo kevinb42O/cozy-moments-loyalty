@@ -75,6 +75,15 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
+  { view: 'customers', label: 'Klanten' },
+  { view: 'create-customer', label: 'Beheerde klanten' },
+  { view: 'open-bottles', label: 'Open flessen' },
+  { view: 'history', label: 'Historiek' },
+  { view: 'drink-menu', label: 'Drankkaart' },
+  { view: 'screensaver', label: 'Screensaver' },
+];
+
 // ── Admin audio chime (same Web Audio approach as Scanner) ────────────────────
 let adminAudioCtx: AudioContext | null = null;
 
@@ -142,115 +151,9 @@ const PRICE_ESTIMATE: Record<CardType, number> = {
 };
 
 type BusinessView = 'create' | 'create-customer' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'redeem' | 'admin';
-type AdminWorkspaceView = Exclude<BusinessView, 'create' | 'redeem'>;
 type OpenBottleRisk = 'red' | 'orange';
 type OpenBottleFilter = 'all' | 'open' | 'expired' | 'promo';
 type HistoryPanelKey = 'correction' | 'filters';
-
-const WORKSPACE_META: Record<BusinessView, {
-  group: string;
-  label: string;
-  title: string;
-  description: string;
-  menuHint: string;
-}> = {
-  create: {
-    group: 'Aan de toog',
-    label: 'Nieuwe QR',
-    title: 'Nieuwe QR voor consumpties',
-    description: 'Tel de drankjes op en genereer daarna in één beweging een QR-code die de klant meteen kan scannen.',
-    menuHint: 'Gebruik dit scherm voor nieuwe stempels en snelle registraties aan de toog.',
-  },
-  redeem: {
-    group: 'Aan de toog',
-    label: 'Inwisselen',
-    title: 'Beloning laten inwisselen',
-    description: 'Kies het gratis drankje en toon daarna meteen de QR-code waarmee de klant de beloning opneemt.',
-    menuHint: 'Gebruik dit scherm wanneer een klant een volle kaart wil omzetten naar een gratis consumptie.',
-  },
-  customers: {
-    group: 'Dagelijkse opvolging',
-    label: 'Klanten',
-    title: 'Klantenoverzicht',
-    description: 'Zoek in alle klanten, bekijk hun voortgang en exporteer klantgegevens zonder van werkruimte te wisselen.',
-    menuHint: 'Hier hou je zicht op alle klantenaccounts en hun activiteit.',
-  },
-  'create-customer': {
-    group: 'Dagelijkse opvolging',
-    label: 'Beheerde klanten',
-    title: 'Beheerde klanten',
-    description: 'Maak accounts aan voor klanten die jij opvolgt en beheer hun bezoeken, beloningen en correcties op één plek.',
-    menuHint: 'Van hieruit maak je klantaccounts aan en doe je snelle beheertaken zonder QR-scan.',
-  },
-  'open-bottles': {
-    group: 'Dagelijkse opvolging',
-    label: 'Open flessen',
-    title: 'Open flessen opvolgen',
-    description: 'Houd zicht op geopende producten, resterende tijd en actieve promo’s zodat niets uit beeld verdwijnt.',
-    menuHint: 'Gebruik deze werkruimte om open producten en promo’s praktisch op te volgen.',
-  },
-  history: {
-    group: 'Dagelijkse opvolging',
-    label: 'Historiek',
-    title: 'Historiek en correcties',
-    description: 'Controleer registraties, filter snel en voer manuele correcties uit zonder de context van het dossier te verliezen.',
-    menuHint: 'Hier vind je de volledige historiek en alle correcties voor klanten.',
-  },
-  'drink-menu': {
-    group: 'Zichtbaarheid',
-    label: 'Drankkaart',
-    title: 'Drankkaart beheren',
-    description: 'Pas de menukaart van de website aan vanuit één rustige editor met directe preview en beheerknoppen.',
-    menuHint: 'Gebruik dit scherm voor de publieke drankkaart en promo-zichtbaarheid op de site.',
-  },
-  screensaver: {
-    group: 'Zichtbaarheid',
-    label: 'Screensaver',
-    title: 'Screensaver beheren',
-    description: 'Stuur beelden, timing en exports aan vanuit één consistente configuratielaag voor het scherm in de zaak.',
-    menuHint: 'Hier beheer je de screensaver die in de zaak of op een extern scherm draait.',
-  },
-  admin: {
-    group: 'Toegang',
-    label: 'Admin',
-    title: 'Adminbeheer',
-    description: 'Beheer adminaccounts, toegangen en registratieverantwoordelijkheid vanuit een aparte beheerruimte.',
-    menuHint: 'Hier voeg je admins toe en hou je zicht op wie welk account geregistreerd heeft.',
-  },
-};
-
-const WORKSPACE_MENU_GROUPS: Array<{
-  label: string;
-  items: Array<{
-    view: AdminWorkspaceView;
-    label: string;
-    description: string;
-    icon: React.ElementType;
-  }>;
-}> = [
-  {
-    label: 'Dagelijkse opvolging',
-    items: [
-      { view: 'customers', label: 'Klanten', description: 'Zoek en bekijk alle klantenaccounts.', icon: Users },
-      { view: 'create-customer', label: 'Beheerde klanten', description: 'Maak accounts aan en volg jouw klanten op.', icon: Star },
-      { view: 'open-bottles', label: 'Open flessen', description: 'Volg open producten en promo’s op.', icon: Clock3 },
-      { view: 'history', label: 'Historiek', description: 'Bekijk registraties en doe correcties.', icon: History },
-    ],
-  },
-  {
-    label: 'Zichtbaarheid',
-    items: [
-      { view: 'drink-menu', label: 'Drankkaart', description: 'Pas de websitekaart en promos aan.', icon: Coffee },
-      { view: 'screensaver', label: 'Screensaver', description: 'Beheer beelden, volgorde en export.', icon: Megaphone },
-    ],
-  },
-  {
-    label: 'Toegang',
-    items: [
-      { view: 'admin', label: 'Admin', description: 'Beheer adminaccounts en toegangen.', icon: ShieldCheck },
-    ],
-  },
-];
 
 interface OpenBottleEntry {
   openedAt: string;
@@ -1803,10 +1706,10 @@ export const BusinessPage: React.FC = () => {
   }, [qrPayload]);
 
   const totalConsumptions = consumptions.coffee + consumptions.wine + consumptions.beer + consumptions.soda;
+  const activeHiddenAdminView = HIDDEN_ADMIN_VIEWS.find((item) => item.view === view) ?? null;
+  const adminWorkspaceOpen = view === 'admin';
   const isCounterMode = view === 'create' || view === 'redeem';
   const brandLogoSrc = isDarkMode ? '/cozy_logo_wit.png' : '/cozylogo.png';
-  const currentWorkspace = WORKSPACE_META[view];
-  const workspaceMenuLabel = isCounterMode ? 'Aan de toog' : currentWorkspace.label;
 
   return (
     <div className={cn('min-h-screen pb-32', isDarkMode ? 'admin-theme-dark bg-[#111315]' : 'bg-[#f5f5f0]')}>
@@ -1819,235 +1722,242 @@ export const BusinessPage: React.FC = () => {
         previewRequest={screensaverPreviewRequest}
       />
 
-      <header className="sticky top-0 z-20 px-4 pb-4 pt-4 md:px-6">
-        <div className="mx-auto max-w-[1500px]">
-          <div className="admin-phase-panel rounded-[34px] px-4 py-4 md:px-6 md:py-5">
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-              <div className="flex items-start gap-4 md:gap-5">
-                <div className="business-shell-brand flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] md:h-20 md:w-20">
-                  <img
-                    src={brandLogoSrc}
-                    alt="COZY Moments"
-                    className="h-10 w-10 object-contain md:h-12 md:w-12"
-                  />
-                </div>
+      <header className={cn('px-5 py-1.5 rounded-b-[24px] shadow-sm mb-5 sticky top-0 z-10', isDarkMode ? 'bg-[#121722] border-b border-white/10' : 'bg-white')}>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="flex items-center">
+            {activeHiddenAdminView ? (
+              <button
+                onClick={() => {
+                  reset();
+                  setView('create');
+                  setShowAdminMenu(false);
+                }}
+                className="ios-frosted inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold text-[var(--color-cozy-text)] transition-all hover:bg-white/80"
+              >
+                <ArrowLeft size={14} />
+                Terug naar kassa
+              </button>
+            ) : (
+              <div className="h-9 w-9" />
+            )}
+          </div>
+          <div className="flex items-center justify-center">
+            <img
+              src={brandLogoSrc}
+              alt="COZY Moments"
+              className="w-[60px] h-[60px] object-contain"
+            />
+          </div>
+          <div className="flex items-center justify-end">
+            <div ref={adminMenuRef} className="relative flex items-center gap-2">
+            <button
+              onClick={() => setShowAdminMenu((current) => !current)}
+              title="Beheer"
+              aria-label="Beheer"
+              className={cn(
+                "ios-frosted h-9 w-9 rounded-full flex items-center justify-center transition-all",
+                activeHiddenAdminView || adminWorkspaceOpen || showAdminMenu
+                  ? "text-[var(--color-cozy-text)] shadow-sm ring-1 ring-white/35 bg-white/70"
+                  : "text-gray-600 hover:bg-white/75"
+              )}
+            >
+              <motion.span animate={{ rotate: showAdminMenu ? 30 : 0 }} transition={{ duration: 0.2 }}>
+                <Settings2 size={17} />
+              </motion.span>
+            </button>
 
-                <div className="min-w-0">
-                  <p className="admin-phase-kicker">{currentWorkspace.group}</p>
-                  <h1 className="mt-2 text-[2rem] font-display font-bold leading-tight text-[var(--color-cozy-text)] md:text-[2.5rem]">
-                    {currentWorkspace.title}
-                  </h1>
-                  <p className="admin-phase-copy mt-3 max-w-3xl text-sm md:text-base">
-                    {currentWorkspace.description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[430px]">
-                <div className="admin-phase-identity rounded-[24px] px-4 py-4">
-                  <p className="admin-phase-kicker">Actieve admin</p>
-                  <p className="mt-2 break-all font-mono text-sm font-bold text-[var(--color-cozy-text)]">{adminEmail ?? 'Onbekend'}</p>
-                  <p className="admin-phase-copy mt-2 text-xs">Je werkt in het business paneel van Cozy Moments.</p>
-                </div>
-
-                <div className="admin-phase-panel-soft rounded-[24px] px-4 py-4">
-                  <p className="admin-phase-kicker">Werkruimte nu</p>
-                  <p className="mt-2 text-sm font-semibold text-[var(--color-cozy-text)]">{currentWorkspace.label}</p>
-                  <p className="admin-phase-copy mt-2 text-xs">{currentWorkspace.menuHint}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="business-shell-nav">
-                <button
-                  type="button"
-                  data-active={view === 'create' ? 'true' : 'false'}
-                  onClick={() => {
-                    reset();
-                    setView('create');
-                    setShowAdminMenu(false);
-                  }}
-                  className="business-shell-tab inline-flex items-center gap-3 px-4 py-3 text-left"
+            <AnimatePresence>
+              {showAdminMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
+                  className={cn("absolute right-0 top-full z-30 mt-2 w-60 rounded-[24px] border p-2 shadow-xl", isDarkMode ? "bg-[#2c3036] border-white/10" : "bg-white border-gray-100/80")}
                 >
-                  <span className={cn(
-                    'inline-flex h-10 w-10 items-center justify-center rounded-full',
-                    view === 'create' ? 'bg-[rgba(255,255,255,0.18)] text-white' : 'bg-[var(--color-cozy-olive)]/10 text-[var(--color-cozy-olive)]'
-                  )}>
-                    <QrCode size={18} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-display text-base font-bold leading-tight">Nieuwe QR</span>
-                    <span className={cn('mt-1 block text-xs', view === 'create' ? 'text-white/78' : 'text-gray-500')}>Punten toevoegen</span>
-                  </span>
-                </button>
+                  {HIDDEN_ADMIN_VIEWS.map((item) => (
+                    <button
+                      key={item.view}
+                      onClick={() => {
+                        reset();
+                        setView(item.view);
+                        setShowAdminMenu(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition-colors",
+                        view === item.view
+                          ? isDarkMode ? "bg-white/15 text-[var(--color-cozy-text)] shadow-sm" : "bg-gray-100 text-[var(--color-cozy-text)] shadow-sm"
+                          : isDarkMode ? "text-[#d8dee8] hover:bg-white/10" : "text-gray-700 hover:bg-gray-50"
+                      )}
+                    >
+                      <span>{item.label}</span>
+                      {view === item.view && <span className="text-xs text-[var(--color-cozy-olive)]">Open</span>}
+                    </button>
+                  ))}
 
-                <button
-                  type="button"
-                  data-active={view === 'redeem' ? 'true' : 'false'}
-                  onClick={() => {
-                    reset();
-                    setView('redeem');
-                    setShowAdminMenu(false);
-                  }}
-                  className="business-shell-tab inline-flex items-center gap-3 px-4 py-3 text-left"
-                >
-                  <span className={cn(
-                    'inline-flex h-10 w-10 items-center justify-center rounded-full',
-                    view === 'redeem' ? 'bg-[rgba(255,255,255,0.18)] text-white' : 'bg-[var(--color-cozy-olive)]/10 text-[var(--color-cozy-olive)]'
-                  )}>
-                    <Gift size={18} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-display text-base font-bold leading-tight">Inwisselen</span>
-                    <span className={cn('mt-1 block text-xs', view === 'redeem' ? 'text-white/78' : 'text-gray-500')}>Gratis drankje geven</span>
-                  </span>
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                <div ref={adminMenuRef} className="relative">
                   <button
-                    type="button"
-                    onClick={() => setShowAdminMenu((current) => !current)}
-                    aria-label="Werkruimtes"
-                    className="business-shell-action flex w-full min-w-[240px] items-center justify-between gap-3 px-4 py-3 text-left sm:w-auto"
+                    onClick={() => setIsDarkMode((current) => !current)}
+                    className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold transition-colors", isDarkMode ? "text-[#d8dee8] hover:bg-white/10" : "text-gray-700 hover:bg-gray-50")}
                   >
-                    <span className="inline-flex items-center gap-2 text-sm font-semibold">
-                      <Settings2 size={16} />
-                      Werkruimtes
-                    </span>
                     <span className="inline-flex items-center gap-2">
-                      <span className="business-shell-chip px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
-                        {workspaceMenuLabel}
-                      </span>
-                      <motion.span animate={{ rotate: showAdminMenu ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                        <ChevronDown size={16} />
-                      </motion.span>
+                      {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                      {isDarkMode ? 'Lichte modus' : 'Donkere modus'}
                     </span>
+                    <span className="text-xs text-[var(--color-cozy-olive)]">{isDarkMode ? 'Aan' : 'Uit'}</span>
                   </button>
 
-                  <AnimatePresence>
-                    {showAdminMenu && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                        transition={{ duration: 0.18 }}
-                        className="business-shell-menu absolute right-0 top-full z-30 mt-2 w-[min(26rem,calc(100vw-2rem))] rounded-[28px] p-2"
-                      >
-                        {WORKSPACE_MENU_GROUPS.map((group, groupIndex) => (
-                          <div key={group.label} className={cn(groupIndex > 0 && 'mt-2 pt-2')}>
-                            {groupIndex > 0 && <div className="business-shell-divider mx-2 mb-2 h-px" />}
-                            <p className="admin-phase-kicker px-3 py-2">{group.label}</p>
-
-                            <div className="space-y-1">
-                              {group.items.map((item) => {
-                                const Icon = item.icon;
-
-                                return (
-                                  <button
-                                    key={item.view}
-                                    type="button"
-                                    data-active={view === item.view ? 'true' : 'false'}
-                                    onClick={() => {
-                                      reset();
-                                      setView(item.view);
-                                      setShowAdminMenu(false);
-                                    }}
-                                    className="business-shell-menu-item flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
-                                  >
-                                    <span className="flex min-w-0 items-start gap-3">
-                                      <span className="business-shell-menu-icon inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-[var(--color-cozy-text)]">
-                                        <Icon size={18} />
-                                      </span>
-                                      <span className="min-w-0">
-                                        <span className="block text-sm font-semibold text-[var(--color-cozy-text)]">{item.label}</span>
-                                        <span className="admin-phase-copy mt-1 block text-xs leading-5">{item.description}</span>
-                                      </span>
-                                    </span>
-
-                                    {view === item.view && (
-                                      <span className="business-shell-chip shrink-0 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
-                                        Open
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </motion.div>
+                  <button
+                    onClick={() => {
+                      reset();
+                      setView('admin');
+                      setShowAdminMenu(false);
+                    }}
+                    className={cn(
+                      "mt-1 flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors",
+                      adminWorkspaceOpen
+                        ? isDarkMode
+                          ? "border-[#d9caa7]/35 bg-[#d9caa7]/18 text-[#f6ead1]"
+                          : "border-[#d8c59f] bg-[#f6efdf] text-[#6f613f]"
+                        : isDarkMode
+                          ? "border-[#d9caa7]/15 bg-[#d9caa7]/8 text-[#eadfca] hover:bg-[#d9caa7]/14"
+                          : "border-[#eadfca] bg-[#faf5ea] text-[#7a6a45] hover:bg-[#f4ecdb]",
                     )}
-                  </AnimatePresence>
-                </div>
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <ShieldCheck size={16} />
+                      Admin
+                    </span>
+                    {adminWorkspaceOpen && <span className="text-xs text-[var(--color-cozy-olive)]">Open</span>}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDarkMode((current) => !current);
-                    setShowAdminMenu(false);
-                  }}
-                  className="business-shell-action inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
-                >
-                  {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-                  {isDarkMode ? 'Lichte modus' : 'Donkere modus'}
-                </button>
+                  <div className="mx-2 my-2 h-px bg-gray-200/70" />
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAdminMenu(false);
-                    logout();
-                  }}
-                  className="business-shell-action business-shell-action-danger inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
-                >
-                  <LogOut size={16} />
-                  Uitloggen
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      setShowAdminMenu(false);
+                      logout();
+                    }}
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-50/80"
+                  >
+                    <LogOut size={16} />
+                    <span>Uitloggen</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
             </div>
           </div>
         </div>
+
+        {isCounterMode && (
+          <div className={cn('mt-2 grid grid-cols-2 gap-2 rounded-[26px] p-2', isDarkMode ? 'bg-[#171d29] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]' : 'ios-frosted')}>
+            <motion.button
+              whileTap={{ scale: 0.985 }}
+              animate={view === 'create' ? { y: -1 } : { y: 0 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+              onClick={() => { reset(); setView('create'); setShowAdminMenu(false); }}
+              className={cn(
+                "relative overflow-hidden rounded-[22px] px-3 py-3 text-center transition-all",
+                isDarkMode
+                  ? (view === 'create'
+                    ? 'bg-[#212a39] shadow-[0_8px_18px_rgba(0,0,0,0.32)] ring-1 ring-white/10'
+                    : 'bg-[#171f2d] hover:bg-[#1d2736] border border-white/8')
+                  : (view === 'create'
+                    ? "bg-white/90 shadow-[0_12px_28px_rgba(70,62,48,0.14)] ring-1 ring-white/45"
+                    : "bg-white/25 hover:bg-[#ebe4d7]/55 hover:shadow-[0_8px_18px_rgba(70,62,48,0.08)]")
+              )}
+            >
+              <div className={cn('pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent to-transparent', isDarkMode ? 'via-white/20' : 'via-white/85')} />
+              <div className={cn(
+                "pointer-events-none absolute inset-x-4 top-1 h-8 rounded-full blur-xl transition-opacity",
+                isDarkMode
+                  ? (view === 'create' ? 'bg-white/10 opacity-70' : 'bg-white/5 opacity-40')
+                  : (view === 'create' ? "bg-white/70 opacity-100" : "bg-white/35 opacity-70")
+              )} />
+              <div className="relative flex flex-col items-center justify-center gap-1.5">
+                <div className={cn(
+                  "flex h-12 w-12 items-center justify-center rounded-full transition-colors",
+                  isDarkMode
+                    ? (view === 'create' ? 'bg-[#d8c9a8] text-[#4d3a1b] shadow-sm' : 'bg-[#d8c9a8]/75 text-[#4d3a1b]')
+                    : (view === 'create' ? "bg-[#ebe4d7] text-[var(--color-cozy-olive)] shadow-sm" : "bg-[#ebe4d7]/70 text-[var(--color-cozy-olive)]")
+                )}>
+                  <QrCode size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className={cn(
+                    "font-display text-[15px] font-bold leading-tight",
+                    isDarkMode
+                      ? (view === 'create' ? 'text-[#f2f5fa]' : 'text-[#d6dde8]')
+                      : (view === 'create' ? "text-[var(--color-cozy-text)]" : "text-gray-700")
+                  )}>
+                    Nieuwe QR
+                  </p>
+                  <p className={cn('mt-0.5 text-[11px] leading-tight', isDarkMode ? 'text-[#aeb9c9]' : 'text-gray-400')}>
+                    Punten toevoegen
+                  </p>
+                </div>
+              </div>
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.985 }}
+              animate={view === 'redeem' ? { y: -1 } : { y: 0 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+              onClick={() => { reset(); setView('redeem'); setShowAdminMenu(false); }}
+              className={cn(
+                "relative overflow-hidden rounded-[22px] px-3 py-3 text-center transition-all",
+                isDarkMode
+                  ? (view === 'redeem'
+                    ? 'bg-[#212a39] shadow-[0_8px_18px_rgba(0,0,0,0.32)] ring-1 ring-white/10'
+                    : 'bg-[#171f2d] hover:bg-[#1d2736] border border-white/8')
+                  : (view === 'redeem'
+                    ? "bg-white/90 shadow-[0_12px_28px_rgba(70,62,48,0.14)] ring-1 ring-white/45"
+                    : "bg-white/25 hover:bg-[#ebe4d7]/55 hover:shadow-[0_8px_18px_rgba(70,62,48,0.08)]")
+              )}
+            >
+              <div className={cn('pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent to-transparent', isDarkMode ? 'via-white/20' : 'via-white/85')} />
+              <div className={cn(
+                "pointer-events-none absolute inset-x-4 top-1 h-8 rounded-full blur-xl transition-opacity",
+                isDarkMode
+                  ? (view === 'redeem' ? 'bg-white/10 opacity-70' : 'bg-white/5 opacity-40')
+                  : (view === 'redeem' ? "bg-white/70 opacity-100" : "bg-white/35 opacity-70")
+              )} />
+              <div className="relative flex flex-col items-center justify-center gap-1.5">
+                <div className={cn(
+                  "flex h-12 w-12 items-center justify-center rounded-full transition-colors",
+                  isDarkMode
+                    ? (view === 'redeem' ? 'bg-[#d8c9a8] text-[#4d3a1b] shadow-sm' : 'bg-[#d8c9a8]/75 text-[#4d3a1b]')
+                    : (view === 'redeem' ? "bg-[#ebe4d7] text-[var(--color-cozy-olive)] shadow-sm" : "bg-[#ebe4d7]/70 text-[var(--color-cozy-olive)]")
+                )}>
+                  <Gift size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className={cn(
+                    "font-display text-[15px] font-bold leading-tight",
+                    isDarkMode
+                      ? (view === 'redeem' ? 'text-[#f2f5fa]' : 'text-[#d6dde8]')
+                      : (view === 'redeem' ? "text-[var(--color-cozy-text)]" : "text-gray-700")
+                  )}>
+                    Inwisselen
+                  </p>
+                  <p className={cn('mt-0.5 text-[11px] leading-tight', isDarkMode ? 'text-[#aeb9c9]' : 'text-gray-400')}>
+                    Gratis drankje geven
+                  </p>
+                </div>
+              </div>
+            </motion.button>
+          </div>
+        )}
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-4 md:px-6">
+      <main className="px-6">
         {view === 'create' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {!qrPayload ? (
               <div className="space-y-6">
-                <div className="admin-phase-panel rounded-[32px] p-5 md:p-6">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                    <div>
-                      <p className="admin-phase-kicker">QR workflow</p>
-                      <h2 className="mt-2 text-3xl font-display font-bold text-[var(--color-cozy-text)]">Selecteer consumpties</h2>
-                      <p className="admin-phase-copy mt-2 text-sm">
-                        Tel de drankjes op en genereer daarna één QR-code die de klant meteen kan scannen.
-                      </p>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[340px]">
-                      <div className="admin-phase-metric rounded-[22px] px-4 py-4">
-                        <p className="admin-phase-kicker">Geselecteerd nu</p>
-                        <p className="mt-2 font-mono text-3xl font-bold text-[var(--color-cozy-text)]">{totalConsumptions}</p>
-                        <p className="admin-phase-copy mt-2 text-xs">Totaal aantal consumpties dat mee in de volgende QR gaat.</p>
-                      </div>
-
-                      <div className="admin-phase-metric rounded-[22px] px-4 py-4">
-                        <p className="admin-phase-kicker">Status</p>
-                        <p className="mt-2 text-base font-semibold text-[var(--color-cozy-text)]">
-                          {totalConsumptions === 0 ? 'Nog niets gekozen' : 'Klaar voor QR'}
-                        </p>
-                        <p className="admin-phase-copy mt-2 text-xs">
-                          {totalConsumptions === 0
-                            ? 'Kies eerst één of meerdere drankjes om verder te gaan.'
-                            : 'Je kunt de QR-code meteen genereren zodra de selectie klopt.'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <h2 className={cn('text-3xl font-display font-bold text-[var(--color-cozy-text)] mb-8', isDarkMode && 'text-[#f4f2ea]')}>
+                  Selecteer Consumpties
+                </h2>
                 
                 <ConsumptionRow 
                   type="coffee" 
@@ -3599,31 +3509,12 @@ export const BusinessPage: React.FC = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {!qrPayload ? (
               <div className="space-y-6">
-                <div className="admin-phase-panel rounded-[32px] p-5 md:p-6">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                    <div>
-                      <p className="admin-phase-kicker">Inwisselworkflow</p>
-                      <h2 className="mt-2 text-3xl font-display font-bold text-[var(--color-cozy-text)]">Kies een gratis consumptie</h2>
-                      <p className="admin-phase-copy mt-2 text-sm">
-                        Selecteer welk drankje de klant gratis krijgt. Daarna toon je meteen de QR-code om de beloning te registreren.
-                      </p>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[340px]">
-                      <div className="admin-phase-metric rounded-[22px] px-4 py-4">
-                        <p className="admin-phase-kicker">Beschikbaar nu</p>
-                        <p className="mt-2 font-mono text-3xl font-bold text-[var(--color-cozy-text)]">4</p>
-                        <p className="admin-phase-copy mt-2 text-xs">Koffie, wijn, bier en frisdrank kunnen hier rechtstreeks ingewisseld worden.</p>
-                      </div>
-
-                      <div className="admin-phase-metric rounded-[22px] px-4 py-4">
-                        <p className="admin-phase-kicker">Bevestiging</p>
-                        <p className="mt-2 text-base font-semibold text-[var(--color-cozy-text)]">Via QR-scan</p>
-                        <p className="admin-phase-copy mt-2 text-xs">De klant scant één code en de gratis consumptie wordt meteen correct geregistreerd.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)] mb-4">
+                  Inwisselen
+                </h2>
+                <p className="text-gray-500 -mt-2 mb-4">
+                  Selecteer het drankje dat de klant gratis krijgt:
+                </p>
 
                 <div className="space-y-3">
                   {(['coffee', 'wine', 'beer', 'soda'] as CardType[]).map((type, index) => {

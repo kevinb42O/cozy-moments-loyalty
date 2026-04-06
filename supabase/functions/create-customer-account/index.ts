@@ -46,6 +46,15 @@ function isDuplicateAuthError(error: { message?: string | null } | null) {
   return message.includes('already been registered') || message.includes('already exists');
 }
 
+function extractAccessToken(authHeader: string | null) {
+  if (!authHeader) {
+    return null;
+  }
+
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() ?? null;
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -59,21 +68,17 @@ Deno.serve(async (request) => {
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const authHeader = request.headers.get('Authorization');
+  const accessToken = extractAccessToken(authHeader);
 
   if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
     return json({ error: 'Supabase Edge Function is niet volledig geconfigureerd.' }, 500);
   }
 
-  if (!authHeader) {
+  if (!accessToken) {
     return json({ error: 'Niet geautoriseerd.' }, 401);
   }
 
-  const requesterClient = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: authHeader,
-      },
-    },
+  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -87,16 +92,20 @@ Deno.serve(async (request) => {
     },
   });
 
-  const [{ data: requesterData, error: requesterError }, { data: isAdmin, error: isAdminError }] = await Promise.all([
-    requesterClient.auth.getUser(),
-    requesterClient.rpc('is_admin'),
-  ]);
+  const { data: requesterData, error: requesterError } = await authClient.auth.getUser(accessToken);
+  const requesterEmail = requesterData.user?.email?.trim().toLowerCase() ?? '';
 
-  if (requesterError || !requesterData.user) {
+  if (requesterError || !requesterData.user || !requesterEmail) {
     return json({ error: 'Je sessie is ongeldig. Log opnieuw in als admin.' }, 401);
   }
 
-  if (isAdminError || !isAdmin) {
+  const { data: adminRecord, error: adminLookupError } = await adminClient
+    .from('admin_users')
+    .select('email')
+    .eq('email', requesterEmail)
+    .maybeSingle();
+
+  if (adminLookupError || !adminRecord) {
     return json({ error: 'Alleen admins mogen klantaccounts aanmaken.' }, 403);
   }
 
@@ -119,7 +128,7 @@ Deno.serve(async (request) => {
     return json({ error: 'Het e-mailadres lijkt niet geldig.' }, 400);
   }
 
-  const createdByAdminEmail = requesterData.user.email?.trim().toLowerCase() ?? null;
+  const createdByAdminEmail = requesterEmail || null;
   const baseAlias = buildManagedLoginAlias(name);
   const attempts = contactEmail ? 1 : MAX_MANAGED_ACCOUNT_ATTEMPTS;
 

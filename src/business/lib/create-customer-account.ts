@@ -21,7 +21,7 @@ export interface CreateCustomerAccountResult {
 async function resolveFunctionErrorMessage(error: any) {
   const fallbackMessage = error?.message || 'Account aanmaken mislukt.';
 
-  if (!error?.context || !(error.context instanceof Response)) {
+  if (!error?.context || typeof error.context.json !== 'function') {
     return fallbackMessage;
   }
 

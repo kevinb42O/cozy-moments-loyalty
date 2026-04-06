@@ -1,5 +1,10 @@
 export const TEMP_CUSTOMER_PASSWORD = 'cozymoments';
-export const MANAGED_CUSTOMER_EMAIL_DOMAIN = 'accounts.cozymoments.local';
+export const MANAGED_CUSTOMER_EMAIL_DOMAIN = 'accounts.cozy-moments.be';
+const LEGACY_MANAGED_CUSTOMER_EMAIL_DOMAIN = 'accounts.cozymoments.local';
+const MANAGED_CUSTOMER_EMAIL_DOMAINS = [
+  MANAGED_CUSTOMER_EMAIL_DOMAIN,
+  LEGACY_MANAGED_CUSTOMER_EMAIL_DOMAIN,
+];
 const FALLBACK_MANAGED_ALIAS = 'cozy-klant';
 
 export function buildManagedLoginAlias(value: string) {
@@ -21,14 +26,16 @@ export function buildManagedLoginEmail(alias: string) {
 
 export function isManagedLoginEmail(value: string | null | undefined) {
   const normalized = value?.trim().toLowerCase() ?? '';
-  return normalized.endsWith(`@${MANAGED_CUSTOMER_EMAIL_DOMAIN}`);
+  return MANAGED_CUSTOMER_EMAIL_DOMAINS.some((domain) => normalized.endsWith(`@${domain}`));
 }
 
 export function parseManagedLoginAlias(email: string | null | undefined) {
   const normalized = email?.trim().toLowerCase() ?? '';
-  const suffix = `@${MANAGED_CUSTOMER_EMAIL_DOMAIN}`;
+  const suffix = MANAGED_CUSTOMER_EMAIL_DOMAINS
+    .map((domain) => `@${domain}`)
+    .find((candidate) => normalized.endsWith(candidate));
 
-  if (!normalized.endsWith(suffix)) {
+  if (!suffix) {
     return null;
   }
 

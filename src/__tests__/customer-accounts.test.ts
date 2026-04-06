@@ -15,8 +15,8 @@ describe('customer account helpers', () => {
   });
 
   it('converts account codes to managed login emails', () => {
-    expect(buildManagedLoginEmail('Maria Peeters 4821')).toBe('maria-peeters-4821@accounts.cozymoments.local');
-    expect(normalizeCustomerLoginInput('maria-peeters-4821')).toBe('maria-peeters-4821@accounts.cozymoments.local');
+    expect(buildManagedLoginEmail('Maria Peeters 4821')).toBe('maria-peeters-4821@accounts.cozy-moments.be');
+    expect(normalizeCustomerLoginInput('maria-peeters-4821')).toBe('maria-peeters-4821@accounts.cozy-moments.be');
     expect(normalizeCustomerLoginInput('MIA@EXAMPLE.COM')).toBe('mia@example.com');
   });
 

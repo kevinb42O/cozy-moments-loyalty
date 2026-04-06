@@ -29,7 +29,12 @@ async function resolveFunctionErrorMessage(error: any) {
     const data = await error.context.json();
     return typeof data?.error === 'string' ? data.error : fallbackMessage;
   } catch {
-    return fallbackMessage;
+    try {
+      const text = await error.context.text();
+      return text || fallbackMessage;
+    } catch {
+      return fallbackMessage;
+    }
   }
 }
 

@@ -56,146 +56,157 @@ function extractAccessToken(authHeader: string | null) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  if (request.method !== 'POST') {
-    return json({ error: 'Alleen POST wordt ondersteund.' }, 405);
-  }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const authHeader = request.headers.get('Authorization');
-  const accessToken = extractAccessToken(authHeader);
-
-  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
-    return json({ error: 'Supabase Edge Function is niet volledig geconfigureerd.' }, 500);
-  }
-
-  if (!accessToken) {
-    return json({ error: 'Niet geautoriseerd.' }, 401);
-  }
-
-  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-
-  const { data: requesterData, error: requesterError } = await authClient.auth.getUser(accessToken);
-  const requesterEmail = requesterData.user?.email?.trim().toLowerCase() ?? '';
-
-  if (requesterError || !requesterData.user || !requesterEmail) {
-    return json({ error: 'Je sessie is ongeldig. Log opnieuw in als admin.' }, 401);
-  }
-
-  const { data: adminRecord, error: adminLookupError } = await adminClient
-    .from('admin_users')
-    .select('email')
-    .eq('email', requesterEmail)
-    .maybeSingle();
-
-  if (adminLookupError || !adminRecord) {
-    return json({ error: 'Alleen admins mogen klantaccounts aanmaken.' }, 403);
-  }
-
-  let body: Record<string, unknown>;
-
   try {
-    body = await request.json();
-  } catch {
-    return json({ error: 'Ongeldige request body.' }, 400);
-  }
+    if (request.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
+    }
 
-  const name = typeof body.name === 'string' ? body.name.trim() : '';
-  const contactEmail = normalizeEmail(body.email);
+    if (request.method !== 'POST') {
+      return json({ error: 'Alleen POST wordt ondersteund.' }, 405);
+    }
 
-  if (name.length < 2) {
-    return json({ error: 'Geef minstens een herkenbare klantnaam in.' }, 400);
-  }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const authHeader = request.headers.get('Authorization');
+    const accessToken = extractAccessToken(authHeader);
 
-  if (contactEmail && !isValidEmail(contactEmail)) {
-    return json({ error: 'Het e-mailadres lijkt niet geldig.' }, 400);
-  }
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('Missing required Edge Function env vars', {
+        hasSupabaseUrl: Boolean(supabaseUrl),
+        hasServiceRoleKey: Boolean(serviceRoleKey),
+      });
+      return json({ error: 'Supabase Edge Function is niet volledig geconfigureerd.' }, 500);
+    }
 
-  const createdByAdminEmail = requesterEmail || null;
-  const baseAlias = buildManagedLoginAlias(name);
-  const attempts = contactEmail ? 1 : MAX_MANAGED_ACCOUNT_ATTEMPTS;
+    if (!accessToken) {
+      return json({ error: 'Niet geautoriseerd.' }, 401);
+    }
 
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const loginAlias = contactEmail ? null : `${baseAlias}-${createNumericSuffix()}`;
-    const loginEmail = contactEmail || buildManagedLoginEmail(loginAlias);
-
-    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
-      email: loginEmail,
-      password: TEMP_CUSTOMER_PASSWORD,
-      email_confirm: true,
-      user_metadata: {
-        full_name: name,
-        display_name: name,
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
     });
 
-    if (authError) {
-      if (!contactEmail && isDuplicateAuthError(authError) && attempt < attempts - 1) {
-        continue;
-      }
+    const { data: requesterData, error: requesterError } = await adminClient.auth.getUser(accessToken);
+    const requesterEmail = requesterData.user?.email?.trim().toLowerCase() ?? '';
 
-      if (contactEmail && isDuplicateAuthError(authError)) {
-        return json({ error: 'Er bestaat al een account met dit e-mailadres.' }, 409);
-      }
-
-      return json({ error: authError.message || 'Het auth-account kon niet aangemaakt worden.' }, 400);
+    if (requesterError || !requesterData.user || !requesterEmail) {
+      console.error('Admin session validation failed', requesterError);
+      return json({ error: 'Je sessie is ongeldig. Log opnieuw in als admin.' }, 401);
     }
 
-    const createdUser = authData.user;
+    const { data: adminRecord, error: adminLookupError } = await adminClient
+      .from('admin_users')
+      .select('email')
+      .eq('email', requesterEmail)
+      .maybeSingle();
 
-    if (!createdUser) {
-      return json({ error: 'Supabase gaf geen nieuwe gebruiker terug.' }, 500);
+    if (adminLookupError) {
+      console.error('Admin lookup failed', adminLookupError);
+      return json({ error: 'Admincontrole mislukte. Probeer opnieuw.' }, 500);
     }
 
-    const { error: insertError } = await adminClient.from('customers').insert({
-      id: createdUser.id,
-      name,
-      email: contactEmail,
-      login_email: loginEmail,
-      login_alias: loginAlias,
-      must_reset_password: true,
-      created_by_admin_email: createdByAdminEmail,
-    });
+    if (!adminRecord) {
+      return json({ error: `Dit adminaccount staat niet in admin_users: ${requesterEmail}` }, 403);
+    }
 
-    if (insertError) {
-      await adminClient.auth.admin.deleteUser(createdUser.id);
+    let body: Record<string, unknown>;
 
-      if (!contactEmail && insertError.code === '23505' && attempt < attempts - 1) {
-        continue;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Ongeldige request body.' }, 400);
+    }
+
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const contactEmail = normalizeEmail(body.email);
+
+    if (name.length < 2) {
+      return json({ error: 'Geef minstens een herkenbare klantnaam in.' }, 400);
+    }
+
+    if (contactEmail && !isValidEmail(contactEmail)) {
+      return json({ error: 'Het e-mailadres lijkt niet geldig.' }, 400);
+    }
+
+    const createdByAdminEmail = requesterEmail || null;
+    const baseAlias = buildManagedLoginAlias(name);
+    const attempts = contactEmail ? 1 : MAX_MANAGED_ACCOUNT_ATTEMPTS;
+
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const loginAlias = contactEmail ? null : `${baseAlias}-${createNumericSuffix()}`;
+      const loginEmail = contactEmail || buildManagedLoginEmail(loginAlias);
+
+      const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+        email: loginEmail,
+        password: TEMP_CUSTOMER_PASSWORD,
+        email_confirm: true,
+        user_metadata: {
+          full_name: name,
+          display_name: name,
+        },
+      });
+
+      if (authError) {
+        console.error('Auth user creation failed', { loginEmail, authError });
+
+        if (!contactEmail && isDuplicateAuthError(authError) && attempt < attempts - 1) {
+          continue;
+        }
+
+        if (contactEmail && isDuplicateAuthError(authError)) {
+          return json({ error: 'Er bestaat al een account met dit e-mailadres.' }, 409);
+        }
+
+        return json({ error: authError.message || 'Het auth-account kon niet aangemaakt worden.' }, 400);
       }
 
-      return json({ error: insertError.message || 'De klant kon niet in de database opgeslagen worden.' }, 400);
+      const createdUser = authData.user;
+
+      if (!createdUser) {
+        return json({ error: 'Supabase gaf geen nieuwe gebruiker terug.' }, 500);
+      }
+
+      const { error: insertError } = await adminClient.from('customers').insert({
+        id: createdUser.id,
+        name,
+        email: contactEmail,
+        login_email: loginEmail,
+        login_alias: loginAlias,
+        must_reset_password: true,
+        created_by_admin_email: createdByAdminEmail,
+      });
+
+      if (insertError) {
+        console.error('Customer insert failed', { loginEmail, insertError });
+        await adminClient.auth.admin.deleteUser(createdUser.id);
+
+        if (!contactEmail && insertError.code === '23505' && attempt < attempts - 1) {
+          continue;
+        }
+
+        return json({ error: insertError.message || 'De klant kon niet in de database opgeslagen worden.' }, 400);
+      }
+
+      return json({
+        customerId: createdUser.id,
+        name,
+        contactEmail: contactEmail || null,
+        loginEmail,
+        loginAlias,
+        loginIdentifier: loginAlias || loginEmail,
+        temporaryPassword: TEMP_CUSTOMER_PASSWORD,
+        mustResetPassword: true,
+        createdByAdminEmail,
+      }, 201);
     }
 
-    return json({
-      customerId: createdUser.id,
-      name,
-      contactEmail: contactEmail || null,
-      loginEmail,
-      loginAlias,
-      loginIdentifier: loginAlias || loginEmail,
-      temporaryPassword: TEMP_CUSTOMER_PASSWORD,
-      mustResetPassword: true,
-      createdByAdminEmail,
-    }, 201);
+    return json({ error: 'Kon geen unieke accountcode genereren. Probeer opnieuw.' }, 409);
+  } catch (unexpectedError) {
+    console.error('Unexpected create-customer-account failure', unexpectedError);
+    const message = unexpectedError instanceof Error ? unexpectedError.message : 'Onverwachte serverfout.';
+    return json({ error: message }, 500);
   }
-
-  return json({ error: 'Kon geen unieke accountcode genereren. Probeer opnieuw.' }, 409);
 });

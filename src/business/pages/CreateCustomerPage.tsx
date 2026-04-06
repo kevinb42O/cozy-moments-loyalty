@@ -434,6 +434,14 @@ export function CreateCustomerPage({
     () => managedCustomers.find((customer) => customer.id === selectedCustomerId) ?? null,
     [managedCustomers, selectedCustomerId],
   );
+  const managedCustomersNeedingResetCount = useMemo(
+    () => allManagedCustomers.filter((customer) => customer.mustResetPassword).length,
+    [allManagedCustomers],
+  );
+  const managedCustomersWithRewardsCount = useMemo(
+    () => allManagedCustomers.filter((customer) => DRINK_META.some((item) => (customer.rewards[item.type] || 0) > 0)).length,
+    [allManagedCustomers],
+  );
 
   useEffect(() => {
     if (loading || resolvedInitialMode) {
@@ -743,32 +751,27 @@ export function CreateCustomerPage({
             <ArrowLeft size={16} />
             Terug naar klanten
           </button>
+          <p className="admin-phase-kicker mt-4">Beheerworkflow</p>
           <h2 className="mt-3 text-3xl font-display font-bold text-[var(--color-cozy-text)]">
             Beheerde klanten
           </h2>
-          <p className={cn('mt-2 max-w-3xl text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+          <p className="admin-phase-copy mt-2 max-w-3xl text-sm">
             Maak accounts aan voor klanten die jij opvolgt en beheer hun dagelijkse bezoeken, beloningen en uitzonderingen hier op 1 plek.
           </p>
         </div>
 
-        <div className={cn('rounded-[24px] px-5 py-4 shadow-sm', isDarkMode ? 'bg-[#1a2230] text-[#e8edf5]' : 'bg-white text-[var(--color-cozy-text)]')}>
-          <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--color-cozy-olive)]">Actieve admin</p>
+        <div className="admin-phase-identity rounded-[26px] px-5 py-4 text-[var(--color-cozy-text)]">
+          <p className="admin-phase-kicker">Actieve admin</p>
           <p className="mt-2 break-all font-mono text-sm font-bold">{adminEmail ?? 'Onbekend'}</p>
         </div>
       </div>
 
-      <div className={cn('inline-flex flex-wrap gap-2 rounded-[26px] p-2 shadow-sm', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+      <div className="admin-phase-tabs inline-flex flex-wrap gap-2 rounded-[26px] p-2">
         <button
           type="button"
           onClick={goToCreateMode}
-          className={cn(
-            'inline-flex min-h-11 items-center justify-center rounded-[20px] px-5 text-sm font-semibold transition-all',
-            mode === 'create'
-              ? 'bg-[var(--color-cozy-text)] text-white shadow-sm'
-              : isDarkMode
-                ? 'text-[#d7deea] hover:bg-white/10'
-                : 'text-gray-600 hover:bg-gray-50',
-          )}
+          data-active={mode === 'create'}
+          className="admin-phase-tab inline-flex items-center justify-center"
         >
           Nieuwe klant
         </button>
@@ -778,14 +781,8 @@ export function CreateCustomerPage({
             setMode('manage');
             setResolvedInitialMode(true);
           }}
-          className={cn(
-            'inline-flex min-h-11 items-center justify-center rounded-[20px] px-5 text-sm font-semibold transition-all',
-            mode === 'manage'
-              ? 'bg-[var(--color-cozy-text)] text-white shadow-sm'
-              : isDarkMode
-                ? 'text-[#d7deea] hover:bg-white/10'
-                : 'text-gray-600 hover:bg-gray-50',
-          )}
+          data-active={mode === 'manage'}
+          className="admin-phase-tab inline-flex items-center justify-center"
         >
           Mijn beheerde klanten ({allManagedCustomers.length})
         </button>
@@ -793,21 +790,21 @@ export function CreateCustomerPage({
 
       {mode === 'create' ? (
         <div className="grid gap-5 xl:grid-cols-[1.2fr_0.9fr]">
-          <section className={cn('rounded-[30px] p-5 shadow-sm md:p-7', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+          <section className="admin-phase-panel rounded-[32px] p-6 md:p-8">
             <form onSubmit={handleCreate} className="space-y-5">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Snelle workflow</p>
-                <h3 className="mt-3 text-2xl font-display font-bold text-[var(--color-cozy-text)]">
+                <p className="admin-phase-kicker">Snelle workflow</p>
+                <h3 className="mt-3 text-[2rem] font-display font-bold leading-tight text-[var(--color-cozy-text)]">
                   Maak een account in minder dan een minuut
                 </h3>
-                <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                <p className="admin-phase-copy mt-3 text-sm">
                   Standaardwachtwoord is <span className="font-mono font-bold text-[var(--color-cozy-text)]">{TEMP_CUSTOMER_PASSWORD}</span>. De klant moet dat bij de eerste login verplicht vervangen.
                 </p>
               </div>
 
               <div className="grid gap-4">
                 <label className="block">
-                  <span className={cn('mb-2 block text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#c0cad8]' : 'text-gray-500')}>
+                  <span className="admin-phase-label">
                     Naam van de klant
                   </span>
                   <input
@@ -816,17 +813,12 @@ export function CreateCustomerPage({
                     onChange={(event) => handleChange('name', event.target.value)}
                     placeholder="Bijvoorbeeld Maria Peeters"
                     autoComplete="name"
-                    className={cn(
-                      'w-full rounded-[22px] border px-5 py-4 text-base text-[var(--color-cozy-text)] outline-none transition-colors',
-                      isDarkMode
-                        ? 'border-white/10 bg-[#111823] placeholder:text-[#6d7888] focus:border-[var(--color-cozy-olive)]'
-                        : 'border-gray-200 bg-[#fbf8f2] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]',
-                    )}
+                    className="admin-phase-input text-base"
                   />
                 </label>
 
                 <label className="block">
-                  <span className={cn('mb-2 block text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#c0cad8]' : 'text-gray-500')}>
+                  <span className="admin-phase-label">
                     E-mailadres
                     <span className="ml-2 normal-case tracking-normal text-[var(--color-cozy-olive)]">optioneel</span>
                   </span>
@@ -836,12 +828,7 @@ export function CreateCustomerPage({
                     onChange={(event) => handleChange('email', event.target.value)}
                     placeholder="Laat leeg voor een accountcode"
                     autoComplete="email"
-                    className={cn(
-                      'w-full rounded-[22px] border px-5 py-4 text-base text-[var(--color-cozy-text)] outline-none transition-colors',
-                      isDarkMode
-                        ? 'border-white/10 bg-[#111823] placeholder:text-[#6d7888] focus:border-[var(--color-cozy-olive)]'
-                        : 'border-gray-200 bg-[#fbf8f2] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]',
-                    )}
+                    className="admin-phase-input text-base"
                   />
                 </label>
               </div>
@@ -855,7 +842,7 @@ export function CreateCustomerPage({
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex min-h-13 w-full items-center justify-center gap-3 rounded-[22px] bg-[var(--color-cozy-text)] px-5 text-base font-semibold text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="admin-phase-button-primary inline-flex w-full items-center justify-center gap-3 px-5 text-base font-semibold"
               >
                 {saving ? (
                   <>
@@ -872,42 +859,42 @@ export function CreateCustomerPage({
             </form>
           </section>
 
-          <aside className={cn('rounded-[30px] p-5 shadow-sm md:p-7', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+          <aside className="admin-phase-panel rounded-[32px] p-6 md:p-8">
             <div className="flex items-start gap-3">
-              <div className={cn('mt-1 inline-flex h-11 w-11 items-center justify-center rounded-full', isDarkMode ? 'bg-[#111823] text-[#e9eef6]' : 'bg-[#f4eee2] text-[var(--color-cozy-text)]')}>
+              <div className="admin-phase-panel-soft mt-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-cozy-text)]">
                 <ShieldCheck size={20} />
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Handout preview</p>
+                <p className="admin-phase-kicker">Handout preview</p>
                 <h3 className="mt-2 text-xl font-display font-bold text-[var(--color-cozy-text)]">Wat de klant straks nodig heeft</h3>
-                <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                <p className="admin-phase-copy mt-2 text-sm">
                   Deze kaart toont exact wat je kunt voorlezen, kopieren of afdrukken voor de klant.
                 </p>
               </div>
             </div>
 
-            <div className={cn('mt-6 rounded-[28px] border px-5 py-5', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-[#ece4d5] bg-[#fbf8f2]')}>
+            <div className="admin-phase-panel-soft mt-6 rounded-[28px] px-5 py-5">
               <div className="space-y-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Naam</p>
+                  <p className="admin-phase-kicker">Naam</p>
                   <p className="mt-2 font-display text-2xl font-bold text-[var(--color-cozy-text)]">{activeAccount.name}</p>
                 </div>
 
-                <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white')}>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">{previewLoginLabel}</p>
+                <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white/80')}>
+                  <p className="admin-phase-kicker">{previewLoginLabel}</p>
                   <p className="mt-2 break-all font-mono text-lg font-bold text-[var(--color-cozy-text)]">{previewFirstLogin}</p>
                 </div>
 
-                <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white')}>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Tijdelijk wachtwoord</p>
+                <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white/80')}>
+                  <p className="admin-phase-kicker">Tijdelijk wachtwoord</p>
                   <div className="mt-2 flex items-center gap-2">
                     <KeyRound size={16} className="text-[var(--color-cozy-olive)]" />
                     <p className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{TEMP_CUSTOMER_PASSWORD}</p>
                   </div>
                 </div>
 
-                <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white')}>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Contact op dossier</p>
+                <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white/80')}>
+                  <p className="admin-phase-kicker">Contact op dossier</p>
                   <div className="mt-2 flex items-start gap-2">
                     <Mail size={16} className="mt-0.5 text-[var(--color-cozy-olive)]" />
                     <p className="break-all text-sm font-medium text-[var(--color-cozy-text)]">{previewContactLabel}</p>
@@ -916,18 +903,18 @@ export function CreateCustomerPage({
               </div>
             </div>
 
-            <div className={cn('mt-5 space-y-3 rounded-[28px] px-5 py-5', isDarkMode ? 'bg-[#111823]' : 'bg-[#f7f3eb]')}>
+            <div className="admin-phase-panel-soft mt-5 space-y-3 rounded-[28px] px-5 py-5">
               <div>
                 <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Workflow in de zaak</p>
-                <p className={cn('mt-1 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>1. Typ de naam in. 2. Druk op account aanmaken. 3. Geef de login door of print de fiche.</p>
+                <p className="admin-phase-copy mt-1 text-sm">1. Typ de naam in. 2. Druk op account aanmaken. 3. Geef de login door of print de fiche.</p>
               </div>
               <div>
                 <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Eerste login</p>
-                <p className={cn('mt-1 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>Na de eerste login wordt de klant automatisch naar het scherm gestuurd om een nieuw wachtwoord te kiezen.</p>
+                <p className="admin-phase-copy mt-1 text-sm">Na de eerste login wordt de klant automatisch naar het scherm gestuurd om een nieuw wachtwoord te kiezen.</p>
               </div>
               <div>
                 <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Geen e-mailadres?</p>
-                <p className={cn('mt-1 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>Laat het veld leeg en gebruik gewoon de accountcode. Die kan op het gewone inlogscherm ingevuld worden.</p>
+                <p className="admin-phase-copy mt-1 text-sm">Laat het veld leeg en gebruik gewoon de accountcode. Die kan op het gewone inlogscherm ingevuld worden.</p>
               </div>
             </div>
           </aside>
@@ -1020,16 +1007,34 @@ export function CreateCustomerPage({
           )}
 
           <div className="grid gap-5 xl:grid-cols-[0.72fr_1.28fr]">
-            <aside className={cn('rounded-[30px] p-5 shadow-sm md:p-6', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+            <aside className="admin-phase-panel rounded-[32px] p-6 md:p-7">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Mijn beheerde klanten</p>
+                <p className="admin-phase-kicker">Mijn beheerde klanten</p>
                 <h3 className="mt-2 text-2xl font-display font-bold text-[var(--color-cozy-text)]">{allManagedCustomers.length} klant{allManagedCustomers.length === 1 ? '' : 'en'} in beheer</h3>
-                <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                <p className="admin-phase-copy mt-2 text-sm">
                   Alleen klanten die jij zelf hebt aangemaakt verschijnen hier.
                 </p>
               </div>
 
-              <div className={cn('mt-5 rounded-[24px] border px-4 py-3', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-gray-200 bg-[#fbf8f2]')}>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="admin-phase-metric rounded-[22px] px-4 py-4">
+                  <p className="admin-phase-kicker">Actief in beheer</p>
+                  <p className="mt-2 font-mono text-3xl font-bold text-[var(--color-cozy-text)]">{allManagedCustomers.length}</p>
+                  <p className="admin-phase-copy mt-2 text-xs">Alle klanten die aan jouw adminaccount hangen.</p>
+                </div>
+                <div className="admin-phase-metric rounded-[22px] px-4 py-4">
+                  <p className="admin-phase-kicker">Nog nooit ingelogd</p>
+                  <p className="mt-2 font-mono text-3xl font-bold text-[var(--color-cozy-text)]">{managedCustomersNeedingResetCount}</p>
+                  <p className="admin-phase-copy mt-2 text-xs">Handig om te zien wie nog hulp nodig heeft bij de eerste login.</p>
+                </div>
+                <div className="admin-phase-metric rounded-[22px] px-4 py-4">
+                  <p className="admin-phase-kicker">Met open beloning</p>
+                  <p className="mt-2 font-mono text-3xl font-bold text-[var(--color-cozy-text)]">{managedCustomersWithRewardsCount}</p>
+                  <p className="admin-phase-copy mt-2 text-xs">Klanten waarvoor meteen een gratis consumptie klaarstaat.</p>
+                </div>
+              </div>
+
+              <div className="admin-phase-panel-soft mt-5 rounded-[24px] px-4 py-3">
                 <div className="flex items-center gap-3">
                   <Search size={16} className="text-gray-400" />
                   <input
@@ -1040,25 +1045,28 @@ export function CreateCustomerPage({
                     className="w-full bg-transparent text-sm text-[var(--color-cozy-text)] outline-none placeholder:text-gray-400"
                   />
                 </div>
+                <p className="admin-phase-muted-note mt-3 text-xs">
+                  Zoek op naam, e-mailadres of accountcode om sneller de juiste klant terug te vinden.
+                </p>
               </div>
 
               <div className="mt-5 space-y-3">
                 {loading && (
-                  <div className={cn('rounded-[24px] px-4 py-5 text-sm', isDarkMode ? 'bg-[#111823] text-[#a8b3c1]' : 'bg-[#f8f5ef] text-gray-500')}>
+                  <div className={cn('admin-phase-empty rounded-[24px] px-4 py-5 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
                     Beheerde klanten laden...
                   </div>
                 )}
 
                 {!loading && allManagedCustomers.length === 0 && (
-                  <div className={cn('rounded-[28px] border px-5 py-6 text-center', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-dashed border-[#e9e1d2] bg-[#fbf8f2]')}>
+                  <div className="admin-phase-empty rounded-[28px] px-5 py-6 text-center">
                     <p className="text-lg font-display font-bold text-[var(--color-cozy-text)]">Nog geen beheerde klanten</p>
-                    <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                    <p className="admin-phase-copy mt-2 text-sm">
                       Maak eerst een klant aan. Daarna kun je hier meteen consumpties boeken, beloningen inwisselen en correcties doen.
                     </p>
                     <button
                       type="button"
                       onClick={goToCreateMode}
-                      className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--color-cozy-text)] px-4 text-sm font-semibold text-white transition-all hover:opacity-90"
+                      className="admin-phase-button-primary mt-4 inline-flex items-center justify-center gap-2 px-4 text-sm font-semibold"
                     >
                       <UserPlus size={16} />
                       Maak eerste beheerde klant aan
@@ -1067,7 +1075,7 @@ export function CreateCustomerPage({
                 )}
 
                 {!loading && allManagedCustomers.length > 0 && managedCustomers.length === 0 && (
-                  <div className={cn('rounded-[24px] px-4 py-5 text-sm', isDarkMode ? 'bg-[#111823] text-[#a8b3c1]' : 'bg-[#f8f5ef] text-gray-500')}>
+                  <div className={cn('admin-phase-empty rounded-[24px] px-4 py-5 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
                     Geen beheerde klanten gevonden voor deze zoekopdracht.
                   </div>
                 )}
@@ -1081,16 +1089,8 @@ export function CreateCustomerPage({
                       key={customer.id}
                       type="button"
                       onClick={() => setSelectedCustomerId(customer.id)}
-                      className={cn(
-                        'w-full rounded-[26px] border px-4 py-4 text-left transition-all',
-                        isSelected
-                          ? isDarkMode
-                            ? 'border-[var(--color-cozy-olive)]/40 bg-[#111823] shadow-[0_12px_28px_rgba(0,0,0,0.22)]'
-                            : 'border-[var(--color-cozy-olive)]/30 bg-[var(--color-cozy-olive)]/6 shadow-sm'
-                          : isDarkMode
-                            ? 'border-white/10 bg-[#111823] hover:border-white/20'
-                            : 'border-gray-100 bg-[#fcfaf6] hover:border-[#e6dfd2] hover:bg-white',
-                      )}
+                      data-selected={isSelected ? 'true' : 'false'}
+                      className="admin-phase-list-item w-full rounded-[28px] px-4 py-4 text-left"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -1118,16 +1118,16 @@ export function CreateCustomerPage({
                         {DRINK_META.map((item) => {
                           const Icon = item.icon;
                           return (
-                            <div key={`${customer.id}-${item.type}`} className={cn('rounded-2xl px-2 py-2 text-center', item.bgClassName)}>
-                              <Icon size={14} className={cn('mx-auto mb-1', item.textClassName)} />
-                              <p className="font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards[item.type]}</p>
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-gray-400">/12</p>
+                            <div key={`${customer.id}-${item.type}`} className={cn('rounded-[20px] border px-3 py-3 text-center', item.surfaceClassName)}>
+                              <Icon size={14} className={cn('mx-auto', item.textClassName)} />
+                              <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-gray-400">{item.label}</p>
+                              <p className="mt-1 font-mono text-sm font-bold text-[var(--color-cozy-text)]">{customer.cards[item.type]}/12</p>
                             </div>
                           );
                         })}
                       </div>
 
-                      <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-400">
+                      <div className="admin-phase-muted-note mt-3 flex items-center justify-between gap-3 text-xs">
                         <span>{totalRewards} open beloning{totalRewards === 1 ? '' : 'en'}</span>
                         <span>{customer.totalVisits} bezoek{customer.totalVisits === 1 ? '' : 'en'}</span>
                       </div>
@@ -1137,18 +1137,36 @@ export function CreateCustomerPage({
               </div>
             </aside>
 
-            <section className={cn('rounded-[30px] p-5 shadow-sm md:p-6', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+            <section className="admin-phase-panel rounded-[32px] p-6 md:p-7">
               {!selectedCustomer ? (
-                <div className={cn('rounded-[28px] border px-5 py-6 text-sm', isDarkMode ? 'border-white/10 bg-[#111823] text-[#a8b3c1]' : 'border-dashed border-[#e9e1d2] bg-[#fbf8f2] text-gray-500')}>
-                  Kies links een beheerde klant om verbruik te boeken, beloningen in te wisselen en correcties uit te voeren.
+                <div className="admin-phase-empty rounded-[30px] px-6 py-8 text-center">
+                  <p className="admin-phase-kicker">Klantdetail</p>
+                  <h3 className="mt-2 text-2xl font-display font-bold text-[var(--color-cozy-text)]">
+                    {managedCustomers.length === 0 ? 'Geen klant in beeld' : 'Kies links een klant'}
+                  </h3>
+                  <p className="admin-phase-copy mt-2 text-sm">
+                    {managedCustomers.length === 0
+                      ? 'Pas je zoekopdracht aan of maak een extra beheerde klant aan. Zodra je een klant selecteert, kun je hier meteen bezoeken boeken en correcties doen.'
+                      : 'Van hieruit boek je bezoeken, registreer je gratis consumpties en zet je uitzonderingen recht zonder naar andere schermen te springen.'}
+                  </p>
+                  {managedSearch.trim().length > 0 && managedCustomers.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setManagedSearch('')}
+                      className="admin-phase-button-secondary mt-4 inline-flex items-center justify-center gap-2 px-4 text-sm font-semibold"
+                    >
+                      Toon opnieuw alle beheerde klanten
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-5">
-                  <div className={cn('rounded-[28px] border px-5 py-5', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-[#ece4d5] bg-[#fbf8f2]')}>
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
+                  <div className="admin-phase-panel-soft rounded-[30px] px-5 py-5">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0">
+                        <p className="admin-phase-kicker">Klantdetail</p>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-3xl font-display font-bold text-[var(--color-cozy-text)]">{selectedCustomer.name}</h3>
+                          <h3 className="mt-2 text-3xl font-display font-bold text-[var(--color-cozy-text)]">{selectedCustomer.name}</h3>
                           <span className="rounded-full bg-[var(--color-cozy-olive)]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-cozy-olive)]">Beheerd</span>
                           {selectedCustomer.mustResetPassword && (
                             <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700">Nog nooit ingelogd</span>
@@ -1162,12 +1180,21 @@ export function CreateCustomerPage({
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 lg:min-w-[280px]">
-                        <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-[#182333]' : 'bg-white')}>
+                      <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
+                        <div className="admin-phase-detail-card rounded-[22px] px-4 py-4">
+                          <p className="admin-phase-kicker">Aanmelden met</p>
+                          <p className="mt-2 text-base font-semibold text-[var(--color-cozy-text)]">
+                            {selectedCustomer.loginAlias ? 'Accountcode' : 'E-mailadres'}
+                          </p>
+                          <p className={cn('mt-2 text-sm break-all', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                            {getCustomerLoginIdentifier(selectedCustomer.loginAlias, selectedCustomer.loginEmail)}
+                          </p>
+                        </div>
+                        <div className="admin-phase-metric rounded-[22px] px-4 py-4">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">Bezoeken</p>
                           <p className="mt-2 font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{selectedCustomer.totalVisits}</p>
                         </div>
-                        <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-[#182333]' : 'bg-white')}>
+                        <div className="admin-phase-metric rounded-[22px] px-4 py-4">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">Open beloningen</p>
                           <p className="mt-2 font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{totalOpenRewards}</p>
                         </div>
@@ -1210,7 +1237,7 @@ export function CreateCustomerPage({
 
                   <div className="grid gap-5 2xl:grid-cols-[1.05fr_0.95fr]">
                     <div className="space-y-5">
-                      <section className={cn('rounded-[28px] border px-5 py-5', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-gray-100 bg-white')}>
+                      <section className="admin-phase-detail-card rounded-[28px] px-5 py-5">
                         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                           <div>
                             <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Snelle consumpties</p>
@@ -1253,7 +1280,7 @@ export function CreateCustomerPage({
                             type="button"
                             onClick={handleVisitSubmit}
                             disabled={visitSaving || totalVisitDraft === 0}
-                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--color-cozy-text)] px-5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+                            className="admin-phase-button-primary inline-flex items-center justify-center gap-2 px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                           >
                             {visitSaving ? 'Bezig met boeken...' : 'Boek bezoek'}
                           </button>
@@ -1261,19 +1288,14 @@ export function CreateCustomerPage({
                             type="button"
                             onClick={() => setVisitDraft(emptyDeltaRecord())}
                             disabled={visitSaving || totalVisitDraft === 0}
-                            className={cn(
-                              'inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold transition-colors',
-                              isDarkMode
-                                ? 'border-white/10 bg-white/5 text-[#eef2f7] hover:bg-white/10'
-                                : 'border-gray-200 bg-white text-[var(--color-cozy-text)] hover:bg-gray-50',
-                            )}
+                            className="admin-phase-button-secondary inline-flex items-center justify-center gap-2 px-5 text-sm font-semibold"
                           >
                             Leegmaken
                           </button>
                         </div>
                       </section>
 
-                      <section className={cn('rounded-[28px] border px-5 py-5', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-gray-100 bg-white')}>
+                      <section className="admin-phase-detail-card rounded-[28px] px-5 py-5">
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Beschikbare beloningen</p>
@@ -1335,7 +1357,7 @@ export function CreateCustomerPage({
                     </div>
 
                     <div className="space-y-5">
-                      <section className={cn('rounded-[28px] border shadow-sm overflow-hidden', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-gray-100 bg-white')}>
+                      <section className="admin-phase-detail-card overflow-hidden rounded-[28px] shadow-sm">
                         <button
                           type="button"
                           onClick={() => setCorrectionOpen((current) => !current)}
@@ -1380,22 +1402,17 @@ export function CreateCustomerPage({
                             </div>
 
                             <div className="mt-4">
-                              <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Reden</label>
+                              <label className="admin-phase-label mb-2 block">Reden</label>
                               <textarea
                                 value={correctionReason}
                                 onChange={(event) => setCorrectionReason(event.target.value)}
                                 rows={3}
                                 placeholder="Beschrijf kort waarom je deze correctie doet"
-                                className={cn(
-                                  'w-full rounded-[22px] border px-4 py-3 text-sm text-[var(--color-cozy-text)] outline-none resize-none',
-                                  isDarkMode
-                                    ? 'border-white/10 bg-[#182333] placeholder:text-[#6d7888] focus:border-[var(--color-cozy-olive)]'
-                                    : 'border-gray-200 bg-[#fbf8f2] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]',
-                                )}
+                                className="admin-phase-input w-full resize-none"
                               />
                             </div>
 
-                            <div className="mt-4 space-y-3 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
+                            <div className="admin-phase-panel-soft mt-4 space-y-3 rounded-[24px] p-4">
                               <div className="flex items-center justify-between">
                                 <p className="text-xs text-gray-400 uppercase tracking-wider">Stempels huidige kaart</p>
                                 <span className="text-[11px] text-gray-400">Moet tussen 0 en 11 uitkomen</span>
@@ -1415,7 +1432,7 @@ export function CreateCustomerPage({
                               ))}
                             </div>
 
-                            <div className="mt-4 space-y-3 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
+                            <div className="admin-phase-panel-soft mt-4 space-y-3 rounded-[24px] p-4">
                               <p className="text-xs text-gray-400 uppercase tracking-wider">Beschikbare beloningen</p>
                               {DRINK_META.map((item) => (
                                 <DeltaControl
@@ -1431,7 +1448,7 @@ export function CreateCustomerPage({
                               ))}
                             </div>
 
-                            <div className="mt-4 space-y-3 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
+                            <div className="admin-phase-panel-soft mt-4 space-y-3 rounded-[24px] p-4">
                               <p className="text-xs text-gray-400 uppercase tracking-wider">Ingewisselde beloningen</p>
                               {DRINK_META.map((item) => (
                                 <DeltaControl
@@ -1447,7 +1464,7 @@ export function CreateCustomerPage({
                               ))}
                             </div>
 
-                            <div className="mt-4 space-y-2 rounded-[24px] border border-gray-100 bg-gray-50/70 p-4">
+                            <div className="admin-phase-panel-soft mt-4 space-y-2 rounded-[24px] p-4">
                               <p className="text-xs text-gray-400 uppercase tracking-wider">Bezoeken</p>
                               <DeltaControl
                                 label="Totaal bezoeken"
@@ -1476,7 +1493,7 @@ export function CreateCustomerPage({
                                 type="button"
                                 onClick={handleCorrectionSubmit}
                                 disabled={correctionSaving}
-                                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--color-cozy-olive)] px-5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="admin-phase-button-primary inline-flex items-center justify-center gap-2 px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {correctionSaving ? 'Opslaan...' : 'Correctie opslaan'}
                               </button>
@@ -1492,12 +1509,7 @@ export function CreateCustomerPage({
                                   setCorrectionVisitDelta(0);
                                 }}
                                 disabled={correctionSaving}
-                                className={cn(
-                                  'inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold transition-colors',
-                                  isDarkMode
-                                    ? 'border-white/10 bg-white/5 text-[#eef2f7] hover:bg-white/10'
-                                    : 'border-gray-200 bg-white text-[var(--color-cozy-text)] hover:bg-gray-50',
-                                )}
+                                className="admin-phase-button-secondary inline-flex items-center justify-center gap-2 px-5 text-sm font-semibold"
                               >
                                 Formulier leegmaken
                               </button>
@@ -1506,7 +1518,7 @@ export function CreateCustomerPage({
                         )}
                       </section>
 
-                      <section className={cn('rounded-[28px] border px-5 py-5', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-gray-100 bg-white')}>
+                      <section className="admin-phase-detail-card rounded-[28px] px-5 py-5">
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Recente acties</p>
@@ -1522,7 +1534,7 @@ export function CreateCustomerPage({
 
                         <div className="mt-5 space-y-3">
                           {recentTransactionsLoading && (
-                            <div className={cn('rounded-[22px] px-4 py-4 text-sm', isDarkMode ? 'bg-[#182333] text-[#a8b3c1]' : 'bg-[#fbf8f2] text-gray-500')}>
+                            <div className={cn('admin-phase-empty rounded-[22px] px-4 py-4 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
                               Recente acties laden...
                             </div>
                           )}
@@ -1532,7 +1544,7 @@ export function CreateCustomerPage({
                             </div>
                           )}
                           {!recentTransactionsLoading && !recentTransactionsError && recentTransactions.length === 0 && (
-                            <div className={cn('rounded-[22px] px-4 py-4 text-sm', isDarkMode ? 'bg-[#182333] text-[#a8b3c1]' : 'bg-[#fbf8f2] text-gray-500')}>
+                            <div className={cn('admin-phase-empty rounded-[22px] px-4 py-4 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
                               Nog geen acties voor deze klant.
                             </div>
                           )}

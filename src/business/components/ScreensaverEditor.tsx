@@ -89,29 +89,27 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className={cn('rounded-[28px] shadow-sm border p-6 md:p-7', isDarkMode ? 'bg-[#171c24] border-white/10' : 'bg-white border-black/5')}>
+      <div className="admin-phase-panel rounded-[32px] p-6 md:p-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <div className={cn('inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'bg-[#1f2734] border-white/15 text-[#d8dee8]' : 'bg-[#ebe4d7] border-transparent text-[var(--color-cozy-olive)]')}>
+            <div className="admin-phase-panel-soft inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">
               <MonitorPlay size={14} />
               Screensaver
             </div>
-            <h2 className={cn('mt-4 text-3xl font-display font-bold text-[var(--color-cozy-text)]', isDarkMode && 'text-[#f2f5fa]')}>
+            <h2 className="mt-4 text-3xl font-display font-bold text-[var(--color-cozy-text)]">
               Screensaver beheer
             </h2>
+            <p className="admin-phase-copy mt-3 max-w-2xl text-sm md:text-base">
+              Beheer beelden, volgorde, duur en exports vanuit één rustige configuratielaag. De slide-editor hieronder blijft ongewijzigd werken.
+            </p>
           </div>
 
-          <div className="w-full md:w-[360px] space-y-3">
+          <div className="w-full md:w-[390px] space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={onPreview}
-                className={cn(
-                  'inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
-                  isDarkMode
-                    ? 'border-white/15 bg-[#1f2734] text-[#d8dee8] hover:bg-[#253042]'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                )}
+                className="admin-phase-button-secondary inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold"
               >
                 <Play size={16} />
                 Preview nu
@@ -119,12 +117,7 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
               <button
                 type="button"
                 onClick={onResetAll}
-                className={cn(
-                  'inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
-                  isDarkMode
-                    ? 'border-white/15 bg-[#1f2734] text-[#d8dee8] hover:bg-[#253042]'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                )}
+                className="admin-phase-button-secondary inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold"
               >
                 <RotateCcw size={16} />
                 Reset standaard
@@ -139,10 +132,10 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
                 }}
                 disabled={exportingMp4}
                 className={cn(
-                  'inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
+                  'inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold',
                   exportingMp4
                     ? (isDarkMode ? 'cursor-wait border-white/10 bg-[#2c3340] text-[#93a3ba]' : 'cursor-wait border-gray-200 bg-gray-100 text-gray-500')
-                    : (isDarkMode ? 'border-white/15 bg-[#1f2734] text-[#d8dee8] hover:bg-[#253042]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50')
+                    : 'admin-phase-button-secondary'
                 )}
               >
                 <Film size={16} />
@@ -158,10 +151,10 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
                 }}
                 disabled={exportingMp4}
                 className={cn(
-                  'inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors',
+                  'inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold',
                   exportingMp4
                     ? (isDarkMode ? 'cursor-wait border-white/10 bg-[#2c3340] text-[#93a3ba]' : 'cursor-wait border-gray-200 bg-gray-100 text-gray-500')
-                    : (isDarkMode ? 'border-white/15 bg-[#1f2734] text-[#d8dee8] hover:bg-[#253042]' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50')
+                    : 'admin-phase-button-secondary'
                 )}
               >
                 <Film size={16} />
@@ -178,14 +171,9 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
               }}
               disabled={!dirty || saving}
               className={cn(
-                'inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-semibold transition-all',
-                dirty && !saving
-                  ? 'bg-[var(--color-cozy-olive)] text-white shadow-[0_10px_22px_rgba(70,62,48,0.24)] hover:opacity-90'
-                  : 'cursor-not-allowed',
-                !dirty && !saving && isDarkMode && 'bg-[#2c3340] text-[#7f8da2] border border-white/10',
-                !dirty && !saving && !isDarkMode && 'bg-gray-200 text-gray-500',
-                saving && isDarkMode && 'bg-[#2c3340] text-[#7f8da2] border border-white/10',
-                saving && !isDarkMode && 'bg-gray-200 text-gray-500'
+                'inline-flex w-full items-center justify-center gap-2 px-6 py-4 text-base font-semibold transition-all',
+                dirty && !saving ? 'admin-phase-button-primary' : 'cursor-not-allowed bg-gray-200 text-gray-500',
+                (saving || (!dirty && isDarkMode)) && 'border border-white/10 bg-[#2c3340] text-[#7f8da2]'
               )}
             >
               <Save size={18} />
@@ -194,14 +182,14 @@ export const ScreensaverEditor: React.FC<ScreensaverEditorProps> = ({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 text-sm text-gray-500 md:grid-cols-3">
-          <div className={cn('rounded-2xl px-4 py-3 min-h-[84px] flex items-center justify-center text-center', isDarkMode ? 'bg-[#202733] text-[#cdd5df]' : 'bg-[#f7f3ed]')}>
+        <div className="mt-5 grid gap-3 text-sm md:grid-cols-3">
+          <div className="admin-phase-panel-soft flex min-h-[76px] items-center justify-center rounded-2xl px-4 py-3 text-center text-gray-500">
             Exact 9 slides, afbeelding naar keuze
           </div>
-          <div className={cn('rounded-2xl px-4 py-3 min-h-[84px] flex items-center justify-center text-center', isDarkMode ? 'bg-[#202733] text-[#cdd5df]' : 'bg-[#f7f3ed]')}>
+          <div className="admin-phase-panel-soft flex min-h-[76px] items-center justify-center rounded-2xl px-4 py-3 text-center text-gray-500">
             Per slide eigen duur tussen {formatSeconds(MIN_SLIDE_DURATION_MS)} en {formatSeconds(MAX_SLIDE_DURATION_MS)} seconden
           </div>
-          <div className={cn('rounded-2xl px-4 py-3 min-h-[84px] flex items-center justify-center text-center', isDarkMode ? 'bg-[#202733] text-[#cdd5df]' : 'bg-[#f7f3ed]')}>
+          <div className="admin-phase-panel-soft flex min-h-[76px] items-center justify-center rounded-2xl px-4 py-3 text-center text-gray-500">
             Uploadlimiet: max {formatMegabytes(MAX_SCREENAVER_UPLOAD_FILE_SIZE_BYTES)} MB
           </div>
         </div>

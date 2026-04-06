@@ -3610,26 +3610,6 @@ export const BusinessPage: React.FC = () => {
         )}
       </main>
 
-      <div className="pointer-events-none flex justify-end px-6 pb-2">
-        <div className="h-9 w-[142px] max-w-full rounded-full" />
-      </div>
-
-      <a
-        href="https://www.webaanzee.be"
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cn(
-          'ios-frosted fixed bottom-[calc(env(safe-area-inset-bottom)+0.9rem)] right-4 z-20 inline-flex max-w-[calc(100vw-2rem)] items-center gap-1.5 rounded-full px-3 py-1.5 text-[9px] font-medium opacity-80 transition-all hover:-translate-y-0.5 hover:opacity-100 hover:bg-white/80',
-          isDarkMode ? 'text-[#e8ecf2]' : 'text-[#1f1f1f]/90'
-        )}
-        style={{ letterSpacing: '0.04em', textDecoration: 'none' }}
-      >
-        <span className={cn('whitespace-nowrap', isDarkMode ? 'text-[#d2d9e3]' : 'text-black/55')}>realisatie door</span>
-        <span className="whitespace-nowrap font-semibold">
-          <span style={{ color: isDarkMode ? '#f3f5f8' : '#111' }}>Web</span><span style={{ color: '#f59e0b' }}>aan</span><span style={{ color: isDarkMode ? '#f3f5f8' : '#111' }}>Zee</span>
-        </span>
-      </a>
-
       {/* Delete confirmation modal */}
       <AnimatePresence>
         {deleteConfirm && (

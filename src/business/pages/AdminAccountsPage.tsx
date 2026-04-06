@@ -133,6 +133,10 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
     () => admins.filter((account) => account.isActive).length,
     [admins],
   );
+  const createdByCurrentAdminCount = useMemo(
+    () => admins.filter((account) => account.createdByAdminEmail === normalizedAdminEmail).length,
+    [admins, normalizedAdminEmail],
+  );
 
   useEffect(() => {
     if (visibleAdmins.length === 0) {
@@ -244,44 +248,33 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
+            <p className="admin-phase-kicker">Adminbeheer</p>
             <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)]">Admin</h2>
-            <p className={cn('mt-2 max-w-3xl text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+            <p className={cn('admin-phase-copy mt-2 max-w-3xl text-sm')}>
               Registreer hier nieuwe admins met exact dezelfde toegang als jij, en hou tegelijk proper bij wie welke admin heeft aangemaakt.
             </p>
           </div>
 
-          <div className={cn('rounded-[24px] px-5 py-4 shadow-sm', isDarkMode ? 'bg-[#1a2230] text-[#e8edf5]' : 'bg-white text-[var(--color-cozy-text)]')}>
-            <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--color-cozy-olive)]">Actieve admin</p>
+          <div className="admin-phase-identity rounded-[26px] px-5 py-4 text-[var(--color-cozy-text)]">
+            <p className="admin-phase-kicker">Actieve admin</p>
             <p className="mt-2 break-all font-mono text-sm font-bold">{adminEmail ?? 'Onbekend'}</p>
           </div>
         </div>
 
-        <div className={cn('inline-flex flex-wrap gap-2 rounded-[26px] p-2 shadow-sm', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+        <div className="admin-phase-tabs inline-flex flex-wrap gap-2 rounded-[26px] p-2">
           <button
             type="button"
             onClick={() => setMode('create')}
-            className={cn(
-              'inline-flex min-h-11 items-center justify-center rounded-[20px] px-5 text-sm font-semibold transition-all',
-              mode === 'create'
-                ? 'bg-[var(--color-cozy-text)] text-white shadow-sm'
-                : isDarkMode
-                  ? 'text-[#d7deea] hover:bg-white/10'
-                  : 'text-gray-600 hover:bg-gray-50',
-            )}
+            data-active={mode === 'create'}
+            className="admin-phase-tab inline-flex items-center justify-center"
           >
             Nieuwe admin
           </button>
           <button
             type="button"
             onClick={() => setMode('overview')}
-            className={cn(
-              'inline-flex min-h-11 items-center justify-center rounded-[20px] px-5 text-sm font-semibold transition-all',
-              mode === 'overview'
-                ? 'bg-[var(--color-cozy-text)] text-white shadow-sm'
-                : isDarkMode
-                  ? 'text-[#d7deea] hover:bg-white/10'
-                  : 'text-gray-600 hover:bg-gray-50',
-            )}
+            data-active={mode === 'overview'}
+            className="admin-phase-tab inline-flex items-center justify-center"
           >
             Admin overzicht ({admins.length})
           </button>
@@ -301,21 +294,21 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
 
         {mode === 'create' ? (
           <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-            <section className={cn('rounded-[30px] p-5 shadow-sm md:p-7', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+            <section className="admin-phase-panel rounded-[32px] p-6 md:p-8">
               <form onSubmit={handleCreateAdmin} className="space-y-5">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Nieuwe admin</p>
-                  <h3 className="mt-3 text-2xl font-display font-bold text-[var(--color-cozy-text)]">
+                  <p className="admin-phase-kicker">Nieuwe admin</p>
+                  <h3 className="mt-3 text-[2rem] font-display font-bold leading-tight text-[var(--color-cozy-text)]">
                     Geef iemand meteen dezelfde toegang als jij
                   </h3>
-                  <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                  <p className="admin-phase-copy mt-3 text-sm">
                     Jij kiest hier meteen het wachtwoord. De nieuwe admin kan daarmee onmiddellijk inloggen op exact hetzelfde beheerpaneel.
                   </p>
                 </div>
 
                 <div className="grid gap-4">
                   <label className="block">
-                    <span className={cn('mb-2 block text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#c0cad8]' : 'text-gray-500')}>
+                    <span className="admin-phase-label">
                       Naam van de admin
                     </span>
                     <input
@@ -324,17 +317,12 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                       onChange={(event) => handleFormChange('displayName', event.target.value)}
                       placeholder="Bijvoorbeeld Sarah Vermeulen"
                       autoComplete="name"
-                      className={cn(
-                        'w-full rounded-[22px] border px-5 py-4 text-base text-[var(--color-cozy-text)] outline-none transition-colors',
-                        isDarkMode
-                          ? 'border-white/10 bg-[#111823] placeholder:text-[#6d7888] focus:border-[var(--color-cozy-olive)]'
-                          : 'border-gray-200 bg-[#fbf8f2] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]',
-                      )}
+                      className="admin-phase-input text-base"
                     />
                   </label>
 
                   <label className="block">
-                    <span className={cn('mb-2 block text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#c0cad8]' : 'text-gray-500')}>
+                    <span className="admin-phase-label">
                       E-mailadres
                     </span>
                     <input
@@ -343,17 +331,12 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                       onChange={(event) => handleFormChange('email', event.target.value)}
                       placeholder="admin@cozy-moments.be"
                       autoComplete="email"
-                      className={cn(
-                        'w-full rounded-[22px] border px-5 py-4 text-base text-[var(--color-cozy-text)] outline-none transition-colors',
-                        isDarkMode
-                          ? 'border-white/10 bg-[#111823] placeholder:text-[#6d7888] focus:border-[var(--color-cozy-olive)]'
-                          : 'border-gray-200 bg-[#fbf8f2] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]',
-                      )}
+                      className="admin-phase-input text-base"
                     />
                   </label>
 
                   <label className="block">
-                    <span className={cn('mb-2 block text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#c0cad8]' : 'text-gray-500')}>
+                    <span className="admin-phase-label">
                       Wachtwoord
                     </span>
                     <div className="relative">
@@ -363,17 +346,12 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                         onChange={(event) => handleFormChange('password', event.target.value)}
                         placeholder={`Minstens ${MIN_ADMIN_PASSWORD_LENGTH} tekens`}
                         autoComplete="new-password"
-                        className={cn(
-                          'w-full rounded-[22px] border px-5 py-4 pr-14 text-base text-[var(--color-cozy-text)] outline-none transition-colors',
-                          isDarkMode
-                            ? 'border-white/10 bg-[#111823] placeholder:text-[#6d7888] focus:border-[var(--color-cozy-olive)]'
-                            : 'border-gray-200 bg-[#fbf8f2] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]',
-                        )}
+                        className="admin-phase-input pr-14 text-base"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((current) => !current)}
-                        className={cn('absolute right-4 top-1/2 -translate-y-1/2 transition-colors', isDarkMode ? 'text-[#a8b3c1] hover:text-white' : 'text-gray-400 hover:text-gray-600')}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-[var(--color-cozy-text)]"
                       >
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -381,7 +359,7 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                   </label>
 
                   <label className="block">
-                    <span className={cn('mb-2 block text-xs font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'text-[#c0cad8]' : 'text-gray-500')}>
+                    <span className="admin-phase-label">
                       Herhaal wachtwoord
                     </span>
                     <div className="relative">
@@ -391,17 +369,12 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                         onChange={(event) => handleFormChange('confirmPassword', event.target.value)}
                         placeholder="Typ exact hetzelfde wachtwoord opnieuw"
                         autoComplete="new-password"
-                        className={cn(
-                          'w-full rounded-[22px] border px-5 py-4 pr-14 text-base text-[var(--color-cozy-text)] outline-none transition-colors',
-                          isDarkMode
-                            ? 'border-white/10 bg-[#111823] placeholder:text-[#6d7888] focus:border-[var(--color-cozy-olive)]'
-                            : 'border-gray-200 bg-[#fbf8f2] placeholder:text-gray-400 focus:border-[var(--color-cozy-olive)]',
-                        )}
+                        className="admin-phase-input pr-14 text-base"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword((current) => !current)}
-                        className={cn('absolute right-4 top-1/2 -translate-y-1/2 transition-colors', isDarkMode ? 'text-[#a8b3c1] hover:text-white' : 'text-gray-400 hover:text-gray-600')}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-[var(--color-cozy-text)]"
                       >
                         {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -412,7 +385,7 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex min-h-13 w-full items-center justify-center gap-3 rounded-[22px] bg-[var(--color-cozy-text)] px-5 text-base font-semibold text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="admin-phase-button-primary inline-flex w-full items-center justify-center gap-3 px-5 text-base font-semibold"
                 >
                   {saving ? (
                     <>
@@ -429,42 +402,42 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
               </form>
             </section>
 
-            <aside className={cn('rounded-[30px] p-5 shadow-sm md:p-7', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+            <aside className="admin-phase-panel rounded-[32px] p-6 md:p-8">
               <div className="flex items-start gap-3">
-                <div className={cn('mt-1 inline-flex h-11 w-11 items-center justify-center rounded-full', isDarkMode ? 'bg-[#111823] text-[#e9eef6]' : 'bg-[#f4eee2] text-[var(--color-cozy-text)]')}>
+                <div className="admin-phase-panel-soft mt-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-cozy-text)]">
                   <ShieldCheck size={20} />
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Wat dit doet</p>
+                  <p className="admin-phase-kicker">Wat dit doet</p>
                   <h3 className="mt-2 text-xl font-display font-bold text-[var(--color-cozy-text)]">Volledig adminbeheer zonder losse notities</h3>
-                  <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                  <p className="admin-phase-copy mt-2 text-sm">
                     Elke nieuwe admin krijgt exact dezelfde rechten in het business paneel. Je ziet later ook altijd wie de registratie gedaan heeft.
                   </p>
                 </div>
               </div>
 
-              <div className={cn('mt-6 rounded-[28px] border px-5 py-5', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-[#ece4d5] bg-[#fbf8f2]')}>
+              <div className="admin-phase-panel-soft mt-6 rounded-[28px] px-5 py-5">
                 <div className="space-y-4">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Nieuwe admin</p>
+                    <p className="admin-phase-kicker">Nieuwe admin</p>
                     <p className="mt-2 font-display text-2xl font-bold text-[var(--color-cozy-text)]">{form.displayName.trim() || 'Nieuwe admin'}</p>
                   </div>
 
-                  <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white')}>
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">E-mailadres</p>
+                  <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white/80')}>
+                    <p className="admin-phase-kicker">E-mailadres</p>
                     <p className="mt-2 break-all font-mono text-lg font-bold text-[var(--color-cozy-text)]">{form.email.trim().toLowerCase() || 'admin@cozy-moments.be'}</p>
                   </div>
 
-                  <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white')}>
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Gekozen wachtwoord</p>
+                  <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white/80')}>
+                    <p className="admin-phase-kicker">Gekozen wachtwoord</p>
                     <div className="mt-2 flex items-center gap-2">
                       <LockKeyhole size={16} className="text-[var(--color-cozy-olive)]" />
                       <p className="font-mono text-lg font-bold text-[var(--color-cozy-text)]">{form.password || 'Nog niet ingevuld'}</p>
                     </div>
                   </div>
 
-                  <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white')}>
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Aangemaakt door</p>
+                  <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white/80')}>
+                    <p className="admin-phase-kicker">Aangemaakt door</p>
                     <div className="mt-2 flex items-start gap-2">
                       <Mail size={16} className="mt-0.5 text-[var(--color-cozy-olive)]" />
                       <p className="break-all text-sm font-medium text-[var(--color-cozy-text)]">{adminEmail ?? 'Onbekend'}</p>
@@ -473,14 +446,14 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                 </div>
               </div>
 
-              <div className={cn('mt-5 space-y-3 rounded-[28px] px-5 py-5', isDarkMode ? 'bg-[#111823]' : 'bg-[#f7f3eb]')}>
+              <div className="admin-phase-panel-soft mt-5 space-y-3 rounded-[28px] px-5 py-5">
                 <div>
                   <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Wat krijgt deze admin?</p>
-                  <p className={cn('mt-1 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>Precies dezelfde toegang tot klanten, historiek, beheerde klanten, drankkaart, screensaver en open flessen.</p>
+                  <p className="admin-phase-copy mt-1 text-sm">Precies dezelfde toegang tot klanten, historiek, beheerde klanten, drankkaart, screensaver en open flessen.</p>
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Beheerkeuze</p>
-                  <p className={cn('mt-1 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>Jij kiest het wachtwoord nu bewust zelf, zodat je dat meteen intern kunt doorgeven zonder extra reset- of inviteflow.</p>
+                  <p className="admin-phase-copy mt-1 text-sm">Jij kiest het wachtwoord nu bewust zelf, zodat je dat meteen intern kunt doorgeven zonder extra reset- of inviteflow.</p>
                 </div>
               </div>
             </aside>
@@ -548,32 +521,55 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
             )}
 
             <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
-              <section className={cn('rounded-[30px] p-5 shadow-sm md:p-6', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+              <section className="admin-phase-panel rounded-[32px] p-6 md:p-7">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Admin overzicht</p>
-                    <h3 className="mt-2 text-2xl font-display font-bold text-[var(--color-cozy-text)]">Wie heeft welke admin aangemaakt?</h3>
+                    <p className="admin-phase-kicker">Admin overzicht</p>
+                    <h3 className="mt-2 text-2xl font-display font-bold text-[var(--color-cozy-text)]">Overzicht van alle adminaccounts</h3>
+                    <p className="admin-phase-copy mt-2 text-sm">
+                      Bekijk in één oogopslag wie toegang heeft, wie een account heeft toegevoegd en welke admin je nu geselecteerd hebt.
+                    </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setMode('create')}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[18px] bg-[var(--color-cozy-text)] px-4 text-sm font-semibold text-white transition-all hover:opacity-90"
+                    className="admin-phase-button-primary inline-flex items-center justify-center gap-2 px-4 text-sm font-semibold"
                   >
                     <UserPlus size={16} />
                     Nieuwe admin
                   </button>
                 </div>
 
-                <label className={cn('mt-5 flex items-center gap-3 rounded-[22px] border px-4 py-3', isDarkMode ? 'border-white/10 bg-[#111823]' : 'border-gray-200 bg-[#fbf8f2]')}>
-                  <Search size={16} className={isDarkMode ? 'text-[#9ca8b9]' : 'text-gray-400'} />
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Zoek op naam, e-mail of maker"
-                    className="w-full bg-transparent text-sm text-[var(--color-cozy-text)] outline-none placeholder:text-gray-400"
-                  />
-                </label>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="admin-phase-metric rounded-[22px] px-4 py-4">
+                    <p className="admin-phase-kicker">Actieve admins</p>
+                    <p className="mt-3 font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{activeAdminCount}</p>
+                  </div>
+                  <div className="admin-phase-metric rounded-[22px] px-4 py-4">
+                    <p className="admin-phase-kicker">Zichtbaar nu</p>
+                    <p className="mt-3 font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{visibleAdmins.length}</p>
+                  </div>
+                  <div className="admin-phase-metric rounded-[22px] px-4 py-4">
+                    <p className="admin-phase-kicker">Door jou toegevoegd</p>
+                    <p className="mt-3 font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{createdByCurrentAdminCount}</p>
+                  </div>
+                </div>
+
+                <div className="admin-phase-panel-soft mt-5 rounded-[24px] px-4 py-4">
+                  <label className="flex items-center gap-3">
+                    <Search size={16} className={isDarkMode ? 'text-[#9ca8b9]' : 'text-gray-400'} />
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Zoek op naam, e-mailadres of maker"
+                      className="w-full bg-transparent text-sm text-[var(--color-cozy-text)] outline-none placeholder:text-gray-400"
+                    />
+                  </label>
+                  <p className="admin-phase-muted-note mt-3 text-xs">
+                    Gebruik dit overzicht om snel te controleren wie toegang heeft en wie welke admin geregistreerd heeft.
+                  </p>
+                </div>
 
                 {loadError && (
                   <div className="mt-5 rounded-[22px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
@@ -583,12 +579,12 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
 
                 <div className="mt-5 space-y-3">
                   {loading ? (
-                    <div className={cn('rounded-[24px] border px-4 py-5 text-sm', isDarkMode ? 'border-white/10 bg-[#111823] text-[#a8b3c1]' : 'border-gray-200 bg-[#fbf8f2] text-gray-500')}>
-                      Adminaccounts laden...
+                    <div className={cn('admin-phase-empty rounded-[24px] px-4 py-5 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                      Adminaccounts worden geladen...
                     </div>
                   ) : visibleAdmins.length === 0 ? (
-                    <div className={cn('rounded-[24px] border px-4 py-5 text-sm', isDarkMode ? 'border-white/10 bg-[#111823] text-[#a8b3c1]' : 'border-gray-200 bg-[#fbf8f2] text-gray-500')}>
-                      Geen admins gevonden voor deze zoekopdracht.
+                    <div className={cn('admin-phase-empty rounded-[24px] px-4 py-5 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                      Geen adminaccounts gevonden voor deze zoekopdracht.
                     </div>
                   ) : (
                     visibleAdmins.map((account) => {
@@ -601,14 +597,8 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                           key={account.email}
                           type="button"
                           onClick={() => setSelectedEmail(account.email)}
-                          className={cn(
-                            'w-full rounded-[24px] border px-4 py-4 text-left transition-all',
-                            isSelected
-                              ? 'border-[var(--color-cozy-olive)] bg-[var(--color-cozy-olive)]/10'
-                              : isDarkMode
-                                ? 'border-white/10 bg-[#111823] hover:border-white/20 hover:bg-white/5'
-                                : 'border-gray-200 bg-[#fbf8f2] hover:border-gray-300 hover:bg-white',
-                          )}
+                          data-selected={isSelected}
+                          className="admin-phase-list-item w-full rounded-[24px] px-4 py-4 text-left"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
@@ -618,12 +608,19 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                               </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                              <span className="rounded-full border border-[var(--color-cozy-olive)]/30 bg-[var(--color-cozy-olive)]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">
-                                Admin
+                              <span className={cn(
+                                'rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+                                account.isActive
+                                  ? 'border-[var(--color-cozy-olive)]/30 bg-[var(--color-cozy-olive)]/10 text-[var(--color-cozy-olive)]'
+                                  : isDarkMode
+                                    ? 'border-white/10 bg-white/5 text-[#a8b3c1]'
+                                    : 'border-gray-200 bg-white text-gray-500',
+                              )}>
+                                {account.isActive ? 'Actief' : 'Inactief'}
                               </span>
                               {isCurrentAdmin && (
                                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                                  Jij
+                                  Dit ben jij
                                 </span>
                               )}
                               {createdByCurrentAdmin && !isCurrentAdmin && (
@@ -636,11 +633,11 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
 
                           <div className={cn('mt-4 grid gap-3 text-sm sm:grid-cols-2', isDarkMode ? 'text-[#d5dbe5]' : 'text-gray-600')}>
                             <div>
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">Aangemaakt door</p>
+                              <p className="admin-phase-kicker">Aangemaakt door</p>
                               <p className="mt-1 font-medium">{getCreatorLabel(account, adminEmail)}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">Aangemaakt op</p>
+                              <p className="admin-phase-kicker">Aangemaakt op</p>
                               <p className="mt-1 font-medium">{formatAbsoluteDateTime(account.createdAt)}</p>
                             </div>
                           </div>
@@ -651,16 +648,35 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                 </div>
               </section>
 
-              <aside className={cn('rounded-[30px] p-5 shadow-sm md:p-6', isDarkMode ? 'bg-[#18202b]' : 'bg-white')}>
+              <aside className="admin-phase-panel rounded-[32px] p-6 md:p-7">
                 {selectedAdmin ? (
                   <div className="space-y-5">
                     <div className="flex items-start gap-3">
-                      <div className={cn('inline-flex h-12 w-12 items-center justify-center rounded-full', isDarkMode ? 'bg-[#111823] text-[#ecf1f8]' : 'bg-[#f4eee2] text-[var(--color-cozy-text)]')}>
+                      <div className="admin-phase-panel-soft inline-flex h-12 w-12 items-center justify-center rounded-full text-[var(--color-cozy-text)]">
                         <UserCog size={22} />
                       </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Admin detail</p>
-                        <h3 className="mt-2 text-2xl font-display font-bold text-[var(--color-cozy-text)]">{selectedAdmin.displayName ?? selectedAdmin.email}</h3>
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="admin-phase-kicker">Admin detail</p>
+                            <h3 className="mt-2 text-2xl font-display font-bold text-[var(--color-cozy-text)]">{selectedAdmin.displayName ?? selectedAdmin.email}</h3>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <span className={cn(
+                              'rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+                              selectedAdmin.isActive
+                                ? 'border-[var(--color-cozy-olive)]/30 bg-[var(--color-cozy-olive)]/10 text-[var(--color-cozy-olive)]'
+                                : isDarkMode
+                                  ? 'border-white/10 bg-white/5 text-[#a8b3c1]'
+                                  : 'border-gray-200 bg-white text-gray-500',
+                            )}>
+                              {selectedAdmin.isActive ? 'Actief adminaccount' : 'Inactief'}
+                            </span>
+                            <span className={cn('rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]', isDarkMode ? 'border-white/10 bg-white/5 text-[#d5dbe5]' : 'border-gray-200 bg-white text-gray-600')}>
+                              Volledige rechten
+                            </span>
+                          </div>
+                        </div>
                         <p className={cn('mt-2 text-sm break-all', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
                           {selectedAdmin.email}
                         </p>
@@ -668,57 +684,57 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-[#111823]' : 'bg-[#fbf8f2]')}>
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Aangemaakt door</p>
+                      <div className="admin-phase-detail-card rounded-[22px] px-4 py-4">
+                        <p className="admin-phase-kicker">Aangemaakt door</p>
                         <p className="mt-2 break-all text-sm font-semibold text-[var(--color-cozy-text)]">{getCreatorLabel(selectedAdmin, adminEmail)}</p>
                       </div>
-                      <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-[#111823]' : 'bg-[#fbf8f2]')}>
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Aangemaakt op</p>
+                      <div className="admin-phase-detail-card rounded-[22px] px-4 py-4">
+                        <p className="admin-phase-kicker">Aangemaakt op</p>
                         <p className="mt-2 text-sm font-semibold text-[var(--color-cozy-text)]">{formatAbsoluteDateTime(selectedAdmin.createdAt)}</p>
                       </div>
-                      <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-[#111823]' : 'bg-[#fbf8f2]')}>
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Status</p>
+                      <div className="admin-phase-detail-card rounded-[22px] px-4 py-4">
+                        <p className="admin-phase-kicker">Status</p>
                         <p className="mt-2 text-sm font-semibold text-[var(--color-cozy-text)]">{selectedAdmin.isActive ? 'Actief adminaccount' : 'Inactief'}</p>
                       </div>
-                      <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-[#111823]' : 'bg-[#fbf8f2]')}>
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Rechten</p>
+                      <div className="admin-phase-detail-card rounded-[22px] px-4 py-4">
+                        <p className="admin-phase-kicker">Rechten</p>
                         <p className="mt-2 text-sm font-semibold text-[var(--color-cozy-text)]">Volledige toegang tot het business paneel</p>
                       </div>
                     </div>
 
                     {selectedResult ? (
                       <div className={cn('rounded-[26px] border px-5 py-5', isDarkMode ? 'border-emerald-500/30 bg-[#162722]' : 'border-emerald-200 bg-emerald-50')}>
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-emerald-700">Recente login</p>
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-emerald-700">Zojuist aangemaakt</p>
                         <p className="mt-3 text-sm font-medium text-[var(--color-cozy-text)]">
-                          Dit is de admin die je net hebt aangemaakt. Het gekozen wachtwoord is alleen nu nog zichtbaar.
+                          Dit is het adminaccount dat je net hebt toegevoegd. Het gekozen wachtwoord blijft alleen in deze sessie zichtbaar.
                         </p>
                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
                           <div className={cn('rounded-[20px] px-4 py-4', isDarkMode ? 'bg-black/20' : 'bg-white/80')}>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-700">E-mailadres</p>
+                            <p className="admin-phase-kicker text-emerald-700">E-mailadres</p>
                             <p className="mt-2 break-all font-mono text-sm font-bold text-[var(--color-cozy-text)]">{selectedResult.email}</p>
                           </div>
                           <div className={cn('rounded-[20px] px-4 py-4', isDarkMode ? 'bg-black/20' : 'bg-white/80')}>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-700">Wachtwoord</p>
+                            <p className="admin-phase-kicker text-emerald-700">Wachtwoord</p>
                             <p className="mt-2 break-all font-mono text-sm font-bold text-[var(--color-cozy-text)]">{selectedResult.password}</p>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={handleCopyCredentials}
-                          className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-[18px] bg-[var(--color-cozy-text)] px-4 text-sm font-semibold text-white transition-all hover:opacity-90"
+                          className="admin-phase-button-primary mt-4 inline-flex items-center justify-center gap-2 px-4 text-sm font-semibold"
                         >
                           <Copy size={16} />
                           {copied ? 'Gekopieerd' : 'Kopieer login'}
                         </button>
                       </div>
                     ) : (
-                      <div className={cn('rounded-[26px] px-5 py-5', isDarkMode ? 'bg-[#111823]' : 'bg-[#f7f3eb]')}>
+                      <div className="admin-phase-panel-soft rounded-[26px] px-5 py-5">
                         <div className="flex items-start gap-3">
                           <Users size={18} className="mt-0.5 text-[var(--color-cozy-olive)]" />
                           <div>
-                            <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Traceerbaarheid is hier het doel</p>
-                            <p className={cn('mt-1 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
-                              Voor bestaande admins tonen we hier geen wachtwoord meer. Je ziet wel altijd wie de admin heeft toegevoegd en wanneer dat gebeurde.
+                            <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Hier zie je alles wat relevant is</p>
+                            <p className="admin-phase-copy mt-1 text-sm">
+                              Voor bestaande admins tonen we geen wachtwoord meer. Je ziet wel altijd wie het account heeft toegevoegd en wanneer dat gebeurde.
                             </p>
                           </div>
                         </div>
@@ -757,8 +773,19 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
                     )}
                   </div>
                 ) : (
-                  <div className={cn('rounded-[26px] px-5 py-5 text-sm', isDarkMode ? 'bg-[#111823] text-[#a8b3c1]' : 'bg-[#f7f3eb] text-gray-500')}>
-                    Selecteer links een admin om de details te bekijken.
+                  <div className="admin-phase-empty rounded-[28px] px-5 py-6">
+                    <p className="text-lg font-display font-bold text-[var(--color-cozy-text)]">Nog geen admin geselecteerd</p>
+                    <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                      Kies links een admin om de details te bekijken, of maak meteen een nieuw adminaccount aan.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setMode('create')}
+                      className="admin-phase-button-primary mt-4 inline-flex items-center justify-center gap-2 px-4 text-sm font-semibold"
+                    >
+                      <UserPlus size={16} />
+                      Nieuwe admin
+                    </button>
                   </div>
                 )}
               </aside>

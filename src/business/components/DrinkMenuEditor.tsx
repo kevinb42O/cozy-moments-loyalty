@@ -175,17 +175,14 @@ export function DrinkMenuEditor({
 
   return (
     <div className="space-y-6 pb-10">
-      <div className={cn(
-        'rounded-[30px] border px-6 py-6 shadow-[0_20px_50px_rgba(61,48,30,0.08)]',
-        isDarkMode ? 'border-white/10 bg-[#1a2230] text-[#f4f2ea]' : 'border-white/70 bg-white/80 text-[var(--color-cozy-text)]'
-      )}>
+      <div className="admin-phase-panel rounded-[32px] px-6 py-6 text-[var(--color-cozy-text)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl space-y-2">
-            <p className={cn('text-xs font-semibold uppercase tracking-[0.24em]', isDarkMode ? 'text-[#b8c2d4]' : 'text-[var(--color-cozy-olive)]/70')}>
+            <p className="admin-phase-kicker">
               Drankkaart
             </p>
             <h2 className="font-display text-3xl font-bold">Beheer de menukaart voor de website</h2>
-            <p className={cn('text-sm leading-6', isDarkMode ? 'text-[#c3ccdb]' : 'text-gray-500')}>
+            <p className="admin-phase-copy text-sm leading-6">
               Beheer secties, subtitels en producten. Je ziet meteen een live preview zoals op de website.
             </p>
           </div>
@@ -195,10 +192,7 @@ export function DrinkMenuEditor({
               type="button"
               onClick={onReset}
               disabled={!dirty || saving}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                isDarkMode ? 'border border-white/10 bg-white/5 text-[#e6ecf5] hover:bg-white/10' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              )}
+              className="admin-phase-button-secondary inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RotateCcw size={15} />
               Herladen
@@ -208,8 +202,8 @@ export function DrinkMenuEditor({
               onClick={onSave}
               disabled={!dirty || saving}
               className={cn(
-                'inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                isDarkMode ? 'bg-[#d8c9a8] text-[#4d3a1b] hover:bg-[#e4d9bf]' : 'bg-[var(--color-cozy-olive)] text-white hover:bg-[var(--color-cozy-text)]'
+                'inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                !dirty || saving ? (isDarkMode ? 'border border-white/10 bg-[#2c3340] text-[#7f8da2]' : 'bg-gray-200 text-gray-500') : 'admin-phase-button-primary'
               )}
             >
               <Save size={15} />

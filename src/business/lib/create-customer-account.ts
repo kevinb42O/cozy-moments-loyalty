@@ -58,6 +58,16 @@ export async function createCustomerAccount(input: CreateCustomerAccountInput) {
     email: input.email?.trim() ? input.email.trim().toLowerCase() : null,
   };
 
+  const requestWithToken = (accessToken: string) => fetch(`${SUPABASE_URL}/functions/v1/create-customer-account`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
   const {
     data: { session },
     error: sessionError,
@@ -71,15 +81,27 @@ export async function createCustomerAccount(input: CreateCustomerAccountInput) {
     throw new Error('Je adminsessie is verlopen. Log opnieuw in.');
   }
 
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/create-customer-account`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  let response = await requestWithToken(session.access_token);
+
+  if (response.status === 401) {
+    const firstAttemptMessage = await parseResponseBody(response.clone());
+
+    if (firstAttemptMessage?.toLowerCase().includes('invalid jwt')) {
+      const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        throw new Error('Je adminsessie is verlopen. Log opnieuw in.');
+      }
+
+      const refreshedToken = refreshedData.session?.access_token;
+
+      if (!refreshedToken) {
+        throw new Error('Je adminsessie is verlopen. Log opnieuw in.');
+      }
+
+      response = await requestWithToken(refreshedToken);
+    }
+  }
 
   if (!response.ok) {
     const message = await parseResponseBody(response);

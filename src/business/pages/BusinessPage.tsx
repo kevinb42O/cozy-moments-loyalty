@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, X, Gift, Clock3, History, Save, Settings2, ArrowLeft, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
+import { DeltaControl } from '../components/DeltaControl';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { Screensaver } from '../components/Screensaver';
@@ -12,6 +13,7 @@ import { exportScreensaverToMp4 } from '../lib/screensaver-mp4-export';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
 import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
+import { isCustomerManagedByAdmin, isManagedCustomer } from '../lib/managed-customers';
 import {
   LOYALTY_TIER_CONFIG,
   LOYALTY_TIER_ORDER,
@@ -22,8 +24,8 @@ import {
 import {
   buildTransactionSummaryParts,
   emptyDeltaRecord,
+  fetchCustomerTransactions,
   getTransactionLabel,
-  rowToTransaction,
   type CustomerTransaction,
   type TransactionEventType,
   validateManualAdjustmentDraft,
@@ -74,7 +76,7 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
 
 const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
   { view: 'customers', label: 'Klanten' },
-  { view: 'create-customer', label: 'Klant aanmaken' },
+  { view: 'create-customer', label: 'Beheerde klanten' },
   { view: 'open-bottles', label: 'Open flessen' },
   { view: 'history', label: 'Historiek' },
   { view: 'drink-menu', label: 'Drankkaart' },
@@ -1407,53 +1409,19 @@ export const BusinessPage: React.FC = () => {
   const showInactiveBottleInventory = openBottleFilter === 'all';
 
   const loadTransactions = useCallback(async () => {
-    if (!supabase) {
-      setTransactions([]);
-      setTransactionsError('Supabase niet geconfigureerd');
-      return;
-    }
-
     setTransactionsLoading(true);
     setTransactionsError(null);
 
-    const { data, error } = await supabase
-      .from('customer_transactions')
-      .select(`
-        id,
-        customer_id,
-        event_type,
-        staff_email,
-        reason,
-        tx_id,
-        coffee_stamp_delta,
-        wine_stamp_delta,
-        beer_stamp_delta,
-        soda_stamp_delta,
-        coffee_reward_delta,
-        wine_reward_delta,
-        beer_reward_delta,
-        soda_reward_delta,
-        coffee_claimed_delta,
-        wine_claimed_delta,
-        beer_claimed_delta,
-        soda_claimed_delta,
-        visit_delta,
-        metadata,
-        created_at,
-        customers(name, email, login_alias, login_email)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(120);
-
-    if (error) {
+    try {
+      const items = await fetchCustomerTransactions({ limit: 120 });
+      setTransactions(items);
+    } catch (error: any) {
       console.error('Kon transactiehistoriek niet laden:', error);
-      setTransactionsError(error.message);
+      setTransactions([]);
+      setTransactionsError(error?.message || 'Historiek laden mislukt.');
+    } finally {
       setTransactionsLoading(false);
-      return;
     }
-
-    setTransactions((data ?? []).map(rowToTransaction));
-    setTransactionsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -2689,7 +2657,7 @@ export const BusinessPage: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Zoek op naam of e-mailadres..."
+                placeholder="Zoek op naam, e-mailadres of accountcode..."
                 className="w-full bg-white border border-gray-200 rounded-2xl pl-11 pr-10 py-3 text-sm text-[var(--color-cozy-text)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-cozy-olive)] shadow-sm transition"
               />
               {searchQuery && (
@@ -2725,6 +2693,8 @@ export const BusinessPage: React.FC = () => {
               return filtered.map(customer => {
               const isExpanded = expandedCustomer === customer.id;
               const stats = calcCustomerStats(customer, Date.now());
+              const managed = isManagedCustomer(customer);
+              const managedByCurrentAdmin = isCustomerManagedByAdmin(customer, adminEmail);
               return (
                 <div key={customer.id} className="bg-white rounded-[24px] shadow-sm overflow-hidden">
                   {/* Header row — always visible, tap to expand */}
@@ -2738,9 +2708,19 @@ export const BusinessPage: React.FC = () => {
                         {customer.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-serif font-semibold text-base md:text-lg leading-tight truncate">{customer.name}</h3>
                           {loyaltyBadge(stats.loyaltyTier)}
+                          {managed && (
+                            <span className="inline-flex items-center rounded-full bg-[var(--color-cozy-olive)]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--color-cozy-olive)]">
+                              Beheerd
+                            </span>
+                          )}
+                          {managedByCurrentAdmin && (
+                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+                              door jou
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-gray-400 truncate mt-0.5">{getCustomerContactLabel(customer.email, customer.loginAlias, customer.loginEmail)}</p>
                         <p className="text-[11px] text-[var(--color-cozy-text)]/65 mt-1">
@@ -3372,6 +3352,11 @@ export const BusinessPage: React.FC = () => {
                                           <span className={cn('inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider', badgeClasses)}>
                                             {getTransactionLabel(transaction.eventType)}
                                           </span>
+                                          {transaction.isManagedCustomer && (
+                                            <span className="inline-flex items-center rounded-full bg-[var(--color-cozy-olive)]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--color-cozy-olive)]">
+                                              Beheerd
+                                            </span>
+                                          )}
                                           <span className="text-xs text-gray-400">
                                             {new Date(transaction.createdAt).toLocaleString('nl-BE', {
                                               day: '2-digit',
@@ -3690,99 +3675,6 @@ interface ConsumptionRowProps {
   index: number; // for staggered slide-in delay
   isDarkMode: boolean;
 }
-
-interface DeltaControlProps {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  accent: 'olive' | 'amber' | 'rose' | 'blue';
-  baseValue?: number;
-  minValue?: number;
-  maxValue?: number;
-  disabled?: boolean;
-}
-
-const deltaAccentClass: Record<DeltaControlProps['accent'], string> = {
-  olive: 'bg-[var(--color-cozy-olive)]/8 text-[var(--color-cozy-text)]',
-  amber: 'bg-amber-50 text-amber-800',
-  rose: 'bg-rose-50 text-rose-800',
-  blue: 'bg-blue-50 text-blue-800',
-};
-
-const deltaAccentBorderClass: Record<DeltaControlProps['accent'], string> = {
-  olive: 'border-[var(--color-cozy-olive)]/15',
-  amber: 'border-amber-200/70',
-  rose: 'border-rose-200/70',
-  blue: 'border-blue-200/70',
-};
-
-const DeltaControl: React.FC<DeltaControlProps> = ({
-  label,
-  value,
-  onChange,
-  accent,
-  baseValue,
-  minValue,
-  maxValue,
-  disabled = false,
-}) => {
-  const displayValue = baseValue ?? value;
-  const effectiveValue = baseValue !== undefined ? baseValue + value : value;
-  const changeText = value === 0 ? 'Geen wijziging' : `Wijziging ${value > 0 ? `+${value}` : value}`;
-  const helperText = baseValue !== undefined ? 'Min = terugdraaien, plus = toevoegen' : 'Negatief = terugdraaien, positief = toevoegen';
-  const canDecrease = !disabled && (minValue === undefined || value > minValue);
-  const canIncrease = !disabled && (maxValue === undefined || value < maxValue);
-
-  const updateValue = (nextValue: number) => {
-    const clampedValue = Math.max(minValue ?? Number.NEGATIVE_INFINITY, Math.min(maxValue ?? Number.POSITIVE_INFINITY, nextValue));
-    onChange(clampedValue);
-  };
-
-  return (
-    <div className={cn(
-      'bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 flex items-center justify-between gap-3',
-      disabled && 'opacity-60'
-    )}>
-      <div>
-        <p className="text-sm font-medium text-[var(--color-cozy-text)]">{label}</p>
-        <p className="text-[11px] text-gray-400">{helperText}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => updateValue(value - 1)}
-          disabled={!canDecrease}
-          className="w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-transform disabled:opacity-40 disabled:hover:bg-white disabled:active:scale-100"
-        >
-          <Minus size={16} />
-        </button>
-        <div className="min-w-[110px] space-y-1 text-center">
-          <span className={cn(
-            'block rounded-full border bg-white px-3 py-1.5 font-mono text-sm font-bold text-[var(--color-cozy-text)]',
-            deltaAccentBorderClass[accent],
-          )}>
-            {effectiveValue}
-          </span>
-          <span className={cn(
-            'block rounded-full px-3 py-1 text-[11px] font-semibold',
-            deltaAccentClass[accent],
-            value === 0 && 'bg-gray-100 text-gray-500',
-          )}>
-            {changeText}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => updateValue(value + 1)}
-          disabled={!canIncrease}
-          className="w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-100 active:scale-90 transition-transform disabled:opacity-40 disabled:hover:bg-white disabled:active:scale-100"
-        >
-          <Plus size={16} />
-        </button>
-      </div>
-    </div>
-  );
-};
 
 const ConsumptionRow: React.FC<ConsumptionRowProps> = ({ title, icon: Icon, count, onInc, onDec, color, bg, index, isDarkMode }) => {
   const countControls = useAnimationControls();

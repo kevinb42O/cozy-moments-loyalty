@@ -32,7 +32,7 @@ describe('Transaction history helpers', () => {
       visit_delta: 1,
       metadata: { bonusApplied: true },
       created_at: '2026-03-09T12:00:00.000Z',
-      customers: { name: 'Lisa', email: 'lisa@example.com' },
+      customers: { name: 'Lisa', email: 'lisa@example.com', created_by_admin_email: 'owner@cozy.com' },
     };
 
     const mapped = rowToTransaction(row);
@@ -43,6 +43,8 @@ describe('Transaction history helpers', () => {
     expect(mapped.stampDelta.coffee).toBe(4);
     expect(mapped.rewardDelta.coffee).toBe(1);
     expect(mapped.visitDelta).toBe(1);
+    expect(mapped.isManagedCustomer).toBe(true);
+    expect(mapped.customerCreatedByAdminEmail).toBe('owner@cozy.com');
   });
 
   it('should create readable summary chips for mixed transaction deltas', () => {

@@ -1,6 +1,7 @@
 import type { CardType } from '../../shared/store/LoyaltyContext';
 import { cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
+import { supabase } from '../../shared/lib/supabase';
 
 export type TransactionEventType = 'scan' | 'redeem' | 'adjustment';
 
@@ -19,6 +20,8 @@ export interface CustomerTransaction {
   visitDelta: number;
   metadata: Record<string, unknown>;
   createdAt: string;
+  customerCreatedByAdminEmail: string | null;
+  isManagedCustomer: boolean;
 }
 
 export interface ManualAdjustmentDraft {
@@ -36,6 +39,8 @@ export function emptyDeltaRecord(): Record<CardType, number> {
 
 export function rowToTransaction(row: any): CustomerTransaction {
   const customerRelation = Array.isArray(row.customers) ? row.customers[0] : row.customers;
+  const customerCreatedByAdminEmail = customerRelation?.created_by_admin_email ?? null;
+
   return {
     id: Number(row.id),
     customerId: row.customer_id,
@@ -70,7 +75,63 @@ export function rowToTransaction(row: any): CustomerTransaction {
     visitDelta: row.visit_delta ?? 0,
     metadata: (row.metadata as Record<string, unknown> | null) ?? {},
     createdAt: row.created_at,
+    customerCreatedByAdminEmail,
+    isManagedCustomer: Boolean(customerCreatedByAdminEmail),
   };
+}
+
+export interface FetchCustomerTransactionsOptions {
+  customerId?: string;
+  limit?: number;
+}
+
+const TRANSACTION_SELECT = `
+  id,
+  customer_id,
+  event_type,
+  staff_email,
+  reason,
+  tx_id,
+  coffee_stamp_delta,
+  wine_stamp_delta,
+  beer_stamp_delta,
+  soda_stamp_delta,
+  coffee_reward_delta,
+  wine_reward_delta,
+  beer_reward_delta,
+  soda_reward_delta,
+  coffee_claimed_delta,
+  wine_claimed_delta,
+  beer_claimed_delta,
+  soda_claimed_delta,
+  visit_delta,
+  metadata,
+  created_at,
+  customers(name, email, login_alias, login_email, created_by_admin_email)
+`;
+
+export async function fetchCustomerTransactions(options: FetchCustomerTransactionsOptions = {}) {
+  if (!supabase) {
+    throw new Error('Supabase niet geconfigureerd');
+  }
+
+  let query = supabase
+    .from('customer_transactions')
+    .select(TRANSACTION_SELECT)
+    .order('created_at', { ascending: false })
+    .limit(options.limit ?? 120);
+
+  if (options.customerId) {
+    query = query.eq('customer_id', options.customerId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(rowToTransaction);
 }
 
 export function getTransactionLabel(eventType: TransactionEventType) {

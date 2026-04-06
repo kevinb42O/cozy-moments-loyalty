@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, X, Gift, Clock3, History, Save, Settings2, ArrowLeft, Moon, Sun } from 'lucide-react';
+import { Coffee, Wine, Beer, GlassWater, Plus, Minus, QrCode, LogOut, ChevronDown, CheckCircle, Download, Mail, Star, TrendingUp, Users, Calendar, Award, Trash2, AlertTriangle, Megaphone, X, Gift, Clock3, History, Save, Settings2, ArrowLeft, Moon, Sun, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useBusinessAuth } from '../store/BusinessAuthContext';
 import { DeltaControl } from '../components/DeltaControl';
@@ -75,10 +75,9 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu' | 'admin'>; label: string }> = [
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
   { view: 'customers', label: 'Klanten' },
   { view: 'create-customer', label: 'Beheerde klanten' },
-  { view: 'admin', label: 'Admin' },
   { view: 'open-bottles', label: 'Open flessen' },
   { view: 'history', label: 'Historiek' },
   { view: 'drink-menu', label: 'Drankkaart' },
@@ -1708,6 +1707,7 @@ export const BusinessPage: React.FC = () => {
 
   const totalConsumptions = consumptions.coffee + consumptions.wine + consumptions.beer + consumptions.soda;
   const activeHiddenAdminView = HIDDEN_ADMIN_VIEWS.find((item) => item.view === view) ?? null;
+  const adminWorkspaceOpen = view === 'admin';
   const isCounterMode = view === 'create' || view === 'redeem';
   const brandLogoSrc = isDarkMode ? '/cozy_logo_wit.png' : '/cozylogo.png';
 
@@ -1756,7 +1756,7 @@ export const BusinessPage: React.FC = () => {
               aria-label="Beheer"
               className={cn(
                 "ios-frosted h-9 w-9 rounded-full flex items-center justify-center transition-all",
-                activeHiddenAdminView || showAdminMenu
+                activeHiddenAdminView || adminWorkspaceOpen || showAdminMenu
                   ? "text-[var(--color-cozy-text)] shadow-sm ring-1 ring-white/35 bg-white/70"
                   : "text-gray-600 hover:bg-white/75"
               )}
@@ -1804,6 +1804,30 @@ export const BusinessPage: React.FC = () => {
                       {isDarkMode ? 'Lichte modus' : 'Donkere modus'}
                     </span>
                     <span className="text-xs text-[var(--color-cozy-olive)]">{isDarkMode ? 'Aan' : 'Uit'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      reset();
+                      setView('admin');
+                      setShowAdminMenu(false);
+                    }}
+                    className={cn(
+                      "mt-1 flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors",
+                      adminWorkspaceOpen
+                        ? isDarkMode
+                          ? "border-[#d9caa7]/35 bg-[#d9caa7]/18 text-[#f6ead1]"
+                          : "border-[#d8c59f] bg-[#f6efdf] text-[#6f613f]"
+                        : isDarkMode
+                          ? "border-[#d9caa7]/15 bg-[#d9caa7]/8 text-[#eadfca] hover:bg-[#d9caa7]/14"
+                          : "border-[#eadfca] bg-[#faf5ea] text-[#7a6a45] hover:bg-[#f4ecdb]",
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <ShieldCheck size={16} />
+                      Admin
+                    </span>
+                    {adminWorkspaceOpen && <span className="text-xs text-[var(--color-cozy-olive)]">Open</span>}
                   </button>
 
                   <div className="mx-2 my-2 h-px bg-gray-200/70" />

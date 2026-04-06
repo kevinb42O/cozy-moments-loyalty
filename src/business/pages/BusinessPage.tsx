@@ -7,9 +7,11 @@ import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/Loyalty
 import { Screensaver } from '../components/Screensaver';
 import { ScreensaverEditor } from '../components/ScreensaverEditor';
 import { DrinkMenuEditor } from '../components/DrinkMenuEditor';
+import { CreateCustomerPage } from './CreateCustomerPage';
 import { exportScreensaverToMp4 } from '../lib/screensaver-mp4-export';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
+import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
 import {
   LOYALTY_TIER_CONFIG,
   LOYALTY_TIER_ORDER,
@@ -70,8 +72,9 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
   { view: 'customers', label: 'Klanten' },
+  { view: 'create-customer', label: 'Klant aanmaken' },
   { view: 'open-bottles', label: 'Open flessen' },
   { view: 'history', label: 'Historiek' },
   { view: 'drink-menu', label: 'Drankkaart' },
@@ -144,7 +147,7 @@ const PRICE_ESTIMATE: Record<CardType, number> = {
   soda: 3,
 };
 
-type BusinessView = 'create' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'redeem';
+type BusinessView = 'create' | 'create-customer' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'redeem';
 type OpenBottleRisk = 'red' | 'orange';
 type OpenBottleFilter = 'all' | 'open' | 'expired' | 'promo';
 type HistoryPanelKey = 'correction' | 'filters';
@@ -1437,7 +1440,7 @@ export const BusinessPage: React.FC = () => {
         visit_delta,
         metadata,
         created_at,
-        customers(name, email)
+        customers(name, email, login_alias, login_email)
       `)
       .order('created_at', { ascending: false })
       .limit(120);
@@ -2429,14 +2432,32 @@ export const BusinessPage: React.FC = () => {
           </motion.div>
         )}
 
+        {view === 'create-customer' && (
+          <CreateCustomerPage
+            adminEmail={adminEmail}
+            isDarkMode={isDarkMode}
+            onOpenCustomers={() => setView('customers')}
+          />
+        )}
+
         {view === 'customers' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)]">
                 Klanten Overzicht
               </h2>
-              <button
-                onClick={() => {
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setView('create-customer');
+                  }}
+                  className="flex items-center gap-2 rounded-full bg-[var(--color-cozy-text)] py-2 px-4 text-sm font-medium text-white shadow-sm hover:opacity-90 active:scale-95 transition-all"
+                >
+                  <Plus size={16} />
+                  Nieuwe klant
+                </button>
+                <button
+                  onClick={() => {
                   const now = new Date();
                   const dateStr = now.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                   const timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
@@ -2470,11 +2491,11 @@ export const BusinessPage: React.FC = () => {
                   // ── 1. CSV (Excel / nieuwsbrief import) ────────────
                   // Belgian/Dutch Excel uses semicolons as separator
                   const SEP = ';';
-                  const csvHeader = ['Naam','Email','Level','Level_Punten','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Loyaliteitskorting','Klant_Sinds'].join(SEP);
+                  const csvHeader = ['Naam','Contact','Level','Level_Punten','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Loyaliteitskorting','Klant_Sinds'].join(SEP);
                   const csvRows = exportCustomers.map((c, idx) => {
                     const st = allStats[idx];
                     const name = `"${c.name.replaceAll('"', '""')}"`;
-                    const email = `"${(c.email || '').replaceAll('"', '""')}"`;
+                    const email = `"${getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail).replaceAll('"', '""')}"`;
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
                     return [name, email, LOYALTY_TIER_CONFIG[c.loyaltyTier].label, c.loyaltyPoints, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, `€${st.estimatedGivenAway.toFixed(2)}`, since].join(SEP);
@@ -2499,7 +2520,7 @@ export const BusinessPage: React.FC = () => {
                     lines.push(
                       '────────────────────────────────────────',
                       `${i + 1}. ${c.name}`,
-                      `   E-mail:        ${c.email || '—'}`,
+                      `   Contact:       ${getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail)}`,
                       `   Level:         ${LOYALTY_TIER_CONFIG[c.loyaltyTier].label} (${c.loyaltyPoints} punten)`,
                       `   Klant sinds:   ${since}`,
                       `   Laatste bezoek: ${lastVisit}`,
@@ -2531,12 +2552,13 @@ export const BusinessPage: React.FC = () => {
                   setTimeout(() => {
                     download(lines.join('\n'), `cozy-moments-klanten-${fileDate}.txt`, 'text/plain');
                   }, 300);
-                }}
-                className="flex items-center gap-2 bg-white border border-gray-200 rounded-full py-2 px-4 text-sm font-medium text-[var(--color-cozy-text)] shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
-              >
-                <Download size={16} />
-                Export
-              </button>
+                  }}
+                  className="flex items-center gap-2 bg-white border border-gray-200 rounded-full py-2 px-4 text-sm font-medium text-[var(--color-cozy-text)] shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+                >
+                  <Download size={16} />
+                  Export
+                </button>
+              </div>
             </div>
 
             {/* ── Actieve promo's ────────────────────────────────── */}
@@ -2691,7 +2713,8 @@ export const BusinessPage: React.FC = () => {
               const filtered = q
                 ? tierFiltered.filter(c =>
                     c.name.toLowerCase().includes(q) ||
-                    (c.email || '').toLowerCase().includes(q)
+                    getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail).toLowerCase().includes(q) ||
+                    (c.loginAlias || '').toLowerCase().includes(q)
                   )
                 : tierFiltered;
               if (filtered.length === 0) return (
@@ -2719,7 +2742,7 @@ export const BusinessPage: React.FC = () => {
                           <h3 className="font-serif font-semibold text-base md:text-lg leading-tight truncate">{customer.name}</h3>
                           {loyaltyBadge(stats.loyaltyTier)}
                         </div>
-                        <p className="text-xs text-gray-400 truncate mt-0.5">{customer.email}</p>
+                        <p className="text-xs text-gray-400 truncate mt-0.5">{getCustomerContactLabel(customer.email, customer.loginAlias, customer.loginEmail)}</p>
                         <p className="text-[11px] text-[var(--color-cozy-text)]/65 mt-1">
                           {stats.loyaltyPoints} punten
                           {stats.loyaltyProgress.nextTier ? ` • nog ${stats.loyaltyProgress.pointsNeeded} tot ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : ' • hoogste level bereikt'}
@@ -2788,7 +2811,7 @@ export const BusinessPage: React.FC = () => {
                           {/* Email */}
                           <div className="flex items-center gap-2 mt-4 mb-4 bg-gray-50 rounded-xl px-4 py-3">
                             <Mail size={16} className="text-gray-400 flex-shrink-0" />
-                            <span className="text-sm text-gray-600 break-all">{customer.email || 'Geen e-mail beschikbaar'}</span>
+                            <span className="text-sm text-gray-600 break-all">{getCustomerContactLabel(customer.email, customer.loginAlias, customer.loginEmail)}</span>
                           </div>
 
                           {/* ── Klant Intelligence ──────────────────── */}
@@ -3081,7 +3104,7 @@ export const BusinessPage: React.FC = () => {
                             <option value="">Kies een klant…</option>
                             {sortedCustomers.map(customer => (
                               <option key={customer.id} value={customer.id}>
-                                {customer.name} {customer.email ? `(${customer.email})` : ''}
+                                {customer.name} ({getCustomerContactLabel(customer.email, customer.loginAlias, customer.loginEmail)})
                               </option>
                             ))}
                           </select>
@@ -3092,7 +3115,7 @@ export const BusinessPage: React.FC = () => {
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Huidige klantstatus</p>
                               <p className="text-base font-display font-bold text-[var(--color-cozy-text)]">{selectedCorrectionCustomer.name}</p>
-                              <p className="text-sm text-gray-500">{selectedCorrectionCustomer.email || 'Geen e-mail'} • {selectedCorrectionCustomer.totalVisits} bezoeken</p>
+                              <p className="text-sm text-gray-500">{getCustomerContactLabel(selectedCorrectionCustomer.email, selectedCorrectionCustomer.loginAlias, selectedCorrectionCustomer.loginEmail)} • {selectedCorrectionCustomer.totalVisits} bezoeken</p>
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 sm:grid-cols-4">
                               {(Object.keys(cardTypeLabels) as CardType[]).map((type) => (

@@ -1,5 +1,6 @@
 import type { CardType } from '../../shared/store/LoyaltyContext';
 import { cardTypeLabels } from '../../shared/store/LoyaltyContext';
+import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
 
 export type TransactionEventType = 'scan' | 'redeem' | 'adjustment';
 
@@ -39,7 +40,11 @@ export function rowToTransaction(row: any): CustomerTransaction {
     id: Number(row.id),
     customerId: row.customer_id,
     customerName: customerRelation?.name ?? 'Onbekende klant',
-    customerEmail: customerRelation?.email ?? '',
+    customerEmail: getCustomerContactLabel(
+      customerRelation?.email ?? '',
+      customerRelation?.login_alias ?? null,
+      customerRelation?.login_email ?? '',
+    ),
     eventType: row.event_type,
     staffEmail: row.staff_email ?? null,
     reason: row.reason ?? null,

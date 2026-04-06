@@ -19,6 +19,8 @@ export type Database = {
           id: string;
           name: string;
           email: string;
+          login_email: string;
+          login_alias: string | null;
           coffee_stamps: number;
           wine_stamps: number;
           beer_stamps: number;
@@ -35,6 +37,8 @@ export type Database = {
           last_visit_at: string | null;
           welcome_bonus_claimed: boolean;
           bonus_card_type: string | null;
+          must_reset_password: boolean;
+          created_by_admin_email: string | null;
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['customers']['Row'], 'id' | 'created_at'>;

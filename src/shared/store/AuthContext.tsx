@@ -160,6 +160,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (SUPABASE_READY && supabase) {
       const { error } = await supabase!.auth.updateUser({ password });
       if (error) throw error;
+
+      const { data: userData, error: userError } = await supabase!.auth.getUser();
+      if (userError) throw userError;
+
+      if (userData.user) {
+        const { error: customerError } = await supabase!
+          .from('customers')
+          .update({ must_reset_password: false })
+          .eq('id', userData.user.id);
+
+        if (customerError) throw customerError;
+      }
+
       setRecoveryMode(false);
     }
   }, []);

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { calculateLifetimeConsumptions, resolveLoyaltyTier, type LoyaltyTier } from '../lib/loyalty-tier';
+import { getCustomerLoginAlias } from '../lib/customer-accounts';
 
 export type CardType = 'coffee' | 'wine' | 'beer' | 'soda';
 
@@ -15,6 +16,8 @@ export interface Customer {
   id: string;
   name: string;
   email: string;
+  loginEmail: string;
+  loginAlias: string | null;
   createdAt: string;
   cards: Record<CardType, number>;
   rewards: Record<CardType, number>;
@@ -25,6 +28,8 @@ export interface Customer {
   bonusCardType: CardType | null;
   loyaltyPoints: number;
   loyaltyTier: LoyaltyTier;
+  mustResetPassword: boolean;
+  createdByAdminEmail: string | null;
 }
 
 export interface AddResult {
@@ -100,6 +105,8 @@ function rowToCustomer(row: any): Customer {
     id: row.id,
     name: row.name,
     email: row.email ?? '',
+    loginEmail: row.login_email ?? row.email ?? '',
+    loginAlias: getCustomerLoginAlias(row.login_alias, row.login_email ?? row.email ?? ''),
     createdAt: row.created_at ?? new Date().toISOString(),
     cards,
     rewards,
@@ -110,6 +117,8 @@ function rowToCustomer(row: any): Customer {
     bonusCardType: (row.bonus_card_type as CardType | null) ?? null,
     loyaltyPoints,
     loyaltyTier,
+    mustResetPassword: row.must_reset_password ?? false,
+    createdByAdminEmail: row.created_by_admin_email ?? null,
   };
 }
 
@@ -159,9 +168,11 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const upsertCustomer = useCallback(async (id: string, name: string, email: string) => {
     if (!supabase) return;
     const payload = { id, name, email, coffee_stamps: 0, wine_stamps: 0, beer_stamps: 0, soda_stamps: 0,
+      login_email: email, login_alias: null,
       coffee_rewards: 0, wine_rewards: 0, beer_rewards: 0, soda_rewards: 0,
       coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0,
-      total_visits: 0, last_visit_at: null, welcome_bonus_claimed: false };
+      total_visits: 0, last_visit_at: null, welcome_bonus_claimed: false,
+      must_reset_password: false, created_by_admin_email: null };
 
     const { error } = await supabase.from('customers').upsert(
       payload,

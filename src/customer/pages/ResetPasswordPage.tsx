@@ -2,18 +2,22 @@ import React, { useState } from 'react';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/store/AuthContext';
+import { useLoyalty } from '../../shared/store/LoyaltyContext';
 import { motion } from 'framer-motion';
 
 export const ResetPasswordPage: React.FC = () => {
-  const { recoveryMode, updatePassword } = useAuth();
+  const { recoveryMode, updatePassword, user } = useAuth();
+  const { currentCustomer, loading: customerLoading, refreshCustomers } = useLoyalty();
   const navigate = useNavigate();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const requiresPasswordReset = Boolean(user && currentCustomer?.mustResetPassword);
+  const canResetPassword = recoveryMode || requiresPasswordReset;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,16 +29,17 @@ export const ResetPasswordPage: React.FC = () => {
       setError('Wachtwoord moet minstens 6 tekens bevatten.');
       return;
     }
-    setLoading(true);
+    setIsSubmitting(true);
     setError('');
     try {
       await updatePassword(password);
+      await refreshCustomers();
       setDone(true);
       setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
     } catch {
       setError('Er ging iets mis. Probeer opnieuw of vraag een nieuwe herstellink op.');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -64,7 +69,11 @@ export const ResetPasswordPage: React.FC = () => {
             <p className="font-medium text-[var(--color-cozy-text)] mb-1">Wachtwoord gewijzigd!</p>
             <p className="text-sm text-gray-500">Je wordt doorgestuurd naar je spaarkaart…</p>
           </div>
-        ) : !recoveryMode ? (
+        ) : customerLoading && !recoveryMode ? (
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
+            <div className="animate-pulse text-[var(--color-cozy-coffee)] text-sm">Account controleren…</div>
+          </div>
+        ) : !canResetPassword ? (
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
             <div className="animate-pulse text-[var(--color-cozy-coffee)] text-sm">Herstellink verifiëren…</div>
             <p className="text-xs text-gray-400 mt-2">
@@ -79,8 +88,14 @@ export const ResetPasswordPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <h2 className="text-center font-display font-bold text-lg text-[var(--color-cozy-text)] mb-2">Nieuw wachtwoord instellen</h2>
-            <p className="text-center text-sm text-gray-500 mb-6">Kies een sterk wachtwoord van minstens 6 tekens.</p>
+            <h2 className="text-center font-display font-bold text-lg text-[var(--color-cozy-text)] mb-2">
+              {requiresPasswordReset ? 'Kies nu je eigen wachtwoord' : 'Nieuw wachtwoord instellen'}
+            </h2>
+            <p className="text-center text-sm text-gray-500 mb-6">
+              {requiresPasswordReset
+                ? 'Je account is aangemaakt door een medewerker. Kies nu meteen een nieuw wachtwoord van minstens 6 tekens.'
+                : 'Kies een sterk wachtwoord van minstens 6 tekens.'}
+            </p>
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="relative">
@@ -119,10 +134,10 @@ export const ResetPasswordPage: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={loading || !password || !confirmPassword}
+                disabled={isSubmitting || !password || !confirmPassword}
                 className="w-full bg-[var(--color-cozy-coffee)] text-white rounded-2xl py-4 px-5 font-medium text-sm hover:opacity-90 transition-all disabled:opacity-50"
               >
-                {loading ? 'Bezig...' : 'Wachtwoord opslaan'}
+                {isSubmitting ? 'Bezig...' : 'Wachtwoord opslaan'}
               </button>
             </form>
           </>

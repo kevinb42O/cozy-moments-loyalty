@@ -25,16 +25,41 @@ const CustomerSync: React.FC = () => {
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-  if (isLoading) return <LoadingScreen variant="customer" />;
+  const { currentCustomer, loading } = useLoyalty();
+
+  if (isLoading || (user && loading)) return <LoadingScreen variant="customer" />;
   if (!user) return <Navigate to="/" replace />;
+  if (currentCustomer?.mustResetPassword) return <Navigate to="/reset-password" replace />;
   return <>{children}</>;
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-  if (isLoading) return <LoadingScreen variant="customer" />;
-  if (user) return <Navigate to="/dashboard" replace />;
+  const { currentCustomer, loading } = useLoyalty();
+
+  if (isLoading || (user && loading)) return <LoadingScreen variant="customer" />;
+  if (user) {
+    if (currentCustomer?.mustResetPassword) return <Navigate to="/reset-password" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
   return <>{children}</>;
+};
+
+const ResetPasswordRoute: React.FC = () => {
+  const { user, isLoading, recoveryMode } = useAuth();
+  const { currentCustomer, loading } = useLoyalty();
+
+  if (isLoading || (user && loading)) return <LoadingScreen variant="customer" />;
+
+  if (recoveryMode || currentCustomer?.mustResetPassword) {
+    return <ResetPasswordPage />;
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Navigate to="/" replace />;
 };
 
 export default function App() {
@@ -46,7 +71,7 @@ export default function App() {
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordRoute />} />
               <Route path="/dashboard" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
               <Route path="/scanner" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
               <Route path="/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />

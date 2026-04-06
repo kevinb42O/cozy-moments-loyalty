@@ -7,6 +7,7 @@ import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
 import { LoadingScreen } from '../../shared/components/LoadingScreen';
 import { supabase } from '../../shared/lib/supabase';
 import { normalizeActivePromos, type ActivePromo } from '../../shared/lib/drink-menu';
+import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
 import { LOYALTY_TIER_CONFIG, LOYALTY_TIER_ORDER, getLoyaltyProgress } from '../../shared/lib/loyalty-tier';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -179,6 +180,11 @@ export const CustomerPage: React.FC = () => {
     setShowProfileSheet(false);
     setShowLogoutConfirm(false);
   };
+  const contactLabel = getCustomerContactLabel(
+    currentCustomer.email,
+    currentCustomer.loginAlias,
+    currentCustomer.loginEmail,
+  );
 
   const requestLogout = () => {
     setShowLogoutConfirm(true);
@@ -563,7 +569,7 @@ export const CustomerPage: React.FC = () => {
                       <Mail size={16} />
                       <span className="text-xs font-medium uppercase tracking-wide">Account</span>
                     </div>
-                    <p className="text-sm font-medium text-[var(--color-cozy-text)] break-all">{currentCustomer.email || 'Geen e-mailadres beschikbaar'}</p>
+                    <p className="text-sm font-medium text-[var(--color-cozy-text)] break-all">{contactLabel}</p>
                     <p className="text-xs text-gray-500 mt-1">Hiermee is je spaarkaart gekoppeld.</p>
                   </div>
 

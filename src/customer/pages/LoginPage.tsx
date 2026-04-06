@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, User, Eye, EyeOff, X, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../shared/store/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isManagedLoginEmail, normalizeCustomerLoginInput } from '../../shared/lib/customer-accounts';
 
 type Mode = 'login' | 'register' | 'forgot';
 
@@ -39,9 +40,9 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      await loginWithEmail(email.trim(), password);
+      await loginWithEmail(normalizeCustomerLoginInput(email), password);
     } catch {
-      setError('Fout e-mailadres of wachtwoord. Probeer opnieuw.');
+      setError('Fout e-mailadres, accountcode of wachtwoord. Probeer opnieuw.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +80,12 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      await resetPassword(email.trim());
+      const normalizedLogin = normalizeCustomerLoginInput(email);
+      if (isManagedLoginEmail(normalizedLogin)) {
+        setError('Voor een accountcode zonder e-mailadres helpt een medewerker je best verder.');
+        return;
+      }
+      await resetPassword(normalizedLogin);
       setResetSent(true);
     } catch {
       setError('Er ging iets mis. Controleer je e-mailadres.');
@@ -156,12 +162,12 @@ export const LoginPage: React.FC = () => {
                 <div className="relative">
                   <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    type="email"
-                    placeholder="E-mailadres"
+                    type="text"
+                    placeholder="E-mailadres of accountcode"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
-                    autoComplete="email"
+                    autoComplete="username"
                     className="w-full bg-white rounded-2xl py-4 pl-10 pr-5 border border-gray-200 focus:border-[var(--color-cozy-coffee)] focus:outline-none text-sm transition-colors"
                   />
                 </div>
@@ -214,6 +220,9 @@ export const LoginPage: React.FC = () => {
                 >
                   Registreer hier
                 </button>
+              </p>
+              <p className="text-center text-xs text-gray-400 mt-3">
+                Heb je van het personeel een accountcode gekregen? Die werkt hier ook.
               </p>
             </motion.div>
           )}
@@ -337,18 +346,18 @@ export const LoginPage: React.FC = () => {
               ) : (
                 <>
                   <h2 className="text-center font-display font-bold text-lg text-[var(--color-cozy-text)] mb-2">Wachtwoord vergeten</h2>
-                  <p className="text-center text-sm text-gray-500 mb-5">Vul je e-mailadres in en we sturen je een herstellink.</p>
+                  <p className="text-center text-sm text-gray-500 mb-5">Vul je e-mailadres in en we sturen je een herstellink. Accountcodes zonder e-mailadres laat je best resetten door het personeel.</p>
 
                   <form onSubmit={handleForgot} className="space-y-3">
                     <div className="relative">
                       <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input
-                        type="email"
+                        type="text"
                         placeholder="E-mailadres"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                         required
-                        autoComplete="email"
+                        autoComplete="username"
                         className="w-full bg-white rounded-2xl py-4 pl-10 pr-5 border border-gray-200 focus:border-[var(--color-cozy-coffee)] focus:outline-none text-sm transition-colors"
                       />
                     </div>
@@ -593,4 +602,3 @@ export const LoginPage: React.FC = () => {
     </>
   );
 };
-

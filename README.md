@@ -114,6 +114,28 @@ De klanten-app ondersteunt in de actuele UI:
 
 Voor Google login moet je de Google provider in Supabase configureren en de juiste redirect-URL's instellen.
 
+## Admin aangemaakte klantaccounts
+
+De business app bevat nu een aparte adminpagina om klantaccounts aan te maken zonder dat de klant zelf moet registreren.
+
+De flow:
+
+- admin typt minstens de naam van de klant in
+- laat je het e-mailadres leeg, dan krijgt de klant automatisch een accountcode
+- het tijdelijke wachtwoord is vast: `cozymoments`
+- bij de eerste login wordt de klant verplicht om meteen een nieuw wachtwoord te kiezen
+
+Benodigde setup:
+
+1. Run opnieuw volledig [supabase-schema.sql](supabase-schema.sql) zodat de nieuwe klantkolommen bestaan.
+2. Deploy de Edge Function:
+
+```bash
+npx supabase functions deploy create-customer-account
+```
+
+De function gebruikt de service-role van je Supabase-project om veilig auth-users aan te maken. Daarvoor zijn geen extra frontend-env vars nodig.
+
 ## Build en deploy
 
 Build beide apps:

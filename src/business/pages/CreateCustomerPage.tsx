@@ -409,6 +409,7 @@ export function CreateCustomerPage({
   const [visitDraft, setVisitDraft] = useState<Record<CardType, number>>(emptyDeltaRecord);
   const [visitSaving, setVisitSaving] = useState(false);
   const [rewardSavingType, setRewardSavingType] = useState<CardType | null>(null);
+  const [rewardConfirmType, setRewardConfirmType] = useState<CardType | null>(null);
   const [manageActionError, setManageActionError] = useState<string | null>(null);
   const [manageActionSuccess, setManageActionSuccess] = useState<string | null>(null);
   const [correctionOpen, setCorrectionOpen] = useState(false);
@@ -456,6 +457,7 @@ export function CreateCustomerPage({
 
   useEffect(() => {
     setVisitDraft(emptyDeltaRecord());
+    setRewardConfirmType(null);
     setManageActionError(null);
     setManageActionSuccess(null);
     setCorrectionError(null);
@@ -653,8 +655,10 @@ export function CreateCustomerPage({
 
       await loadRecentTransactions(selectedCustomer.id);
       setManageActionSuccess(`${selectedCustomer.name}: gratis ${cardTypeLabels[type].toLowerCase()} geregistreerd.`);
+      setRewardConfirmType(null);
     } catch (rewardError: any) {
       setManageActionError(rewardError?.message || 'Beloning inwisselen mislukt.');
+      setRewardConfirmType(null);
     } finally {
       setRewardSavingType(null);
     }
@@ -914,7 +918,7 @@ export function CreateCustomerPage({
 
             <div className={cn('mt-5 space-y-3 rounded-[28px] px-5 py-5', isDarkMode ? 'bg-[#111823]' : 'bg-[#f7f3eb]')}>
               <div>
-                <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Workflow op de vloer</p>
+                <p className="text-sm font-semibold text-[var(--color-cozy-text)]">Workflow in de zaak</p>
                 <p className={cn('mt-1 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>1. Typ de naam in. 2. Druk op account aanmaken. 3. Geef de login door of print de fiche.</p>
               </div>
               <div>
@@ -1293,7 +1297,7 @@ export function CreateCustomerPage({
                               <button
                                 key={`reward-${item.type}`}
                                 type="button"
-                                onClick={() => handleClaimReward(item.type)}
+                                onClick={() => setRewardConfirmType(item.type)}
                                 disabled={rewardCount === 0 || rewardSavingType !== null}
                                 className={cn(
                                   'rounded-[24px] border px-4 py-4 text-left transition-all',
@@ -1574,6 +1578,59 @@ export function CreateCustomerPage({
                 </div>
               )}
             </section>
+          </div>
+        </div>
+      )}
+
+      {mode === 'manage' && selectedCustomer && rewardConfirmType && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 px-4 py-6">
+          <div className={cn('w-full max-w-md rounded-[28px] border p-6 shadow-2xl', isDarkMode ? 'border-white/10 bg-[#18202b]' : 'border-gray-200 bg-white')}>
+            <div className="flex items-start gap-3">
+              <div className={cn('inline-flex h-12 w-12 items-center justify-center rounded-full', isDarkMode ? 'bg-[#111823]' : 'bg-amber-50')}>
+                <Gift size={20} className="text-amber-600" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-cozy-olive)]">Bevestiging</p>
+                <h3 className="mt-2 text-2xl font-display font-bold text-[var(--color-cozy-text)]">Ben je zeker?</h3>
+                <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                  Je staat op het punt een gratis {cardTypeLabels[rewardConfirmType].toLowerCase()} toe te kennen aan {selectedCustomer.name}.
+                </p>
+              </div>
+            </div>
+
+            <div className={cn('mt-5 rounded-[22px] px-4 py-4', isDarkMode ? 'bg-[#111823]' : 'bg-[#fbf8f2]')}>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">Beschikbaar voor deze klant</p>
+              <p className="mt-2 font-mono text-2xl font-bold text-[var(--color-cozy-text)]">
+                {selectedCustomer.rewards[rewardConfirmType]}
+              </p>
+              <p className={cn('mt-1 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-gray-500')}>
+                open beloning{selectedCustomer.rewards[rewardConfirmType] === 1 ? '' : 'en'} voor {cardTypeLabels[rewardConfirmType].toLowerCase()}.
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setRewardConfirmType(null)}
+                disabled={rewardSavingType !== null}
+                className={cn(
+                  'inline-flex min-h-12 flex-1 items-center justify-center rounded-2xl border px-5 text-sm font-semibold transition-colors',
+                  isDarkMode
+                    ? 'border-white/10 bg-white/5 text-[#eef2f7] hover:bg-white/10'
+                    : 'border-gray-200 bg-white text-[var(--color-cozy-text)] hover:bg-gray-50',
+                )}
+              >
+                Nee
+              </button>
+              <button
+                type="button"
+                onClick={() => handleClaimReward(rewardConfirmType)}
+                disabled={rewardSavingType !== null}
+                className="inline-flex min-h-12 flex-1 items-center justify-center rounded-2xl bg-[var(--color-cozy-text)] px-5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {rewardSavingType === rewardConfirmType ? 'Bezig...' : 'Ja, registreer'}
+              </button>
+            </div>
           </div>
         </div>
       )}

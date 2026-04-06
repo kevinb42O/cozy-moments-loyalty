@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.list-admin-accounts]
 verify_jwt = false
+
+[functions.delete-admin-account]
+verify_jwt = false

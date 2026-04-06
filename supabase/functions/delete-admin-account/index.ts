@@ -30,10 +30,6 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function isValidPassword(value: string) {
-  return value.trim().length >= 8;
-}
-
 function extractAccessToken(authHeader: string | null) {
   if (!authHeader) {
     return null;
@@ -43,9 +39,9 @@ function extractAccessToken(authHeader: string | null) {
   return match?.[1]?.trim() ?? null;
 }
 
-function isDuplicateAuthError(error: { message?: string | null } | null) {
+function isAuthUserMissingError(error: { message?: string | null } | null) {
   const message = error?.message?.toLowerCase() ?? '';
-  return message.includes('already been registered') || message.includes('already exists');
+  return message.includes('not found') || message.includes('no rows');
 }
 
 async function requireAdmin(adminClient: ReturnType<typeof createClient>, accessToken: string) {
@@ -121,98 +117,61 @@ Deno.serve(async (request) => {
       return json({ error: 'Ongeldige request body.' }, 400);
     }
 
-    const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
-    const email = normalizeEmail(body.email);
-    const password = typeof body.password === 'string' ? body.password : '';
+    const targetEmail = normalizeEmail(body.email);
 
-    if (displayName.length < 2) {
-      return json({ error: 'Geef minstens een herkenbare naam in.' }, 400);
-    }
-
-    if (!isValidEmail(email)) {
+    if (!isValidEmail(targetEmail)) {
       return json({ error: 'Geef een geldig e-mailadres in.' }, 400);
     }
 
-    if (!isValidPassword(password)) {
-      return json({ error: 'Kies een wachtwoord van minstens 8 tekens.' }, 400);
+    if (targetEmail === requesterEmail) {
+      return json({ error: 'Je kunt jezelf niet verwijderen via dit scherm.' }, 400);
     }
 
-    const { data: existingAdmins, error: existingAdminError } = await adminClient
+    const { data: adminRows, error: adminListError } = await adminClient
       .from('admin_users')
-      .select('email');
+      .select('email, auth_user_id, is_active, display_name, created_by_admin_email, created_at');
 
-    if (existingAdminError) {
-      console.error('Admin duplicate lookup failed', existingAdminError);
-      return json({ error: 'Bestaande admins controleren mislukt.' }, 500);
+    if (adminListError) {
+      console.error('Admin list lookup failed', adminListError);
+      return json({ error: 'Adminoverzicht laden mislukt.' }, 500);
     }
 
-    if ((existingAdmins ?? []).some((record) => normalizeEmail(record.email) === email)) {
-      return json({ error: 'Er bestaat al een admin met dit e-mailadres.' }, 409);
+    const targetAdmin = (adminRows ?? []).find((record) => normalizeEmail(record.email) === targetEmail) ?? null;
+
+    if (!targetAdmin) {
+      return json({ error: 'Dit adminaccount bestaat niet meer.' }, 404);
     }
 
-    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: displayName,
-        display_name: displayName,
-      },
-      app_metadata: {
-        role: 'admin',
-      },
-    });
+    const activeAdmins = (adminRows ?? []).filter((record) => record.is_active !== false);
+    if (targetAdmin.is_active !== false && activeAdmins.length <= 1) {
+      return json({ error: 'Je kunt de laatste actieve admin niet verwijderen.' }, 400);
+    }
 
-    if (authError) {
-      console.error('Admin auth user creation failed', { email, authError });
+    if (targetAdmin.auth_user_id) {
+      const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(targetAdmin.auth_user_id);
 
-      if (isDuplicateAuthError(authError)) {
-        return json({ error: 'Er bestaat al een auth-account met dit e-mailadres.' }, 409);
+      if (deleteAuthError && !isAuthUserMissingError(deleteAuthError)) {
+        console.error('Auth admin deletion failed', { targetEmail, deleteAuthError });
+        return json({ error: deleteAuthError.message || 'Het loginaccount kon niet verwijderd worden.' }, 500);
       }
-
-      return json({ error: authError.message || 'Het admin auth-account kon niet aangemaakt worden.' }, 400);
     }
 
-    const createdUser = authData.user;
-
-    if (!createdUser) {
-      return json({ error: 'Supabase gaf geen nieuwe admingebruiker terug.' }, 500);
-    }
-
-    const { data: insertedAdmin, error: insertError } = await adminClient
+    const { error: deleteAdminError } = await adminClient
       .from('admin_users')
-      .insert({
-        email,
-        display_name: displayName,
-        auth_user_id: createdUser.id,
-        created_by_admin_email: requesterEmail,
-        is_active: true,
-      })
-      .select('email, display_name, auth_user_id, created_at, created_by_admin_email, is_active')
-      .single();
+      .delete()
+      .eq('email', targetAdmin.email);
 
-    if (insertError) {
-      console.error('Admin record insert failed', { email, insertError });
-      await adminClient.auth.admin.deleteUser(createdUser.id);
-
-      if (insertError.code === '23505') {
-        return json({ error: 'Er bestaat al een admin met dit e-mailadres.' }, 409);
-      }
-
-      return json({ error: insertError.message || 'De admin kon niet in de database opgeslagen worden.' }, 400);
+    if (deleteAdminError) {
+      console.error('Admin record deletion failed', { targetEmail, deleteAdminError });
+      return json({ error: deleteAdminError.message || 'Het adminrecord kon niet verwijderd worden.' }, 500);
     }
 
     return json({
-      email: insertedAdmin.email,
-      displayName: insertedAdmin.display_name ?? displayName,
-      authUserId: insertedAdmin.auth_user_id ?? createdUser.id,
-      createdAt: insertedAdmin.created_at,
-      createdByAdminEmail: insertedAdmin.created_by_admin_email ?? requesterEmail,
-      isActive: insertedAdmin.is_active !== false,
-      password,
-    }, 201);
+      email: normalizeEmail(targetAdmin.email),
+      deleted: true,
+    });
   } catch (unexpectedError) {
-    console.error('Unexpected create-admin-account failure', unexpectedError);
+    console.error('Unexpected delete-admin-account failure', unexpectedError);
     const message = unexpectedError instanceof Error ? unexpectedError.message : 'Onverwachte serverfout.';
     return json({ error: message }, 500);
   }

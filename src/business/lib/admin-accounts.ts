@@ -12,10 +12,11 @@ export interface AdminAccount {
 export interface CreateAdminAccountInput {
   displayName: string;
   email: string;
+  password: string;
 }
 
 export interface CreateAdminAccountResult extends AdminAccount {
-  temporaryPassword: string;
+  password: string;
 }
 
 function normalizeEmail(value: string | null | undefined) {
@@ -93,16 +94,22 @@ export async function createAdminAccount(input: CreateAdminAccountInput) {
   const payload = {
     displayName: input.displayName.trim(),
     email: normalizeEmail(input.email),
+    password: input.password,
   };
 
   const result = await callAdminEdgeFunction<Partial<CreateAdminAccountResult> | null>('create-admin-account', payload);
 
-  if (!result?.email || !result?.temporaryPassword) {
+  if (!result?.email || !result?.password) {
     throw new Error('De server stuurde geen geldig adminaccount terug.');
   }
 
   return {
     ...normalizeAdminAccount(result),
-    temporaryPassword: result.temporaryPassword,
+    password: result.password,
   } satisfies CreateAdminAccountResult;
+}
+
+export async function deleteAdminAccount(email: string) {
+  const payload = { email: normalizeEmail(email) };
+  await callAdminEdgeFunction('delete-admin-account', payload);
 }

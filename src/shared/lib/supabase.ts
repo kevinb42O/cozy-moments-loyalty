@@ -4,6 +4,8 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 export const SUPABASE_READY = Boolean(supabaseUrl && supabaseAnonKey);
+export const SUPABASE_URL = supabaseUrl ?? '';
+export const SUPABASE_ANON_KEY = supabaseAnonKey ?? '';
 
 // Supabase client — only created when env vars are present.
 // If not configured yet, the app falls back to localStorage (dev mode).

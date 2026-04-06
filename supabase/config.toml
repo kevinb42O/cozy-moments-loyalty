@@ -1,2 +1,8 @@
 [functions.create-customer-account]
 verify_jwt = false
+
+[functions.create-admin-account]
+verify_jwt = false
+
+[functions.list-admin-accounts]
+verify_jwt = false

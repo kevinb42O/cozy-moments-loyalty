@@ -89,14 +89,53 @@ CREATE POLICY "Customers: insert own row"
 
 -- 3. Admin access — only authenticated admin users can read/modify all customers
 
--- Step 1: Admin users table (add admin emails via SQL Editor)
+-- Step 1: Admin users table
 CREATE TABLE IF NOT EXISTS public.admin_users (
-  email TEXT PRIMARY KEY
+  email TEXT PRIMARY KEY,
+  auth_user_id UUID,
+  display_name TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by_admin_email TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
 -- No public RLS policies = table locked from client API.
 -- Only the SECURITY DEFINER function below can read it.
+
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS auth_user_id UUID;
+
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS display_name TEXT;
+
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS created_by_admin_email TEXT;
+
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+
+UPDATE public.admin_users AS admins
+SET auth_user_id = COALESCE(admins.auth_user_id, users.id),
+    display_name = COALESCE(
+      NULLIF(admins.display_name, ''),
+      NULLIF(users.raw_user_meta_data->>'display_name', ''),
+      NULLIF(users.raw_user_meta_data->>'full_name', ''),
+      admins.display_name
+    )
+FROM auth.users AS users
+WHERE lower(users.email) = lower(admins.email)
+  AND (
+    admins.auth_user_id IS NULL
+    OR COALESCE(NULLIF(admins.display_name, ''), '') = ''
+  );
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_users_auth_user_id_uidx
+  ON public.admin_users (auth_user_id)
+  WHERE auth_user_id IS NOT NULL;
 
 -- Step 2: Helper function that checks if the current user is an admin
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -106,8 +145,13 @@ SECURITY DEFINER
 STABLE
 AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.admin_users
-    WHERE email = (auth.jwt() ->> 'email')
+    SELECT 1
+    FROM public.admin_users
+    WHERE COALESCE(is_active, TRUE)
+      AND (
+        auth.uid() = auth_user_id
+        OR lower(email) = lower(COALESCE(auth.jwt() ->> 'email', ''))
+      )
   );
 $$;
 
@@ -170,8 +214,8 @@ CREATE POLICY "Transactions: admin insert all"
 
 -- ⚠️  IMPORTANT: After running this schema, run these two extra queries:
 --
--- 1. Add your admin email to the whitelist:
---    INSERT INTO admin_users (email) VALUES ('your-admin@email.com');
+-- 1. Add your first admin to the whitelist:
+--    INSERT INTO admin_users (email, display_name) VALUES ('your-admin@email.com', 'Voornaam Naam');
 --
 -- 2. Create the admin user in Supabase Auth:
 --    Go to: Authentication → Users → Add User

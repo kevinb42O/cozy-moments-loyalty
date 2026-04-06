@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { supabase, SUPABASE_READY } from '../../shared/lib/supabase';
 
-// Admin email(s) — set VITE_ADMIN_EMAILS in .env.local (comma-separated)
+// Optional bootstrap fallback when the RPC admin check is temporarily unavailable.
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS as string || '')
   .split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
 
@@ -21,46 +22,77 @@ interface BusinessAuthContextType {
 
 const BusinessAuthContext = createContext<BusinessAuthContextType | undefined>(undefined);
 
+function normalizeEmail(email: string | null | undefined) {
+  return email?.trim().toLowerCase() ?? '';
+}
+
+async function resolveSupabaseAdminAccess(session: Session | null) {
+  const email = normalizeEmail(session?.user?.email);
+
+  if (!email || !supabase) {
+    return { allowed: false, email: null } as const;
+  }
+
+  const { data, error } = await supabase.rpc('is_admin');
+
+  if (error) {
+    console.error('Admin status check failed, falling back to env allowlist if possible:', error);
+    const allowedByFallback = ADMIN_EMAILS.length > 0 && ADMIN_EMAILS.includes(email);
+    return { allowed: allowedByFallback, email } as const;
+  }
+
+  return { allowed: Boolean(data), email } as const;
+}
+
 export const BusinessAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  const applySessionAccess = useCallback(async (session: Session | null) => {
+    if (!session?.user) {
+      setIsAdmin(false);
+      setAdminEmail(null);
+      setIsLoading(false);
+      return false;
+    }
+
+    const { allowed, email } = await resolveSupabaseAdminAccess(session);
+
+    setIsAdmin(allowed);
+    setAdminEmail(allowed ? email : null);
+    setIsLoading(false);
+
+    return allowed;
+  }, []);
+
   useEffect(() => {
     if (SUPABASE_READY && supabase) {
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session?.user) {
-          const email = data.session.user.email?.toLowerCase() || '';
-          if (ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(email)) {
-            setIsAdmin(true);
-            setAdminEmail(email || null);
-          }
-        }
-        setIsLoading(false);
+      void supabase.auth.getSession().then(async ({ data }) => {
+        await applySessionAccess(data.session);
       });
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') {
           setIsAdmin(false);
           setAdminEmail(null);
+          setIsLoading(false);
           return;
         }
 
-        const email = session?.user?.email?.toLowerCase() || null;
-        if (email && (ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(email))) {
-          setIsAdmin(true);
-          setAdminEmail(email);
-        }
+        void applySessionAccess(session);
       });
 
       return () => { subscription.unsubscribe(); };
-    } else {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved === 'true') setIsAdmin(true);
-      setIsLoading(false);
     }
-  }, []);
+
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved === 'true') {
+      setIsAdmin(true);
+    }
+    setIsLoading(false);
+  }, [applySessionAccess]);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setLoginError(null);
@@ -71,34 +103,40 @@ export const BusinessAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setLoginError('Ongeldige inloggegevens.');
         return false;
       }
-      const userEmail = data.user?.email?.toLowerCase() || '';
-      if (ADMIN_EMAILS.length > 0 && !ADMIN_EMAILS.includes(userEmail)) {
+
+      const allowed = await applySessionAccess(data.session);
+      if (!allowed) {
         await supabase.auth.signOut();
         setLoginError('Dit account heeft geen admin-rechten.');
         return false;
       }
-      setIsAdmin(true);
+
+      setLoginError(null);
       return true;
-    } else {
-      // Local dev fallback
-      if (!DEV_ADMIN_PASSWORD) {
-        setLoginError('Configureer VITE_ADMIN_PASSWORD in .env.local');
-        return false;
-      }
-      await new Promise(r => setTimeout(r, 400));
-      if (password === DEV_ADMIN_PASSWORD) {
-        sessionStorage.setItem(STORAGE_KEY, 'true');
-        setIsAdmin(true);
-        setAdminEmail(email.trim().toLowerCase() || 'lokale-admin');
-        return true;
-      }
-      setLoginError('Ongeldige inloggegevens.');
+    }
+
+    // Local dev fallback
+    if (!DEV_ADMIN_PASSWORD) {
+      setLoginError('Configureer VITE_ADMIN_PASSWORD in .env.local');
       return false;
     }
-  }, []);
+
+    await new Promise(r => setTimeout(r, 400));
+    if (password === DEV_ADMIN_PASSWORD) {
+      sessionStorage.setItem(STORAGE_KEY, 'true');
+      setIsAdmin(true);
+      setAdminEmail(email.trim().toLowerCase() || 'lokale-admin');
+      return true;
+    }
+
+    setLoginError('Ongeldige inloggegevens.');
+    return false;
+  }, [applySessionAccess]);
 
   const logout = useCallback(() => {
-    if (SUPABASE_READY && supabase) supabase.auth.signOut();
+    if (SUPABASE_READY && supabase) {
+      void supabase.auth.signOut();
+    }
     sessionStorage.removeItem(STORAGE_KEY);
     setIsAdmin(false);
     setAdminEmail(null);

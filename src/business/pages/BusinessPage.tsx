@@ -9,6 +9,7 @@ import { Screensaver } from '../components/Screensaver';
 import { ScreensaverEditor } from '../components/ScreensaverEditor';
 import { DrinkMenuEditor } from '../components/DrinkMenuEditor';
 import { CreateCustomerPage } from './CreateCustomerPage';
+import { AdminAccountsPage } from './AdminAccountsPage';
 import { exportScreensaverToMp4 } from '../lib/screensaver-mp4-export';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
@@ -74,9 +75,10 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu' | 'admin'>; label: string }> = [
   { view: 'customers', label: 'Klanten' },
   { view: 'create-customer', label: 'Beheerde klanten' },
+  { view: 'admin', label: 'Admin' },
   { view: 'open-bottles', label: 'Open flessen' },
   { view: 'history', label: 'Historiek' },
   { view: 'drink-menu', label: 'Drankkaart' },
@@ -149,7 +151,7 @@ const PRICE_ESTIMATE: Record<CardType, number> = {
   soda: 3,
 };
 
-type BusinessView = 'create' | 'create-customer' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'redeem';
+type BusinessView = 'create' | 'create-customer' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'redeem' | 'admin';
 type OpenBottleRisk = 'red' | 'orange';
 type OpenBottleFilter = 'all' | 'open' | 'expired' | 'promo';
 type HistoryPanelKey = 'correction' | 'filters';
@@ -2405,6 +2407,13 @@ export const BusinessPage: React.FC = () => {
             adminEmail={adminEmail}
             isDarkMode={isDarkMode}
             onOpenCustomers={() => setView('customers')}
+          />
+        )}
+
+        {view === 'admin' && (
+          <AdminAccountsPage
+            adminEmail={adminEmail}
+            isDarkMode={isDarkMode}
           />
         )}
 

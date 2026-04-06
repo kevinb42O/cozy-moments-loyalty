@@ -118,8 +118,10 @@ Een admin logt in met e-mail en wachtwoord.
 
 Voor correcte productieconfiguratie zijn 2 voorwaarden nodig:
 
-1. Het e-mailadres staat in de omgevingsvariabele `VITE_ADMIN_EMAILS`.
+1. Het e-mailadres staat in Supabase Auth.
 2. Het e-mailadres staat ook in de tabel `admin_users` in Supabase.
+
+`VITE_ADMIN_EMAILS` is alleen nog een optionele bootstrap-fallback als de server-side admincheck tijdelijk niet beschikbaar is.
 
 De handleiding gebruikt bewust geen hardcoded wachtwoorden of publieke beheer-URL's. Vul hier intern jullie echte beheer-URL in:
 
@@ -800,8 +802,11 @@ Voor correcte productie-inzet moet je hebben:
 1. een Supabase-project met de actuele `supabase-schema.sql`
 2. minstens 1 admingebruiker in Supabase Auth
 3. hetzelfde adminadres in `admin_users`
-4. hetzelfde adminadres in `VITE_ADMIN_EMAILS`
-5. dezelfde `VITE_QR_SECRET` in zowel customer- als business-deployment
+4. dezelfde `VITE_QR_SECRET` in zowel customer- als business-deployment
+
+Optioneel:
+
+- `VITE_ADMIN_EMAILS` als tijdelijke fallback voor bootstrap of incidenten
 
 ## 12.3 Deploystructuur
 

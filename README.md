@@ -80,6 +80,11 @@ Maak een .env.local in de projectroot met minstens:
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_QR_SECRET=generate-a-long-random-secret
+```
+
+Optioneel als bootstrap-fallback wanneer de server-side admincheck tijdelijk niet werkt:
+
+```env
 VITE_ADMIN_EMAILS=admin@cozy-moments.be
 ```
 
@@ -97,7 +102,7 @@ VITE_ADMIN_PASSWORD=local-dev-password
 4. Voeg minstens 1 admin toe in de tabel admin_users:
 
 ```sql
-INSERT INTO admin_users (email) VALUES ('admin@cozy-moments.be');
+INSERT INTO admin_users (email, display_name) VALUES ('admin@cozy-moments.be', 'Jouw Naam');
 ```
 
 5. Maak dezelfde gebruiker ook aan in Supabase Auth.
@@ -135,6 +140,29 @@ npx supabase functions deploy create-customer-account
 ```
 
 De function gebruikt de service-role van je Supabase-project om veilig auth-users aan te maken. Daarvoor zijn geen extra frontend-env vars nodig.
+
+## Adminbeheer
+
+De business app bevat nu ook een apart tabblad `Admin` om nieuwe admins te registreren.
+
+De flow:
+
+- een bestaande admin maakt een nieuwe admin aan met naam + e-mailadres
+- de nieuwe admin krijgt meteen dezelfde rechten als alle andere admins
+- `admin_users` bewaart nu ook wie de registratie deed en wanneer
+- het tijdelijke wachtwoord wordt eenmalig in de UI getoond zodat je het kunt doorgeven
+
+Benodigde setup:
+
+1. Run opnieuw volledig [supabase-schema.sql](supabase-schema.sql) of voer ook de nieuwe migratie voor adminbeheer uit.
+2. Deploy de extra Edge Functions:
+
+```bash
+npx supabase functions deploy create-admin-account
+npx supabase functions deploy list-admin-accounts
+```
+
+Vanaf deze versie is `admin_users` de echte bron van waarheid voor adminrechten. `VITE_ADMIN_EMAILS` is alleen nog een fallback.
 
 ## Build en deploy
 
@@ -287,9 +315,8 @@ Dat script:
 ## Security-opmerkingen
 
 - Gebruik altijd een unieke, sterke waarde voor VITE_QR_SECRET.
-- Laat VITE_ADMIN_EMAILS in productie nooit leeg.
 - Deel de business-URL alleen intern.
-- Houd admin_users en VITE_ADMIN_EMAILS synchroon.
+- Beheer adminrechten primair via `admin_users`.
 
 ## Belangrijkste functionele bestanden
 

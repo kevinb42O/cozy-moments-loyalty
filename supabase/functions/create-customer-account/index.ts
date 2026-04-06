@@ -97,19 +97,19 @@ Deno.serve(async (request) => {
       return json({ error: 'Je sessie is ongeldig. Log opnieuw in als admin.' }, 401);
     }
 
-    const { data: adminRecord, error: adminLookupError } = await adminClient
+    const { data: adminRows, error: adminLookupError } = await adminClient
       .from('admin_users')
-      .select('email')
-      .eq('email', requesterEmail)
-      .maybeSingle();
+      .select('email, is_active');
 
     if (adminLookupError) {
       console.error('Admin lookup failed', adminLookupError);
       return json({ error: 'Admincontrole mislukte. Probeer opnieuw.' }, 500);
     }
 
-    if (!adminRecord) {
-      return json({ error: `Dit adminaccount staat niet in admin_users: ${requesterEmail}` }, 403);
+    const adminRecord = (adminRows ?? []).find((record) => normalizeEmail(record.email) === requesterEmail) ?? null;
+
+    if (!adminRecord || adminRecord.is_active === false) {
+      return json({ error: `Dit adminaccount staat niet actief in admin_users: ${requesterEmail}` }, 403);
     }
 
     let body: Record<string, unknown>;

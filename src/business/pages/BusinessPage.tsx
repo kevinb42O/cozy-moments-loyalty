@@ -75,14 +75,13 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu' | 'admin'>; label: string }> = [
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
   { view: 'customers', label: 'Klanten' },
   { view: 'create-customer', label: 'Beheerde klanten' },
   { view: 'open-bottles', label: 'Open flessen' },
   { view: 'history', label: 'Historiek' },
   { view: 'drink-menu', label: 'Drankkaart' },
   { view: 'screensaver', label: 'Screensaver' },
-  { view: 'admin', label: 'Admin' },
 ];
 
 // ── Admin audio chime (same Web Audio approach as Scanner) ────────────────────
@@ -1709,6 +1708,7 @@ export const BusinessPage: React.FC = () => {
   const totalConsumptions = consumptions.coffee + consumptions.wine + consumptions.beer + consumptions.soda;
   const activeHiddenAdminView = HIDDEN_ADMIN_VIEWS.find((item) => item.view === view) ?? null;
   const adminWorkspaceOpen = view === 'admin';
+  const showBackToCounter = Boolean(activeHiddenAdminView || adminWorkspaceOpen);
   const isCounterMode = view === 'create' || view === 'redeem';
   const brandLogoSrc = isDarkMode ? '/cozy_logo_wit.png' : '/cozylogo.png';
 
@@ -1726,7 +1726,7 @@ export const BusinessPage: React.FC = () => {
       <header className={cn('px-5 py-1.5 rounded-b-[24px] shadow-sm mb-5 sticky top-0 z-10', isDarkMode ? 'bg-[#121722] border-b border-white/10' : 'bg-white')}>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <div className="flex items-center">
-            {activeHiddenAdminView ? (
+            {showBackToCounter ? (
               <button
                 onClick={() => {
                   reset();

@@ -75,13 +75,14 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu' | 'admin'>; label: string }> = [
   { view: 'customers', label: 'Klanten' },
   { view: 'create-customer', label: 'Beheerde klanten' },
   { view: 'open-bottles', label: 'Open flessen' },
   { view: 'history', label: 'Historiek' },
   { view: 'drink-menu', label: 'Drankkaart' },
   { view: 'screensaver', label: 'Screensaver' },
+  { view: 'admin', label: 'Admin' },
 ];
 
 // ── Admin audio chime (same Web Audio approach as Scanner) ────────────────────
@@ -2438,11 +2439,6 @@ export const BusinessPage: React.FC = () => {
           <AdminAccountsPage
             adminEmail={adminEmail}
             isDarkMode={isDarkMode}
-            onBackToCounter={() => {
-              reset();
-              setView('create');
-              setShowAdminMenu(false);
-            }}
           />
         )}
 

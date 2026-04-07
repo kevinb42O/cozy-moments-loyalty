@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
+  ArrowLeft,
   CheckCircle,
   Copy,
   Eye,
@@ -29,6 +30,7 @@ import {
 interface AdminAccountsPageProps {
   adminEmail: string | null;
   isDarkMode: boolean;
+  onBackToCounter: () => void;
 }
 
 type AdminWorkspaceMode = 'create' | 'overview';
@@ -78,7 +80,7 @@ function getCreatorLabel(account: AdminAccount, currentAdminEmail: string | null
   return account.createdByAdminEmail;
 }
 
-export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageProps) {
+export function AdminAccountsPage({ adminEmail, isDarkMode, onBackToCounter }: AdminAccountsPageProps) {
   const normalizedAdminEmail = adminEmail?.trim().toLowerCase() ?? '';
   const [mode, setMode] = useState<AdminWorkspaceMode>('overview');
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
@@ -248,8 +250,21 @@ export function AdminAccountsPage({ adminEmail, isDarkMode }: AdminAccountsPageP
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
+            <button
+              type="button"
+              onClick={onBackToCounter}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+                isDarkMode
+                  ? 'bg-white/10 text-[#f1f4f8] hover:bg-white/15'
+                  : 'bg-white text-[var(--color-cozy-text)] shadow-sm hover:bg-gray-50',
+              )}
+            >
+              <ArrowLeft size={16} />
+              Terug naar kassa
+            </button>
             <p className="admin-phase-kicker">Adminbeheer</p>
-            <h2 className="text-3xl font-display font-bold text-[var(--color-cozy-text)]">Admin</h2>
+            <h2 className="mt-4 text-3xl font-display font-bold text-[var(--color-cozy-text)]">Admin</h2>
             <p className={cn('admin-phase-copy mt-2 max-w-3xl text-sm')}>
               Registreer hier nieuwe admins met exact dezelfde toegang als jij, en hou tegelijk proper bij wie welke admin heeft aangemaakt.
             </p>

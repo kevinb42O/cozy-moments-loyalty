@@ -2438,6 +2438,11 @@ export const BusinessPage: React.FC = () => {
           <AdminAccountsPage
             adminEmail={adminEmail}
             isDarkMode={isDarkMode}
+            onBackToCounter={() => {
+              reset();
+              setView('create');
+              setShowAdminMenu(false);
+            }}
           />
         )}
 

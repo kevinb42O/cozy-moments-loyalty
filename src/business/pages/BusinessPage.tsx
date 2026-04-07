@@ -518,6 +518,7 @@ export const BusinessPage: React.FC = () => {
   });
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [qrScanned, setQrScanned] = useState(false);
+  const [pendingTxId, setPendingTxId] = useState<string | null>(null);
   const [view, setView] = useState<BusinessView>('create');
   const [showAdminMenu, setShowAdminMenu] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -1644,13 +1645,14 @@ export const BusinessPage: React.FC = () => {
 
   const generateQR = async () => {
     if (consumptions.coffee === 0 && consumptions.wine === 0 && consumptions.beer === 0 && consumptions.soda === 0) return;
-    customersSnapshotRef.current = JSON.stringify(customers);
+    const txId = Math.random().toString(36).substring(7);
     const payload = {
       ...consumptions,
       staffEmail: adminEmail,
-      txId: Math.random().toString(36).substring(7),
+      txId,
       timestamp: Date.now()
     };
+    setPendingTxId(txId);
     setQrPayload(await signQrPayload(payload));
   };
 
@@ -1658,33 +1660,33 @@ export const BusinessPage: React.FC = () => {
     setConsumptions({ coffee: 0, wine: 0, beer: 0, soda: 0 });
     setQrPayload(null);
     setQrScanned(false);
+    setPendingTxId(null);
     customersSnapshotRef.current = '';
   };
 
   // ── QR scan detection ──────────────────────────────────────────────────────
-  // Strategy 1: React to customers state change (Supabase Realtime fires → fetchFromSupabase → new customers)
-  // Strategy 2: Poll every 3 seconds while QR is shown (fallback if Realtime not enabled in Supabase dashboard)
-  const checkScanned = useCallback(() => {
-    if (!qrPayload || qrScanned || !customersSnapshotRef.current) return;
-    const current = JSON.stringify(customers);
-    if (current !== customersSnapshotRef.current) {
-      setQrScanned(true);
-      playAdminChime();
-    }
-  }, [qrPayload, qrScanned, customers]);
-
-  // Fires whenever customers state changes (Realtime path)
-  useEffect(() => { checkScanned(); }, [customers, checkScanned]);
-
-  // Poll every 3s as fallback
+  // Poll every 2s for the specific txId in customer_transactions.
+  // This is the only reliable signal: any customer data change (Realtime, logins,
+  // manual corrections) would cause false positives with the old snapshot approach.
   useEffect(() => {
-    if (!qrPayload || qrScanned) return;
-    const interval = setInterval(async () => {
-      await refreshCustomers();
-      // checkScanned will run via the [customers] effect after state updates
-    }, 3000);
+    if (!qrPayload || !pendingTxId || qrScanned) return;
+    const checkTxId = async () => {
+      if (!supabase) return;
+      const { data } = await supabase
+        .from('customer_transactions')
+        .select('tx_id')
+        .eq('tx_id', pendingTxId)
+        .maybeSingle();
+      if (data) {
+        setQrScanned(true);
+        playAdminChime();
+        refreshCustomers();
+      }
+    };
+    checkTxId();
+    const interval = setInterval(checkTxId, 2000);
     return () => clearInterval(interval);
-  }, [qrPayload, qrScanned, refreshCustomers]);
+  }, [qrPayload, pendingTxId, qrScanned, refreshCustomers]);
 
   // Once scanned — auto-close after 2 seconds
   useEffect(() => {
@@ -1693,6 +1695,7 @@ export const BusinessPage: React.FC = () => {
       setConsumptions({ coffee: 0, wine: 0, beer: 0, soda: 0 });
       setQrPayload(null);
       setQrScanned(false);
+      setPendingTxId(null);
       customersSnapshotRef.current = '';
     }, 2000);
     return () => clearTimeout(t);
@@ -3528,14 +3531,15 @@ export const BusinessPage: React.FC = () => {
                       <button
                         key={type}
                         onClick={async () => {
-                          customersSnapshotRef.current = JSON.stringify(customers);
+                          const txId = Math.random().toString(36).substring(7);
                           const payload = {
                             type: 'redeem',
                             cardType: type,
                             staffEmail: adminEmail,
-                            txId: Math.random().toString(36).substring(7),
+                            txId,
                             timestamp: Date.now(),
                           };
+                          setPendingTxId(txId);
                           setQrPayload(await signQrPayload(payload));
                         }}
                         className="w-full bg-white rounded-[24px] p-5 shadow-sm flex items-center gap-4 hover:bg-gray-50 active:scale-[0.98] transition-all overflow-hidden"

@@ -925,17 +925,27 @@ CREATE OR REPLACE FUNCTION public.delete_customer_account(customer_id TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, auth
 AS $$
+DECLARE
+  uid UUID;
 BEGIN
   -- Verify the caller is an admin
   IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Niet geautoriseerd';
   END IF;
 
+  uid := customer_id::uuid;
+
   -- Delete from public.customers
   DELETE FROM public.customers WHERE id = customer_id;
 
-  -- Delete from auth.users (requires SECURITY DEFINER to access auth schema)
-  DELETE FROM auth.users WHERE id = customer_id::uuid;
+  -- Clean up auth tables in dependency order to avoid FK violations
+  DELETE FROM auth.refresh_tokens
+    WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = uid);
+  DELETE FROM auth.sessions WHERE user_id = uid;
+  DELETE FROM auth.mfa_factors WHERE user_id = uid;
+  DELETE FROM auth.identities WHERE user_id = uid;
+  DELETE FROM auth.users WHERE id = uid;
 END;
 $$;

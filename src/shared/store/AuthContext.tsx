@@ -127,21 +127,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Register new account ─────────────────────────────────────────────────
   const signUpWithEmail = useCallback(async (email: string, password: string, name: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
     if (SUPABASE_READY && supabase) {
       const { data, error } = await supabase!.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: { data: { full_name: name, display_name: name } },
       });
       if (error) throw error;
-      // If signup didn't return a session (e.g. email confirmation enabled),
-      // auto-login immediately so the user isn't stuck
-      if (!data.session) {
-        const { error: loginErr } = await supabase!.auth.signInWithPassword({ email, password });
+      // Supabase returns a user with no identities when the email is already
+      // registered and email-confirmation is enabled ("phantom signup").
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        throw new Error('User already registered');
+      }
+      // If signup succeeded but didn't return a session (email confirmation
+      // enabled), try to auto-login so the user isn't stuck.
+      if (!data.session && data.user?.identities?.length) {
+        const { error: loginErr } = await supabase!.auth.signInWithPassword({ email: normalizedEmail, password });
         if (loginErr) throw loginErr;
       }
     } else {
-      persistUser({ id: "e_" + Math.random().toString(36).slice(2, 9), name, email, provider: "email" });
+      persistUser({ id: "e_" + Math.random().toString(36).slice(2, 9), name, email: normalizedEmail, provider: "email" });
     }
   }, [persistUser]);
 

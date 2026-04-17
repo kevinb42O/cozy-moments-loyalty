@@ -19,6 +19,7 @@ export const CustomerPage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(true);
+  const [justRegistered, setJustRegistered] = useState<string | null>(null);
   const [loadTimeout, setLoadTimeout] = useState(false);
   const [promoMessages, setPromoMessages] = useState<string[]>([]);
   const [promoIndex, setPromoIndex] = useState(0);
@@ -30,6 +31,19 @@ export const CustomerPage: React.FC = () => {
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
     return () => clearTimeout(t);
+  }, []);
+
+  // Detect first-time registration
+  useEffect(() => {
+    try {
+      const regName = sessionStorage.getItem('cozy-just-registered');
+      if (regName) {
+        setJustRegistered(regName);
+        sessionStorage.removeItem('cozy-just-registered');
+        const t = setTimeout(() => setJustRegistered(null), 5000);
+        return () => clearTimeout(t);
+      }
+    } catch {}
   }, []);
 
   // Fetch promo messages (multi-promo with fallback to legacy single promo)
@@ -266,10 +280,25 @@ export const CustomerPage: React.FC = () => {
               transition={{ duration: 0.4, ease: 'easeInOut' }}
               className="mt-2 overflow-hidden"
             >
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Welkom terug,</p>
-              <h2 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">
-                {displayName}
-              </h2>
+              {justRegistered ? (
+                <>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-base">🎉</span>
+                    <p className="text-xs text-[var(--color-cozy-coffee)] font-semibold uppercase tracking-wider">Account aangemaakt!</p>
+                  </div>
+                  <h2 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">
+                    Welkom, {justRegistered}
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-1">Je digitale spaarkaart is klaar. Veel plezier!</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-0.5">Welkom terug,</p>
+                  <h2 className="text-xl font-display font-bold text-[var(--color-cozy-text)]">
+                    {displayName}
+                  </h2>
+                </>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

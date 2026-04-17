@@ -414,6 +414,22 @@ CREATE INDEX IF NOT EXISTS customers_loyalty_points_idx ON public.customers (loy
 CREATE INDEX IF NOT EXISTS customer_transactions_customer_created_idx ON public.customer_transactions (customer_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS customer_transactions_tx_id_uidx ON public.customer_transactions (tx_id) WHERE tx_id IS NOT NULL;
 
+-- 6b. Pre-check: is an email already registered in auth?
+CREATE OR REPLACE FUNCTION public.is_email_registered(p_email TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = auth, public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM auth.users WHERE lower(email) = lower(COALESCE(TRIM(p_email), ''))
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_email_registered(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_email_registered(TEXT) TO anon, authenticated;
+
 -- 6c. Public keepalive RPC for external cron services
 CREATE OR REPLACE FUNCTION public.keepalive_ping()
 RETURNS JSONB

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, LogOut, Gift, ChevronRight, Megaphone, X, Mail, Award, CalendarDays, BookOpen, TriangleAlert } from 'lucide-react';
+import { QrCode, LogOut, Gift, ChevronRight, Megaphone, X, Mail, Award, CalendarDays, BookOpen, TriangleAlert, Bell, BellOff, Smartphone } from 'lucide-react';
 import { useLoyalty, CardType } from '../../shared/store/LoyaltyContext';
 import { useAuth } from '../../shared/store/AuthContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
@@ -9,6 +9,14 @@ import { supabase } from '../../shared/lib/supabase';
 import { normalizeActivePromos, type ActivePromo } from '../../shared/lib/drink-menu';
 import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
 import { LOYALTY_TIER_CONFIG, LOYALTY_TIER_ORDER, getLoyaltyProgress } from '../../shared/lib/loyalty-tier';
+import {
+  fetchCustomerPushState,
+  getInitialCustomerPushState,
+  subscribeCustomerToPush,
+  unsubscribeCustomerFromPush,
+  updateCustomerPushPreferences,
+  type CustomerPushState,
+} from '../../shared/lib/customer-push';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
@@ -27,6 +35,10 @@ export const CustomerPage: React.FC = () => {
   const [fillFromCards, setFillFromCards] = useState<Partial<Record<CardType, number>> | null>(null);
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [pushState, setPushState] = useState<CustomerPushState>(() => getInitialCustomerPushState(null));
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState<string | null>(null);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
@@ -138,6 +150,24 @@ export const CustomerPage: React.FC = () => {
     }
   }, [currentCustomer]);
 
+  useEffect(() => {
+    if (!currentCustomer) {
+      setPushState(getInitialCustomerPushState(null));
+      return;
+    }
+
+    let cancelled = false;
+    void fetchCustomerPushState(currentCustomer).then((nextState) => {
+      if (!cancelled) {
+        setPushState(nextState);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentCustomer?.id, currentCustomer?.totalVisits, currentCustomer?.rewards.coffee, currentCustomer?.rewards.wine, currentCustomer?.rewards.beer, currentCustomer?.rewards.soda]);
+
 
   if (!currentCustomer) {
     if (!loadTimeout) return <LoadingScreen variant="customer" />;
@@ -208,6 +238,73 @@ export const CustomerPage: React.FC = () => {
     setShowLogoutConfirm(false);
     setShowProfileSheet(false);
     logout();
+  };
+
+  const refreshPushState = async () => {
+    if (!currentCustomer) return;
+    const nextState = await fetchCustomerPushState(currentCustomer);
+    setPushState(nextState);
+  };
+
+  const handleEnablePush = async () => {
+    if (!currentCustomer) return;
+
+    setPushBusy(true);
+    setPushError(null);
+    setPushMessage(null);
+
+    try {
+      const result = await subscribeCustomerToPush(currentCustomer);
+      setPushState((current) => ({
+        ...current,
+        permission: 'granted',
+        preferences: result.preferences ?? current.preferences,
+        subscription: result.subscription ?? current.subscription,
+      }));
+      setPushMessage('Meldingen staan aan voor dit toestel.');
+      await refreshPushState();
+    } catch (error: any) {
+      setPushError(error?.message || 'Meldingen inschakelen mislukte.');
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    if (!currentCustomer) return;
+
+    setPushBusy(true);
+    setPushError(null);
+    setPushMessage(null);
+
+    try {
+      const preferences = await unsubscribeCustomerFromPush(currentCustomer.id);
+      setPushState((current) => ({ ...current, preferences, subscription: null }));
+      setPushMessage('Meldingen staan uit voor dit toestel.');
+      await refreshPushState();
+    } catch (error: any) {
+      setPushError(error?.message || 'Meldingen uitschakelen mislukte.');
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleUpdatePushPreference = async (field: 'promoOptIn' | 'rewardOptIn' | 'reminderOptIn', value: boolean) => {
+    if (!currentCustomer) return;
+
+    setPushBusy(true);
+    setPushError(null);
+    setPushMessage(null);
+
+    try {
+      const preferences = await updateCustomerPushPreferences(currentCustomer.id, { [field]: value });
+      setPushState((current) => ({ ...current, preferences }));
+      setPushMessage('Meldingsvoorkeuren bijgewerkt.');
+    } catch (error: any) {
+      setPushError(error?.message || 'Voorkeur opslaan mislukte.');
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   return (
@@ -610,6 +707,94 @@ export const CustomerPage: React.FC = () => {
                     <p className="text-sm font-medium text-[var(--color-cozy-text)]">{memberSince}</p>
                     <p className="text-xs text-gray-500 mt-1">Je account werd toen voor het eerst geregistreerd.</p>
                   </div>
+                </div>
+
+                <div className="rounded-[24px] border border-gray-100 bg-white shadow-sm px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
+                        {pushState.preferences?.pushEnabled ? <Bell size={16} /> : <BellOff size={16} />}
+                        <span className="text-xs font-medium uppercase tracking-wide">Meldingen</span>
+                      </div>
+                      <h3 className="font-display font-bold text-[var(--color-cozy-text)]">Cozy pushmeldingen</h3>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                        Alleen voor beloningen, rustige herinneringen en relevante Cozy acties waar je zelf toestemming voor geeft.
+                      </p>
+                    </div>
+                    <div className="shrink-0 rounded-full bg-[#f8f8f5] border border-gray-100 p-2 text-[var(--color-cozy-olive)]">
+                      <Smartphone size={18} />
+                    </div>
+                  </div>
+
+                  {pushState.iosDevice && !pushState.standalone && (
+                    <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-800 leading-relaxed">
+                      Voeg de spaarkaart eerst toe aan je beginscherm om meldingen op iPhone te gebruiken.
+                    </div>
+                  )}
+
+                  {!pushState.supported && (
+                    <div className="mt-4 rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3 text-xs text-gray-500 leading-relaxed">
+                      Deze browser ondersteunt pushmeldingen niet.
+                    </div>
+                  )}
+
+                  {pushError && (
+                    <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700 leading-relaxed">
+                      {pushError}
+                    </div>
+                  )}
+
+                  {pushMessage && (
+                    <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-700 leading-relaxed">
+                      {pushMessage}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-xs text-gray-500">
+                      Status: {pushState.preferences?.pushEnabled ? 'aan' : 'uit'} · Toestemming: {pushState.permission}
+                    </div>
+                    {pushState.preferences?.pushEnabled ? (
+                      <button
+                        type="button"
+                        onClick={handleDisablePush}
+                        disabled={pushBusy}
+                        className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[var(--color-cozy-text)] shadow-sm disabled:opacity-60"
+                      >
+                        Uitschakelen
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleEnablePush}
+                        disabled={pushBusy || !pushState.canPrompt}
+                        className="rounded-full bg-[var(--color-cozy-text)] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"
+                      >
+                        Inschakelen
+                      </button>
+                    )}
+                  </div>
+
+                  {pushState.preferences?.pushEnabled && (
+                    <div className="mt-4 grid gap-2">
+                      {([
+                        ['rewardOptIn', 'Beloningen en spaarkaart updates'],
+                        ['reminderOptIn', 'Rustige herinneringen'],
+                        ['promoOptIn', 'Promoties en tijdelijke acties'],
+                      ] as const).map(([field, label]) => (
+                        <label key={field} className="flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3 text-sm text-[var(--color-cozy-text)]">
+                          <span>{label}</span>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(pushState.preferences?.[field])}
+                            disabled={pushBusy}
+                            onChange={(event) => handleUpdatePushPreference(field, event.target.checked)}
+                            className="h-5 w-5 accent-[var(--color-cozy-olive)]"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-[24px] border border-gray-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fc_100%)] px-4 py-4">

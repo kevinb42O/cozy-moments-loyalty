@@ -10,6 +10,7 @@ import { ScreensaverEditor } from '../components/ScreensaverEditor';
 import { DrinkMenuEditor } from '../components/DrinkMenuEditor';
 import { CreateCustomerPage } from './CreateCustomerPage';
 import { AdminAccountsPage } from './AdminAccountsPage';
+import { PushNotificationsPage } from './PushNotificationsPage';
 import { exportScreensaverToMp4 } from '../lib/screensaver-mp4-export';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
@@ -75,11 +76,12 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu'>; label: string }> = [
+const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'create-customer' | 'open-bottles' | 'history' | 'screensaver' | 'drink-menu' | 'push-notifications'>; label: string }> = [
   { view: 'customers', label: 'Klanten' },
   { view: 'create-customer', label: 'Beheerde klanten' },
   { view: 'open-bottles', label: 'Open flessen' },
   { view: 'history', label: 'Historiek' },
+  { view: 'push-notifications', label: 'Pushmeldingen' },
   { view: 'drink-menu', label: 'Drankkaart' },
   { view: 'screensaver', label: 'Screensaver' },
 ];
@@ -150,7 +152,7 @@ const PRICE_ESTIMATE: Record<CardType, number> = {
   soda: 3,
 };
 
-type BusinessView = 'create' | 'create-customer' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'redeem' | 'admin';
+type BusinessView = 'create' | 'create-customer' | 'open-bottles' | 'customers' | 'history' | 'screensaver' | 'drink-menu' | 'push-notifications' | 'redeem' | 'admin';
 type OpenBottleRisk = 'red' | 'orange';
 type OpenBottleFilter = 'all' | 'open' | 'expired' | 'promo';
 type HistoryPanelKey = 'correction' | 'filters';
@@ -2440,6 +2442,13 @@ export const BusinessPage: React.FC = () => {
 
         {view === 'admin' && (
           <AdminAccountsPage
+            adminEmail={adminEmail}
+            isDarkMode={isDarkMode}
+          />
+        )}
+
+        {view === 'push-notifications' && (
+          <PushNotificationsPage
             adminEmail={adminEmail}
             isDarkMode={isDarkMode}
           />

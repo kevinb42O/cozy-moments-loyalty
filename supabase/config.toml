@@ -9,3 +9,18 @@ verify_jwt = false
 
 [functions.delete-admin-account]
 verify_jwt = false
+
+[functions.register-push-subscription]
+verify_jwt = false
+
+[functions.unsubscribe-push-subscription]
+verify_jwt = false
+
+[functions.send-push-campaign]
+verify_jwt = false
+
+[functions.run-push-automations]
+verify_jwt = false
+
+[functions.track-push-click]
+verify_jwt = false

@@ -8,3 +8,5 @@ coverage/
 supabase/.temp/
 .env*
 !.env.example
+.vercel
+.env*.local

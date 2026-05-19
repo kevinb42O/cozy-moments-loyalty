@@ -2,10 +2,13 @@
   "name": "Cozy Spaarkaart",
   "short_name": "Cozy Spaarkaart",
   "description": "Jouw digitale spaarkaart van Cozy Moments",
+  "id": "/",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "browser"],
   "background_color": "#ffffff",
   "theme_color": "#78350f",
+  "categories": ["food", "lifestyle"],
   "orientation": "portrait",
   "icons": [
     {

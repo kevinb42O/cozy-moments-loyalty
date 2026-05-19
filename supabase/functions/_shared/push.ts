@@ -230,7 +230,7 @@ export async function sendCampaignToRecipients(adminClient: ReturnType<typeof cr
         title: campaign.title,
         body: campaign.body,
         icon: '/icon-192.png',
-        badge: '/icon-192.png',
+        badge: '/coffee-badge.png',
         deeplink: campaign.deeplink || '/dashboard',
         tag: `${campaign.campaign_type}-${recipient.customer.id}`,
         kind: campaign.campaign_type,

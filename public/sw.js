@@ -5,6 +5,7 @@ const OFFLINE_URL = '/';
 // Assets to pre-cache
 const PRE_CACHE = [
   '/',
+  '/coffee-badge.png',
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png',
@@ -74,8 +75,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'Cozy Moments';
   const options = {
     body: payload.body || 'Er staat iets klaar in je Cozy spaarkaart.',
-    icon: payload.icon || '/notification-icon.png',
-    badge: payload.badge || '/notification-icon.png',
+    icon: payload.icon || '/icon-192.png',
+    badge: payload.badge || '/coffee-badge.png',
     tag: payload.tag || payload.campaignId || 'cozy-moments',
     renotify: false,
     data: {

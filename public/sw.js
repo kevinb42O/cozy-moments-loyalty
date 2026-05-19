@@ -74,8 +74,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'Cozy Moments';
   const options = {
     body: payload.body || 'Er staat iets klaar in je Cozy spaarkaart.',
-    icon: payload.icon || '/icon-192.png',
-    badge: payload.badge || '/icon-192.png',
+    icon: payload.icon || '/notification-icon.png',
+    badge: payload.badge || '/notification-icon.png',
     tag: payload.tag || payload.campaignId || 'cozy-moments',
     renotify: false,
     data: {

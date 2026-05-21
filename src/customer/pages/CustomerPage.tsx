@@ -229,6 +229,13 @@ export const CustomerPage: React.FC = () => {
     currentCustomer.loginAlias,
     currentCustomer.loginEmail,
   );
+  const pushPermissionLabel = pushState.permission === 'default'
+    ? 'nog niet gevraagd'
+    : pushState.permission === 'granted'
+      ? 'toegestaan'
+      : pushState.permission === 'denied'
+        ? 'geblokkeerd'
+        : 'niet ondersteund';
 
   const requestLogout = () => {
     setShowLogoutConfirm(true);
@@ -265,6 +272,7 @@ export const CustomerPage: React.FC = () => {
       await refreshPushState();
     } catch (error: any) {
       setPushError(error?.message || 'Meldingen inschakelen mislukte.');
+      await refreshPushState().catch(() => undefined);
     } finally {
       setPushBusy(false);
     }
@@ -726,15 +734,9 @@ export const CustomerPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {pushState.iosDevice && !pushState.standalone && (
+                  {!pushState.preferences?.pushEnabled && pushState.unavailableMessage && (
                     <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-800 leading-relaxed">
-                      Voeg de spaarkaart eerst toe aan je beginscherm om meldingen op iPhone te gebruiken.
-                    </div>
-                  )}
-
-                  {!pushState.supported && (
-                    <div className="mt-4 rounded-2xl border border-gray-100 bg-[#f8f8f5] px-4 py-3 text-xs text-gray-500 leading-relaxed">
-                      Deze browser ondersteunt pushmeldingen niet.
+                      {pushState.unavailableMessage}
                     </div>
                   )}
 
@@ -752,7 +754,7 @@ export const CustomerPage: React.FC = () => {
 
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-xs text-gray-500">
-                      Status: {pushState.preferences?.pushEnabled ? 'aan' : 'uit'} · Toestemming: {pushState.permission}
+                      Status: {pushState.preferences?.pushEnabled ? 'aan' : 'uit'} · Toestemming: {pushPermissionLabel}
                     </div>
                     {pushState.preferences?.pushEnabled ? (
                       <button
@@ -767,10 +769,10 @@ export const CustomerPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleEnablePush}
-                        disabled={pushBusy || !pushState.canPrompt}
+                        disabled={pushBusy}
                         className="rounded-full bg-[var(--color-cozy-text)] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"
                       >
-                        Inschakelen
+                        {pushBusy ? 'Even geduld...' : 'Notificaties aanzetten'}
                       </button>
                     )}
                   </div>

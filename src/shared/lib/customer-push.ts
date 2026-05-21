@@ -1,7 +1,6 @@
 import { supabase, SUPABASE_ANON_KEY, SUPABASE_READY, SUPABASE_URL } from './supabase';
 import {
   DEFAULT_PUSH_PREFERENCES,
-  canPromptForPush,
   getInstalledMode,
   getPushPermissionState,
   isIosDevice,
@@ -17,6 +16,13 @@ import {
 import type { Customer } from '../store/LoyaltyContext';
 
 export type PushPermissionStatus = NotificationPermission | 'unsupported';
+export type PushUnavailableReason = 'none'
+  | 'no-customer'
+  | 'insecure-context'
+  | 'unsupported-browser'
+  | 'missing-public-key'
+  | 'ios-not-installed'
+  | 'permission-denied';
 
 export interface CustomerPushState {
   supported: boolean;
@@ -28,6 +34,8 @@ export interface CustomerPushState {
   preferences: CustomerPushPreferences | null;
   publicKeyConfigured: boolean;
   canPrompt: boolean;
+  unavailableReason: PushUnavailableReason;
+  unavailableMessage: string | null;
 }
 
 export interface UpdatePushPreferencesInput {
@@ -41,6 +49,109 @@ export interface UpdatePushPreferencesInput {
 }
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY as string | undefined;
+const SERVICE_WORKER_READY_TIMEOUT_MS = 8000;
+
+function isSecurePushContext() {
+  return typeof window !== 'undefined' && window.isSecureContext === true;
+}
+
+function getPushUnavailableMessage(reason: PushUnavailableReason) {
+  switch (reason) {
+    case 'no-customer':
+      return 'Log opnieuw in om meldingen te beheren.';
+    case 'insecure-context':
+      return 'Pushmeldingen werken alleen via een veilige https-verbinding.';
+    case 'unsupported-browser':
+      return 'Dit toestel ondersteunt web push niet. Op iPhone heb je iOS 16.4 of nieuwer nodig en moet de spaarkaart op je beginscherm staan.';
+    case 'missing-public-key':
+      return 'Pushmeldingen zijn nog niet volledig geconfigureerd.';
+    case 'ios-not-installed':
+      return 'Open deze app via het beginscherm van je iPhone. Meldingen werken op iPhone alleen in de geinstalleerde spaarkaart-app.';
+    case 'permission-denied':
+      return 'Meldingen zijn geblokkeerd op dit toestel. Zet ze aan via iPhone Instellingen > Meldingen > Cozy Spaarkaart.';
+    case 'none':
+      return null;
+  }
+}
+
+function getPushUnavailableReason(customer: Customer | null, args: {
+  supported: boolean;
+  iosDevice: boolean;
+  standalone: boolean;
+  permission: PushPermissionStatus;
+  publicKeyConfigured: boolean;
+}): PushUnavailableReason {
+  if (!customer) {
+    return 'no-customer';
+  }
+
+  if (!isSecurePushContext()) {
+    return 'insecure-context';
+  }
+
+  if (!args.supported) {
+    return 'unsupported-browser';
+  }
+
+  if (!args.publicKeyConfigured) {
+    return 'missing-public-key';
+  }
+
+  if (args.iosDevice && !args.standalone) {
+    return 'ios-not-installed';
+  }
+
+  if (args.permission === 'denied') {
+    return 'permission-denied';
+  }
+
+  return 'none';
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function ensureCustomerServiceWorkerRegistration() {
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service workers worden niet ondersteund door deze browser.');
+  }
+
+  let registration = await navigator.serviceWorker.getRegistration('/');
+  if (!registration) {
+    registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  }
+
+  try {
+    await registration.update();
+  } catch (error) {
+    console.warn('Service worker update controleren mislukte:', error);
+  }
+
+  const readyRegistration = await withTimeout(
+    navigator.serviceWorker.ready,
+    SERVICE_WORKER_READY_TIMEOUT_MS,
+    'De meldingenservice is nog niet klaar. Sluit de app volledig en open de spaarkaart opnieuw vanaf je beginscherm.',
+  );
+
+  if (!readyRegistration.pushManager) {
+    throw new Error('Pushmeldingen worden niet ondersteund door deze browser.');
+  }
+
+  return readyRegistration;
+}
 
 function snakeToPreferences(row: any, customerId: string) {
   if (!row) {
@@ -139,17 +250,28 @@ export function getInitialCustomerPushState(customer: Customer | null): Customer
   const supported = isPushSupportedBrowser();
   const iosDevice = isIosDevice();
   const standalone = isStandaloneDisplayMode();
+  const permission = getPushPermissionState();
+  const publicKeyConfigured = Boolean(VAPID_PUBLIC_KEY);
+  const unavailableReason = getPushUnavailableReason(customer, {
+    supported,
+    iosDevice,
+    standalone,
+    permission,
+    publicKeyConfigured,
+  });
 
   return {
     supported,
     iosDevice,
     standalone,
     installedMode: getInstalledMode(),
-    permission: getPushPermissionState(),
+    permission,
     subscription: null,
     preferences: customer ? normalizePushPreferences(null, customer.id) : null,
-    publicKeyConfigured: Boolean(VAPID_PUBLIC_KEY),
-    canPrompt: supported && Boolean(VAPID_PUBLIC_KEY) && (!iosDevice || standalone) && canPromptForPush(customer),
+    publicKeyConfigured,
+    canPrompt: unavailableReason === 'none',
+    unavailableReason,
+    unavailableMessage: getPushUnavailableMessage(unavailableReason),
   };
 }
 
@@ -193,7 +315,6 @@ export async function fetchCustomerPushState(customer: Customer): Promise<Custom
     ...base,
     preferences,
     subscription: snakeToSubscription(subscriptionResult.data),
-    canPrompt: base.supported && base.publicKeyConfigured && (!base.iosDevice || base.standalone) && canPromptForPush(customer),
   };
 }
 
@@ -231,16 +352,24 @@ export async function updateCustomerPushPreferences(customerId: string, input: U
 }
 
 export async function subscribeCustomerToPush(customer: Customer) {
+  if (!isSecurePushContext()) {
+    throw new Error('Pushmeldingen werken alleen via een veilige https-verbinding.');
+  }
+
   if (!isPushSupportedBrowser()) {
-    throw new Error('Pushmeldingen worden niet ondersteund door deze browser.');
+    throw new Error('Pushmeldingen worden niet ondersteund door deze browser. Op iPhone heb je iOS 16.4 of nieuwer nodig en moet de spaarkaart op je beginscherm staan.');
   }
 
   if (isIosDevice() && !isStandaloneDisplayMode()) {
-    throw new Error('Installeer de spaarkaart eerst op je beginscherm om iPhone-meldingen te gebruiken.');
+    throw new Error('Open deze app via het beginscherm van je iPhone. Meldingen werken op iPhone alleen in de geinstalleerde spaarkaart-app.');
   }
 
   if (!VAPID_PUBLIC_KEY) {
     throw new Error('Pushmeldingen zijn nog niet volledig geconfigureerd.');
+  }
+
+  if (Notification.permission === 'denied') {
+    throw new Error('Meldingen zijn geblokkeerd op dit toestel. Zet ze aan via iPhone Instellingen > Meldingen > Cozy Spaarkaart.');
   }
 
   const permission = await Notification.requestPermission();
@@ -248,14 +377,18 @@ export async function subscribeCustomerToPush(customer: Customer) {
     throw new Error('Meldingen zijn niet toegestaan op dit toestel.');
   }
 
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await ensureCustomerServiceWorkerRegistration();
   let browserSubscription = await registration.pushManager.getSubscription();
 
   if (!browserSubscription) {
-    browserSubscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+    try {
+      browserSubscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    } catch (error: any) {
+      throw new Error(error?.message || 'Het push abonnement kon niet worden aangemaakt. Sluit de app volledig en open de spaarkaart opnieuw vanaf je beginscherm.');
+    }
   }
 
   const result = await callCustomerPushFunction<{ preferences?: any; subscription?: any }>('register-push-subscription', {

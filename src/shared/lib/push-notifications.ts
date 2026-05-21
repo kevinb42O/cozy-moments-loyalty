@@ -223,6 +223,7 @@ export function urlBase64ToUint8Array(base64String: string) {
 
 export function isPushSupportedBrowser() {
   return typeof window !== 'undefined'
+    && window.isSecureContext === true
     && 'serviceWorker' in navigator
     && 'PushManager' in window
     && 'Notification' in window;
@@ -234,7 +235,9 @@ export function isIosDevice() {
   }
 
   const userAgent = navigator.userAgent || navigator.vendor || '';
-  return /iphone|ipad|ipod/i.test(userAgent);
+  const platform = navigator.platform || '';
+  const maxTouchPoints = navigator.maxTouchPoints || 0;
+  return /iphone|ipad|ipod/i.test(userAgent) || (platform === 'MacIntel' && maxTouchPoints > 1);
 }
 
 export function isStandaloneDisplayMode() {

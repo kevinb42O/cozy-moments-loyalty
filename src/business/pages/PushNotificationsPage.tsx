@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, BellRing, CheckCircle, Clock3, Gift, History, Megaphone, PauseCircle, PlayCircle, RefreshCw, Search, Send, ShieldAlert, SlidersHorizontal, Users } from 'lucide-react';
+import { Bell, BellRing, CheckCircle, Clock3, Gift, History, Megaphone, PauseCircle, PlayCircle, RefreshCw, Search, Send, ShieldAlert, SlidersHorizontal, Smartphone, Users } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useLoyalty, cardTypeLabels, type CardType } from '../../shared/store/LoyaltyContext';
@@ -15,12 +15,14 @@ import {
 import {
   estimatePushRecipients,
   listPushCampaigns,
+  listPushNotificationStatuses,
   loadPushMetrics,
   loadPushSettings,
   runPushAutomations,
   savePushSettings,
   sendPushCampaign,
   type PushCampaignDraft,
+  type PushCustomerNotificationStatus,
   type PushMetrics,
 } from '../lib/push-notifications';
 
@@ -111,6 +113,7 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
   const [recipientCount, setRecipientCount] = useState(0);
   const [matchingCustomerNames, setMatchingCustomerNames] = useState<string[]>([]);
   const [campaigns, setCampaigns] = useState<Awaited<ReturnType<typeof listPushCampaigns>>>([]);
+  const [notificationStatuses, setNotificationStatuses] = useState<PushCustomerNotificationStatus[]>([]);
   const [metrics, setMetrics] = useState<PushMetrics | null>(null);
   const [settings, setSettings] = useState<PushSettingsConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,6 +131,8 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
     filters,
   }), [draft.deliveryCategory, filters, recipientCount]);
 
+  const notificationStatusMap = useMemo(() => new Map(notificationStatuses.map((status) => [status.customerId, status])), [notificationStatuses]);
+
   const customerOptions = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
     return customers
@@ -143,14 +148,16 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
     setError(null);
 
     try {
-      const [nextCampaigns, nextMetrics, nextSettings] = await Promise.all([
+      const [nextCampaigns, nextMetrics, nextSettings, nextNotificationStatuses] = await Promise.all([
         listPushCampaigns(),
         loadPushMetrics(),
         loadPushSettings(),
+        listPushNotificationStatuses(),
       ]);
       setCampaigns(nextCampaigns);
       setMetrics(nextMetrics);
       setSettings(nextSettings);
+      setNotificationStatuses(nextNotificationStatuses);
     } catch (loadError: any) {
       setError(loadError?.message || 'Push workspace laden mislukt.');
     } finally {
@@ -440,8 +447,18 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
                   <div className="grid gap-2 sm:grid-cols-2">
                     {customerOptions.map((customer) => (
                       <button key={customer.id} type="button" onClick={() => updateDraft('customerId', customer.id)} className={cn('rounded-2xl border px-4 py-3 text-left text-sm', draft.customerId === customer.id ? 'border-[var(--color-cozy-olive)] bg-white shadow-sm' : 'border-gray-100 bg-white/60')}>
-                        <span className="block font-semibold text-[var(--color-cozy-text)]">{customer.name}</span>
-                        <span className="block truncate text-xs text-gray-500">{customer.email || customer.loginEmail}</span>
+                        <span className="flex min-w-0 items-center justify-between gap-3">
+                          <span className="min-w-0 truncate font-semibold text-[var(--color-cozy-text)]">{customer.name}</span>
+                          {notificationStatusMap.get(customer.id)?.pushEnabled && notificationStatusMap.get(customer.id)?.hasActiveSubscription && (
+                            <CheckCircle size={17} className="shrink-0 text-emerald-600" aria-label="Pushmeldingen actief" />
+                          )}
+                        </span>
+                        <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-gray-500">
+                          <span className="truncate">{customer.email || customer.loginEmail}</span>
+                          {notificationStatusMap.get(customer.id)?.pushEnabled && !notificationStatusMap.get(customer.id)?.hasActiveSubscription && (
+                            <span className="inline-flex shrink-0 items-center gap-1 text-amber-700"><Smartphone size={12} /> geen actief toestel</span>
+                          )}
+                        </span>
                       </button>
                     ))}
                   </div>

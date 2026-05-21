@@ -375,6 +375,17 @@ export function estimatePushAudience(
   });
 }
 
+export function estimatePushAudienceWithActiveSubscriptions(
+  customers: Customer[],
+  preferences: CustomerPushPreferences[],
+  activeSubscriptionCustomerIds: Iterable<string>,
+  filters: PushAudienceFilters,
+) {
+  const activeCustomerIds = new Set(activeSubscriptionCustomerIds);
+  return estimatePushAudience(customers, preferences, filters)
+    .filter((customer) => activeCustomerIds.has(customer.id));
+}
+
 export function buildPushAudienceWarnings(args: {
   estimatedRecipients: number;
   deliveryCategory: PushDeliveryCategory;

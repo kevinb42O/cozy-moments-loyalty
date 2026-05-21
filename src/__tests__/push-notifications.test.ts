@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildPushAudienceWarnings,
   estimatePushAudience,
+  estimatePushAudienceWithActiveSubscriptions,
   matchesPushAudience,
   normalizePushPreferences,
   type CustomerPushPreferences,
@@ -57,6 +58,22 @@ describe('push notification audience helpers', () => {
     ], { requiresReward: true });
 
     expect(result.map((entry) => entry.id)).toEqual(['reward']);
+  });
+
+  it('only counts deliverable recipients with an active push subscription', () => {
+    const customers = [
+      customer({ id: 'active', rewards: { coffee: 1, wine: 0, beer: 0, soda: 0 } }),
+      customer({ id: 'preference-only', rewards: { coffee: 1, wine: 0, beer: 0, soda: 0 } }),
+      customer({ id: 'disabled', rewards: { coffee: 1, wine: 0, beer: 0, soda: 0 } }),
+    ];
+
+    const result = estimatePushAudienceWithActiveSubscriptions(customers, [
+      preferences('active'),
+      preferences('preference-only'),
+      preferences('disabled', { pushEnabled: false }),
+    ], ['active', 'disabled'], { requiresReward: true });
+
+    expect(result.map((entry) => entry.id)).toEqual(['active']);
   });
 
   it('requires explicit promo opt-in for promotional audiences', () => {

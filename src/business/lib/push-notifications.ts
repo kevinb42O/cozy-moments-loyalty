@@ -2,7 +2,7 @@ import { callAdminEdgeFunction } from './admin-edge';
 import { supabase } from '../../shared/lib/supabase';
 import {
   DEFAULT_PUSH_SETTINGS,
-  estimatePushAudience,
+  estimatePushAudienceWithActiveSubscriptions,
   normalizePushCampaign,
   normalizePushPreferences,
   normalizePushSettings,
@@ -32,6 +32,16 @@ export interface PushMetrics {
   campaignsLast30Days: number;
   clicksLast30Days: number;
   failedDeliveriesLast30Days: number;
+}
+
+export interface PushCustomerNotificationStatus {
+  customerId: string;
+  pushEnabled: boolean;
+  activeSubscriptionCount: number;
+  hasActiveSubscription: boolean;
+  latestInstalledMode: string | null;
+  latestPlatform: string | null;
+  lastSeenAt: string | null;
 }
 
 function snakeToCampaign(row: any): PushCampaignRecord {
@@ -109,9 +119,94 @@ export async function listPushPreferences() {
   return (data ?? []).map(snakeToPreferences);
 }
 
+export async function listActivePushSubscriptionCustomerIds() {
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('customer_push_subscriptions')
+    .select('customer_id')
+    .eq('is_active', true);
+
+  if (error) {
+    throw new Error(error.message || 'Actieve pushabonnementen laden mislukt.');
+  }
+
+  return Array.from(new Set((data ?? [])
+    .map((row) => row.customer_id)
+    .filter((customerId): customerId is string => typeof customerId === 'string' && customerId.length > 0)));
+}
+
+export async function listPushNotificationStatuses(): Promise<PushCustomerNotificationStatus[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  const [preferencesResult, subscriptionsResult] = await Promise.all([
+    supabase.from('customer_push_preferences').select('customer_id, push_enabled'),
+    supabase
+      .from('customer_push_subscriptions')
+      .select('customer_id, platform, installed_mode, last_seen_at')
+      .eq('is_active', true)
+      .order('last_seen_at', { ascending: false, nullsFirst: false }),
+  ]);
+
+  if (preferencesResult.error) {
+    throw new Error(preferencesResult.error.message || 'Pushvoorkeuren laden mislukt.');
+  }
+
+  if (subscriptionsResult.error) {
+    throw new Error(subscriptionsResult.error.message || 'Actieve pushabonnementen laden mislukt.');
+  }
+
+  const statusMap = new Map<string, PushCustomerNotificationStatus>();
+
+  for (const preference of preferencesResult.data ?? []) {
+    if (!preference.customer_id) continue;
+    statusMap.set(preference.customer_id, {
+      customerId: preference.customer_id,
+      pushEnabled: preference.push_enabled === true,
+      activeSubscriptionCount: 0,
+      hasActiveSubscription: false,
+      latestInstalledMode: null,
+      latestPlatform: null,
+      lastSeenAt: null,
+    });
+  }
+
+  for (const subscription of subscriptionsResult.data ?? []) {
+    if (!subscription.customer_id) continue;
+    const current = statusMap.get(subscription.customer_id) ?? {
+      customerId: subscription.customer_id,
+      pushEnabled: false,
+      activeSubscriptionCount: 0,
+      hasActiveSubscription: false,
+      latestInstalledMode: null,
+      latestPlatform: null,
+      lastSeenAt: null,
+    };
+
+    statusMap.set(subscription.customer_id, {
+      ...current,
+      activeSubscriptionCount: current.activeSubscriptionCount + 1,
+      hasActiveSubscription: true,
+      latestInstalledMode: current.latestInstalledMode ?? subscription.installed_mode ?? null,
+      latestPlatform: current.latestPlatform ?? subscription.platform ?? null,
+      lastSeenAt: current.lastSeenAt ?? subscription.last_seen_at ?? null,
+    });
+  }
+
+  return Array.from(statusMap.values());
+}
+
 export async function estimatePushRecipients(customers: Customer[], filters: PushAudienceFilters) {
-  const preferences = await listPushPreferences();
-  return estimatePushAudience(customers, preferences, filters);
+  const [preferences, activeSubscriptionCustomerIds] = await Promise.all([
+    listPushPreferences(),
+    listActivePushSubscriptionCustomerIds(),
+  ]);
+
+  return estimatePushAudienceWithActiveSubscriptions(customers, preferences, activeSubscriptionCustomerIds, filters);
 }
 
 export async function loadPushSettings() {

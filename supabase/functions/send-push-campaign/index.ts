@@ -41,6 +41,10 @@ Deno.serve(async (request) => {
 
     const recipients = await resolveAudience(adminClient, audienceFilters, deliveryCategory);
 
+    if (recipients.length === 0) {
+      return json({ error: 'Geen actieve toestellen gevonden voor deze doelgroep. Laat de klant meldingen opnieuw aanzetten in de geinstalleerde spaarkaart-app. Op iPhone moet dat via de app op het beginscherm.' }, 409);
+    }
+
     const { data: campaign, error: campaignError } = await adminClient
       .from('push_campaigns')
       .insert({

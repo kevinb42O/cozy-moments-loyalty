@@ -234,6 +234,14 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
         estimatedRecipients: recipientCount,
       };
       const campaign = await sendPushCampaign(payload);
+
+      if (campaign.actualRecipients === 0 && campaign.sentCount === 0 && campaign.failureCount === 0) {
+        setError('Geen actieve toestellen gevonden voor deze doelgroep. Laat de klant meldingen opnieuw aanzetten in de geinstalleerde spaarkaart-app. Op iPhone moet dat via de app op het beginscherm.');
+        setConfirmBroadSend(false);
+        await loadWorkspace();
+        return;
+      }
+
       setNotice(`Campagne verzonden: ${campaign.sentCount} afgeleverd, ${campaign.failureCount} mislukt.`);
       setConfirmBroadSend(false);
       await loadWorkspace();

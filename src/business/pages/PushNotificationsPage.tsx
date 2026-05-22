@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, BellRing, CheckCircle, Clock3, Gift, History, Megaphone, PauseCircle, PlayCircle, RefreshCw, Search, Send, ShieldAlert, SlidersHorizontal, Smartphone, Users } from 'lucide-react';
+import { Bell, BellRing, CheckCircle, Clock3, Gift, History, Megaphone, PauseCircle, PlayCircle, RefreshCw, Search, Send, ShieldAlert, SlidersHorizontal, SmilePlus, Smartphone, Users, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useLoyalty, cardTypeLabels, type CardType } from '../../shared/store/LoyaltyContext';
@@ -62,6 +62,15 @@ const DEFAULT_DRAFT: DraftState = {
   minVisits: 3,
 };
 
+const PUSH_EMOJI_GROUPS = [
+  { label: 'Cozy', emojis: ['✨', '💛', '🤎', '🕯️', '☕', '🍷', '🍺', '🥤'] },
+  { label: 'Beloning', emojis: ['🎁', '🎉', '⭐', '🏆', '✅', '💌', '🙌', '🥳'] },
+  { label: 'Promo', emojis: ['🔥', '📣', '👀', '⏰', '🍾', '🥂', '🧁', '🍰'] },
+  { label: 'Sfeer', emojis: ['😊', '😍', '🤩', '😋', '💫', '🌟', '👌', '🫶'] },
+] as const;
+
+const MAX_PUSH_BODY_LENGTH = 180;
+
 function cn(...inputs: Array<string | undefined | null | false>) {
   return twMerge(clsx(inputs));
 }
@@ -108,6 +117,8 @@ function buildAudienceLabel(draft: DraftState) {
 
 export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificationsPageProps) {
   const { customers } = useLoyalty();
+  const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const [mode, setMode] = useState<WorkspaceMode>('compose');
   const [draft, setDraft] = useState<DraftState>(DEFAULT_DRAFT);
   const [recipientCount, setRecipientCount] = useState(0);
@@ -123,6 +134,7 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
   const [error, setError] = useState<string | null>(null);
   const [confirmBroadSend, setConfirmBroadSend] = useState(false);
   const [search, setSearch] = useState('');
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   const filters = useMemo(() => buildFilters(draft), [draft]);
   const warnings = useMemo(() => buildPushAudienceWarnings({
@@ -170,6 +182,29 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
   }, [loadWorkspace]);
 
   useEffect(() => {
+    if (!emojiPickerOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (emojiPickerRef.current?.contains(event.target as Node)) return;
+      setEmojiPickerOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setEmojiPickerOpen(false);
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [emojiPickerOpen]);
+
+  useEffect(() => {
     let cancelled = false;
     setEstimating(true);
 
@@ -197,6 +232,23 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
     setError(null);
     setNotice(null);
     setConfirmBroadSend(false);
+  };
+
+  const insertEmojiInBody = (emoji: string) => {
+    const textarea = bodyTextareaRef.current;
+    const selectionStart = textarea?.selectionStart ?? draft.body.length;
+    const selectionEnd = textarea?.selectionEnd ?? selectionStart;
+    const beforeSelection = draft.body.slice(0, selectionStart);
+    const afterSelection = draft.body.slice(selectionEnd);
+    const nextBody = `${beforeSelection}${emoji}${afterSelection}`.slice(0, MAX_PUSH_BODY_LENGTH);
+    const nextCursorPosition = Math.min(beforeSelection.length + emoji.length, nextBody.length);
+
+    updateDraft('body', nextBody);
+
+    window.requestAnimationFrame(() => {
+      bodyTextareaRef.current?.focus();
+      bodyTextareaRef.current?.setSelectionRange(nextCursorPosition, nextCursorPosition);
+    });
   };
 
   const sendCampaignFromDraft = async () => {
@@ -380,10 +432,81 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
                     <option value="/rewards">Beloningen</option>
                   </select>
                 </label>
-                <label className="space-y-2 md:col-span-2">
-                  <span className="admin-phase-label">Bericht</span>
-                  <textarea className="admin-phase-input min-h-28 resize-none text-base" value={draft.body} maxLength={180} onChange={(event) => updateDraft('body', event.target.value)} />
-                </label>
+                <div ref={emojiPickerRef} className="relative space-y-2 md:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="admin-phase-label" htmlFor="push-message-body">Bericht</label>
+                    <button
+                      type="button"
+                      onClick={() => setEmojiPickerOpen((current) => !current)}
+                      className="admin-phase-button-secondary inline-flex h-10 w-10 items-center justify-center rounded-2xl p-0 text-[var(--color-cozy-text)]"
+                      aria-label="Emoji toevoegen"
+                      aria-expanded={emojiPickerOpen}
+                    >
+                      <SmilePlus size={17} />
+                    </button>
+                  </div>
+                  <textarea
+                    id="push-message-body"
+                    ref={bodyTextareaRef}
+                    className="admin-phase-input min-h-28 resize-none text-base"
+                    value={draft.body}
+                    maxLength={MAX_PUSH_BODY_LENGTH}
+                    onChange={(event) => updateDraft('body', event.target.value)}
+                  />
+                  <AnimatePresence>
+                    {emojiPickerOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.98, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.98, y: -4 }}
+                        transition={{ duration: 0.14 }}
+                        className={cn(
+                          'absolute right-0 top-11 z-20 w-full max-w-[360px] overflow-hidden rounded-[28px] border p-3 shadow-2xl backdrop-blur-xl',
+                          isDarkMode ? 'border-white/10 bg-[#211a17]/95 shadow-black/35' : 'border-white/70 bg-white/95 shadow-black/10',
+                        )}
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                          <span className="text-sm font-bold text-[var(--color-cozy-text)]">Emoji</span>
+                          <button
+                            type="button"
+                            onClick={() => setEmojiPickerOpen(false)}
+                            className={cn(
+                              'inline-flex h-8 w-8 items-center justify-center rounded-full transition',
+                              isDarkMode ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+                            )}
+                            aria-label="Emoji picker sluiten"
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
+                        <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
+                          {PUSH_EMOJI_GROUPS.map((group) => (
+                            <div key={group.label}>
+                              <p className={cn('mb-2 px-1 text-[11px] font-bold uppercase tracking-wide', isDarkMode ? 'text-white/40' : 'text-gray-400')}>{group.label}</p>
+                              <div className="grid grid-cols-8 gap-1.5">
+                                {group.emojis.map((emoji) => (
+                                  <button
+                                    key={`${group.label}-${emoji}`}
+                                    type="button"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={() => insertEmojiInBody(emoji)}
+                                    className={cn(
+                                      'flex aspect-square items-center justify-center rounded-2xl text-[22px] transition hover:scale-105 active:scale-95',
+                                      isDarkMode ? 'bg-white/10 hover:bg-white/15' : 'bg-gray-100 hover:bg-gray-200',
+                                    )}
+                                    aria-label={`${emoji} toevoegen`}
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <label className="space-y-2">
                   <span className="admin-phase-label">Soort</span>
                   <select className="admin-phase-input text-base" value={draft.campaignType} onChange={(event) => {

@@ -46,6 +46,18 @@ function isDuplicateAuthError(error: { message?: string | null } | null) {
   return message.includes('already been registered') || message.includes('already exists');
 }
 
+function optionalInteger(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : null;
+}
+
+function isValidBirthday(day: number | null, month: number | null, year: number | null) {
+  if (day === null && month === null && year === null) return true;
+  if (day === null || month === null) return false;
+  const dateYear = year ?? 2000;
+  const date = new Date(dateYear, month - 1, day);
+  return date.getFullYear() === dateYear && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
 function extractAccessToken(authHeader: string | null) {
   if (!authHeader) {
     return null;
@@ -122,6 +134,9 @@ Deno.serve(async (request) => {
 
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     const contactEmail = normalizeEmail(body.email);
+    const birthdayDay = optionalInteger(body.birthdayDay);
+    const birthdayMonth = optionalInteger(body.birthdayMonth);
+    const birthdayYear = optionalInteger(body.birthdayYear);
 
     if (name.length < 2) {
       return json({ error: 'Geef minstens een herkenbare klantnaam in.' }, 400);
@@ -129,6 +144,23 @@ Deno.serve(async (request) => {
 
     if (contactEmail && !isValidEmail(contactEmail)) {
       return json({ error: 'Het e-mailadres lijkt niet geldig.' }, 400);
+    }
+
+    if ((birthdayDay === null) !== (birthdayMonth === null)) {
+      return json({ error: 'Vul voor een verjaardag minstens dag en maand in.' }, 400);
+    }
+
+    if (birthdayDay !== null && (birthdayDay < 1 || birthdayDay > 31 || birthdayMonth < 1 || birthdayMonth > 12)) {
+      return json({ error: 'De verjaardag lijkt niet geldig.' }, 400);
+    }
+
+    const currentYear = new Date().getFullYear();
+    if (birthdayYear !== null && (birthdayYear < 1900 || birthdayYear > currentYear)) {
+      return json({ error: 'Het geboortejaar lijkt niet geldig.' }, 400);
+    }
+
+    if (!isValidBirthday(birthdayDay, birthdayMonth, birthdayYear)) {
+      return json({ error: 'De verjaardag lijkt niet geldig.' }, 400);
     }
 
     const createdByAdminEmail = requesterEmail || null;
@@ -175,6 +207,9 @@ Deno.serve(async (request) => {
         email: contactEmail,
         login_email: loginEmail,
         login_alias: loginAlias,
+        birthday_day: birthdayDay,
+        birthday_month: birthdayMonth,
+        birthday_year: birthdayYear,
         must_reset_password: true,
         created_by_admin_email: createdByAdminEmail,
       });
@@ -200,6 +235,9 @@ Deno.serve(async (request) => {
         temporaryPassword: TEMP_CUSTOMER_PASSWORD,
         mustResetPassword: true,
         createdByAdminEmail,
+        birthdayDay,
+        birthdayMonth,
+        birthdayYear,
       }, 201);
     }
 

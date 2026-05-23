@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Beer,
+  CalendarDays,
   CheckCircle,
   Clock3,
   Coffee,
@@ -37,6 +38,7 @@ import {
   getCustomerLoginIdentifier,
   TEMP_CUSTOMER_PASSWORD,
 } from '../../shared/lib/customer-accounts';
+import { formatCustomerBirthday, normalizeBirthdayInput } from '../../shared/lib/customer-birthday';
 import { createCustomerAccount, type CreateCustomerAccountResult } from '../lib/create-customer-account';
 
 interface CreateCustomerPageProps {
@@ -233,6 +235,11 @@ function buildTxId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function optionalNumber(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? Number(trimmed) : null;
+}
+
 function formatLastVisitLabel(value: string | null) {
   if (!value) {
     return 'Nog geen bezoek';
@@ -396,7 +403,7 @@ export function CreateCustomerPage({
   } = useLoyalty();
   const [mode, setMode] = useState<ManagedWorkspaceMode>('create');
   const [resolvedInitialMode, setResolvedInitialMode] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '' });
+  const [form, setForm] = useState({ name: '', email: '', birthdayDay: '', birthdayMonth: '', birthdayYear: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -516,6 +523,9 @@ export function CreateCustomerPage({
     temporaryPassword: TEMP_CUSTOMER_PASSWORD,
     mustResetPassword: true,
     createdByAdminEmail: adminEmail,
+    birthdayDay: optionalNumber(form.birthdayDay),
+    birthdayMonth: optionalNumber(form.birthdayMonth),
+    birthdayYear: optionalNumber(form.birthdayYear),
   } satisfies CreateCustomerAccountResult;
 
   const totalVisitDraft = DRINK_META.reduce((total, item) => total + visitDraft[item.type], 0);
@@ -526,7 +536,7 @@ export function CreateCustomerPage({
   const previewLoginLabel = activeAccount.loginAlias ? 'Accountcode' : 'E-mailadres';
   const previewFirstLogin = getCustomerLoginIdentifier(activeAccount.loginAlias, activeAccount.loginEmail);
 
-  const handleChange = (field: 'name' | 'email', value: string) => {
+  const handleChange = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
     setError('');
     setCopied(false);
@@ -535,7 +545,7 @@ export function CreateCustomerPage({
   const goToCreateMode = () => {
     setMode('create');
     setResolvedInitialMode(true);
-    setForm({ name: '', email: '' });
+    setForm({ name: '', email: '', birthdayDay: '', birthdayMonth: '', birthdayYear: '' });
     setError('');
     setCopied(false);
   };
@@ -551,6 +561,18 @@ export function CreateCustomerPage({
       return;
     }
 
+    let birthday;
+    try {
+      birthday = normalizeBirthdayInput({
+        day: optionalNumber(form.birthdayDay),
+        month: optionalNumber(form.birthdayMonth),
+        year: optionalNumber(form.birthdayYear),
+      });
+    } catch (birthdayError: any) {
+      setError(birthdayError?.message || 'De verjaardag lijkt niet geldig.');
+      return;
+    }
+
     setSaving(true);
     setError('');
     setCopied(false);
@@ -559,6 +581,9 @@ export function CreateCustomerPage({
       const createdAccount = await createCustomerAccount({
         name: normalizedName,
         email: normalizedEmail || undefined,
+        birthdayDay: birthday.day,
+        birthdayMonth: birthday.month,
+        birthdayYear: birthday.year,
       });
 
       setResult(createdAccount);
@@ -567,7 +592,7 @@ export function CreateCustomerPage({
       setSelectedCustomerId(createdAccount.customerId);
       setMode('manage');
       setResolvedInitialMode(true);
-      setForm({ name: '', email: '' });
+      setForm({ name: '', email: '', birthdayDay: '', birthdayMonth: '', birthdayYear: '' });
     } catch (createError: any) {
       setError(createError?.message || 'Account aanmaken mislukt.');
     } finally {
@@ -831,6 +856,45 @@ export function CreateCustomerPage({
                     className="admin-phase-input text-base"
                   />
                 </label>
+
+                <div>
+                  <span className="admin-phase-label">
+                    Verjaardag
+                    <span className="ml-2 normal-case tracking-normal text-[var(--color-cozy-olive)]">optioneel</span>
+                  </span>
+                  <div className="grid grid-cols-3 gap-3">
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      inputMode="numeric"
+                      value={form.birthdayDay}
+                      onChange={(event) => handleChange('birthdayDay', event.target.value)}
+                      placeholder="Dag"
+                      className="admin-phase-input text-base"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      inputMode="numeric"
+                      value={form.birthdayMonth}
+                      onChange={(event) => handleChange('birthdayMonth', event.target.value)}
+                      placeholder="Maand"
+                      className="admin-phase-input text-base"
+                    />
+                    <input
+                      type="number"
+                      min="1900"
+                      max={new Date().getFullYear()}
+                      inputMode="numeric"
+                      value={form.birthdayYear}
+                      onChange={(event) => handleChange('birthdayYear', event.target.value)}
+                      placeholder="Jaar"
+                      className="admin-phase-input text-base"
+                    />
+                  </div>
+                </div>
               </div>
 
               {error && (
@@ -900,6 +964,14 @@ export function CreateCustomerPage({
                     <p className="break-all text-sm font-medium text-[var(--color-cozy-text)]">{previewContactLabel}</p>
                   </div>
                 </div>
+
+                <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-white/5' : 'bg-white/80')}>
+                  <p className="admin-phase-kicker">Verjaardag</p>
+                  <div className="mt-2 flex items-start gap-2">
+                    <CalendarDays size={16} className="mt-0.5 text-[var(--color-cozy-olive)]" />
+                    <p className="text-sm font-medium text-[var(--color-cozy-text)]">{formatCustomerBirthday(activeAccount)}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -938,7 +1010,7 @@ export function CreateCustomerPage({
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-4">
                     <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-black/20' : 'bg-white/80')}>
                       <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-700">{result.loginAlias ? 'Accountcode' : 'E-mailadres'}</p>
                       <p className="mt-2 break-all font-mono text-lg font-bold text-[var(--color-cozy-text)]">{result.loginIdentifier}</p>
@@ -950,6 +1022,10 @@ export function CreateCustomerPage({
                     <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-black/20' : 'bg-white/80')}>
                       <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-700">Contact op dossier</p>
                       <p className="mt-2 break-all text-sm font-semibold text-[var(--color-cozy-text)]">{getCustomerContactLabel(result.contactEmail, result.loginAlias, result.loginEmail)}</p>
+                    </div>
+                    <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-black/20' : 'bg-white/80')}>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-700">Verjaardag</p>
+                      <p className="mt-2 text-sm font-semibold text-[var(--color-cozy-text)]">{formatCustomerBirthday(result)}</p>
                     </div>
                   </div>
                 </div>
@@ -1129,6 +1205,7 @@ export function CreateCustomerPage({
 
                       <div className="admin-phase-muted-note mt-3 flex items-center justify-between gap-3 text-xs">
                         <span>{totalRewards} open beloning{totalRewards === 1 ? '' : 'en'}</span>
+                        <span>{formatCustomerBirthday(customer)}</span>
                         <span>{customer.totalVisits} bezoek{customer.totalVisits === 1 ? '' : 'en'}</span>
                       </div>
                     </button>
@@ -1180,7 +1257,7 @@ export function CreateCustomerPage({
                         </p>
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
+                      <div className="grid gap-3 sm:grid-cols-4 xl:min-w-[560px]">
                         <div className="admin-phase-detail-card rounded-[22px] px-4 py-4">
                           <p className="admin-phase-kicker">Aanmelden met</p>
                           <p className="mt-2 text-base font-semibold text-[var(--color-cozy-text)]">
@@ -1197,6 +1274,10 @@ export function CreateCustomerPage({
                         <div className="admin-phase-metric rounded-[22px] px-4 py-4">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">Open beloningen</p>
                           <p className="mt-2 font-mono text-2xl font-bold text-[var(--color-cozy-text)]">{totalOpenRewards}</p>
+                        </div>
+                        <div className="admin-phase-metric rounded-[22px] px-4 py-4">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">Verjaardag</p>
+                          <p className="mt-2 text-sm font-bold text-[var(--color-cozy-text)]">{formatCustomerBirthday(selectedCustomer)}</p>
                         </div>
                       </div>
                     </div>

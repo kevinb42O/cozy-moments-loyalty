@@ -8,6 +8,7 @@ import { LoadingScreen } from '../../shared/components/LoadingScreen';
 import { supabase } from '../../shared/lib/supabase';
 import { normalizeActivePromos, type ActivePromo } from '../../shared/lib/drink-menu';
 import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
+import { formatCustomerBirthday, normalizeBirthdayInput } from '../../shared/lib/customer-birthday';
 import { LOYALTY_TIER_CONFIG, LOYALTY_TIER_ORDER, getLoyaltyProgress } from '../../shared/lib/loyalty-tier';
 import {
   fetchCustomerPushState,
@@ -23,7 +24,7 @@ const CARD_TYPES: CardType[] = ['coffee', 'wine', 'beer', 'soda'];
 const PROMO_ROTATION_INTERVAL_MS = 10_000;
 
 export const CustomerPage: React.FC = () => {
-  const { currentCustomer } = useLoyalty();
+  const { currentCustomer, updateCustomerBirthday } = useLoyalty();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(true);
@@ -39,6 +40,10 @@ export const CustomerPage: React.FC = () => {
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [birthdayDraft, setBirthdayDraft] = useState({ day: '', month: '', year: '' });
+  const [birthdaySaving, setBirthdaySaving] = useState(false);
+  const [birthdayMessage, setBirthdayMessage] = useState<string | null>(null);
+  const [birthdayError, setBirthdayError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setShowWelcome(false), 5000);
@@ -168,6 +173,16 @@ export const CustomerPage: React.FC = () => {
     };
   }, [currentCustomer?.id, currentCustomer?.totalVisits, currentCustomer?.rewards.coffee, currentCustomer?.rewards.wine, currentCustomer?.rewards.beer, currentCustomer?.rewards.soda]);
 
+  useEffect(() => {
+    setBirthdayDraft({
+      day: currentCustomer?.birthdayDay ? String(currentCustomer.birthdayDay) : '',
+      month: currentCustomer?.birthdayMonth ? String(currentCustomer.birthdayMonth) : '',
+      year: currentCustomer?.birthdayYear ? String(currentCustomer.birthdayYear) : '',
+    });
+    setBirthdayMessage(null);
+    setBirthdayError(null);
+  }, [currentCustomer?.id, currentCustomer?.birthdayDay, currentCustomer?.birthdayMonth, currentCustomer?.birthdayYear]);
+
 
   if (!currentCustomer) {
     if (!loadTimeout) return <LoadingScreen variant="customer" />;
@@ -229,6 +244,7 @@ export const CustomerPage: React.FC = () => {
     currentCustomer.loginAlias,
     currentCustomer.loginEmail,
   );
+  const birthdayLabel = formatCustomerBirthday(currentCustomer);
   const pushPermissionLabel = pushState.permission === 'default'
     ? 'nog niet gevraagd'
     : pushState.permission === 'granted'
@@ -312,6 +328,28 @@ export const CustomerPage: React.FC = () => {
       setPushError(error?.message || 'Voorkeur opslaan mislukte.');
     } finally {
       setPushBusy(false);
+    }
+  };
+
+  const handleBirthdaySave = async () => {
+    if (!currentCustomer) return;
+
+    setBirthdaySaving(true);
+    setBirthdayMessage(null);
+    setBirthdayError(null);
+
+    try {
+      const normalized = normalizeBirthdayInput({
+        day: birthdayDraft.day.trim() ? Number(birthdayDraft.day) : null,
+        month: birthdayDraft.month.trim() ? Number(birthdayDraft.month) : null,
+        year: birthdayDraft.year.trim() ? Number(birthdayDraft.year) : null,
+      });
+      await updateCustomerBirthday(currentCustomer.id, normalized);
+      setBirthdayMessage('Verjaardag opgeslagen.');
+    } catch (error: any) {
+      setBirthdayError(error?.message || 'Verjaardag opslaan mislukt.');
+    } finally {
+      setBirthdaySaving(false);
     }
   };
 
@@ -715,6 +753,75 @@ export const CustomerPage: React.FC = () => {
                     <p className="text-sm font-medium text-[var(--color-cozy-text)]">{memberSince}</p>
                     <p className="text-xs text-gray-500 mt-1">Je account werd toen voor het eerst geregistreerd.</p>
                   </div>
+                </div>
+
+                <div className="rounded-[24px] border border-gray-100 bg-white shadow-sm px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
+                        <CalendarDays size={16} />
+                        <span className="text-xs font-medium uppercase tracking-wide">Verjaardag</span>
+                      </div>
+                      <h3 className="font-display font-bold text-[var(--color-cozy-text)]">{birthdayLabel}</h3>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                        Dag en maand zijn genoeg. Het jaartal mag leeg blijven.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-3">
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      inputMode="numeric"
+                      value={birthdayDraft.day}
+                      onChange={(event) => setBirthdayDraft((current) => ({ ...current, day: event.target.value }))}
+                      placeholder="Dag"
+                      className="w-full rounded-2xl border border-gray-200 bg-[#f8f8f5] px-3 py-3 text-sm font-medium text-[var(--color-cozy-text)] outline-none focus:border-[var(--color-cozy-olive)]"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      inputMode="numeric"
+                      value={birthdayDraft.month}
+                      onChange={(event) => setBirthdayDraft((current) => ({ ...current, month: event.target.value }))}
+                      placeholder="Maand"
+                      className="w-full rounded-2xl border border-gray-200 bg-[#f8f8f5] px-3 py-3 text-sm font-medium text-[var(--color-cozy-text)] outline-none focus:border-[var(--color-cozy-olive)]"
+                    />
+                    <input
+                      type="number"
+                      min="1900"
+                      max={new Date().getFullYear()}
+                      inputMode="numeric"
+                      value={birthdayDraft.year}
+                      onChange={(event) => setBirthdayDraft((current) => ({ ...current, year: event.target.value }))}
+                      placeholder="Jaar"
+                      className="w-full rounded-2xl border border-gray-200 bg-[#f8f8f5] px-3 py-3 text-sm font-medium text-[var(--color-cozy-text)] outline-none focus:border-[var(--color-cozy-olive)]"
+                    />
+                  </div>
+
+                  {birthdayError && (
+                    <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700 leading-relaxed">
+                      {birthdayError}
+                    </div>
+                  )}
+
+                  {birthdayMessage && (
+                    <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-700 leading-relaxed">
+                      {birthdayMessage}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleBirthdaySave}
+                    disabled={birthdaySaving}
+                    className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-[var(--color-cozy-text)] px-4 text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {birthdaySaving ? 'Opslaan...' : 'Verjaardag opslaan'}
+                  </button>
                 </div>
 
                 <div className="rounded-[24px] border border-gray-100 bg-white shadow-sm px-4 py-4">

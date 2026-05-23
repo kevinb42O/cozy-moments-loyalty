@@ -4,6 +4,9 @@ import { callAdminEdgeFunction } from './admin-edge';
 export interface CreateCustomerAccountInput {
   name: string;
   email?: string;
+  birthdayDay?: number | null;
+  birthdayMonth?: number | null;
+  birthdayYear?: number | null;
 }
 
 export interface CreateCustomerAccountResult {
@@ -16,12 +19,18 @@ export interface CreateCustomerAccountResult {
   temporaryPassword: string;
   mustResetPassword: boolean;
   createdByAdminEmail: string | null;
+  birthdayDay: number | null;
+  birthdayMonth: number | null;
+  birthdayYear: number | null;
 }
 
 export async function createCustomerAccount(input: CreateCustomerAccountInput) {
   const payload = {
     name: input.name.trim(),
     email: input.email?.trim() ? input.email.trim().toLowerCase() : null,
+    birthdayDay: input.birthdayDay ?? null,
+    birthdayMonth: input.birthdayMonth ?? null,
+    birthdayYear: input.birthdayYear ?? null,
   };
 
   const result = await callAdminEdgeFunction<Partial<CreateCustomerAccountResult> | null>('create-customer-account', payload);
@@ -40,5 +49,8 @@ export async function createCustomerAccount(input: CreateCustomerAccountInput) {
     temporaryPassword: result.temporaryPassword ?? TEMP_CUSTOMER_PASSWORD,
     mustResetPassword: result.mustResetPassword ?? true,
     createdByAdminEmail: result.createdByAdminEmail ?? null,
+    birthdayDay: result.birthdayDay ?? payload.birthdayDay,
+    birthdayMonth: result.birthdayMonth ?? payload.birthdayMonth,
+    birthdayYear: result.birthdayYear ?? payload.birthdayYear,
   } satisfies CreateCustomerAccountResult;
 }

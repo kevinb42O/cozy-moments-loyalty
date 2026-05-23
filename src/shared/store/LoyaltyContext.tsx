@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { supabase } from '../lib/supabase';
 import { calculateLifetimeConsumptions, resolveLoyaltyTier, type LoyaltyTier } from '../lib/loyalty-tier';
 import { getCustomerLoginAlias } from '../lib/customer-accounts';
+import { normalizeBirthdayInput, type CustomerBirthdayInput } from '../lib/customer-birthday';
 
 export type CardType = 'coffee' | 'wine' | 'beer' | 'soda';
 
@@ -26,6 +27,9 @@ export interface Customer {
   lastVisitAt: string | null;
   welcomeBonusClaimed: boolean;
   bonusCardType: CardType | null;
+  birthdayDay: number | null;
+  birthdayMonth: number | null;
+  birthdayYear: number | null;
   loyaltyPoints: number;
   loyaltyTier: LoyaltyTier;
   mustResetPassword: boolean;
@@ -64,6 +68,7 @@ interface LoyaltyContextType {
   applyManualAdjustment: (input: ManualAdjustmentInput) => Promise<boolean>;
   deleteCustomer: (customerId: string) => Promise<boolean>;
   upsertCustomer: (id: string, name: string, email: string) => Promise<void>;
+  updateCustomerBirthday: (customerId: string, birthday: CustomerBirthdayInput) => Promise<void>;
   refreshCustomers: () => Promise<void>;
 }
 
@@ -115,6 +120,9 @@ function rowToCustomer(row: any): Customer {
     lastVisitAt: row.last_visit_at ?? null,
     welcomeBonusClaimed: row.welcome_bonus_claimed ?? false,
     bonusCardType: (row.bonus_card_type as CardType | null) ?? null,
+    birthdayDay: row.birthday_day ?? null,
+    birthdayMonth: row.birthday_month ?? null,
+    birthdayYear: row.birthday_year ?? null,
     loyaltyPoints,
     loyaltyTier,
     mustResetPassword: row.must_reset_password ?? false,
@@ -172,6 +180,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       coffee_rewards: 0, wine_rewards: 0, beer_rewards: 0, soda_rewards: 0,
       coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0,
       total_visits: 0, last_visit_at: null, welcome_bonus_claimed: false,
+      birthday_day: null, birthday_month: null, birthday_year: null,
       must_reset_password: false, created_by_admin_email: null };
 
     const { error } = await supabase.from('customers').upsert(
@@ -300,6 +309,27 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [fetchFromSupabase]);
 
+  const updateCustomerBirthday = useCallback(async (customerId: string, birthday: CustomerBirthdayInput) => {
+    if (!supabase) return;
+
+    const normalized = normalizeBirthdayInput(birthday);
+    const { error } = await supabase
+      .from('customers')
+      .update({
+        birthday_day: normalized.day,
+        birthday_month: normalized.month,
+        birthday_year: normalized.year,
+      })
+      .eq('id', customerId);
+
+    if (error) {
+      console.error('updateCustomerBirthday error:', error);
+      throw new Error(error.message || 'Verjaardag opslaan mislukt');
+    }
+
+    await fetchFromSupabase();
+  }, [fetchFromSupabase]);
+
   const currentCustomer = customers.find(c => c.id === currentCustomerId) ?? null;
 
   const refreshCustomers = useCallback(async () => {
@@ -309,7 +339,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const value = useMemo(() => ({
     customers, currentCustomer, loading, dbError,
     setCurrentCustomer: setCurrentCustomerWithPin,
-    addConsumptions, claimReward, applyManualAdjustment, deleteCustomer, upsertCustomer, refreshCustomers,
+    addConsumptions, claimReward, applyManualAdjustment, deleteCustomer, upsertCustomer, updateCustomerBirthday, refreshCustomers,
   }), [
     customers,
     currentCustomer,
@@ -321,6 +351,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     applyManualAdjustment,
     deleteCustomer,
     upsertCustomer,
+    updateCustomerBirthday,
     refreshCustomers,
   ]);
 

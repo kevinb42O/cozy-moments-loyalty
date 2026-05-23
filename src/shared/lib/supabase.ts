@@ -39,6 +39,9 @@ export type Database = {
           last_visit_at: string | null;
           welcome_bonus_claimed: boolean;
           bonus_card_type: string | null;
+          birthday_day: number | null;
+          birthday_month: number | null;
+          birthday_year: number | null;
           must_reset_password: boolean;
           created_by_admin_email: string | null;
           created_at: string;

@@ -15,6 +15,7 @@ import { exportScreensaverToMp4 } from '../lib/screensaver-mp4-export';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
 import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
+import { formatCustomerBirthday, getBirthdayReminders } from '../../shared/lib/customer-birthday';
 import { isCustomerManagedByAdmin, isManagedCustomer } from '../lib/managed-customers';
 import {
   LOYALTY_TIER_CONFIG,
@@ -1637,6 +1638,11 @@ export const BusinessPage: React.FC = () => {
     [customers],
   );
 
+  const birthdayReminders = useMemo(
+    () => getBirthdayReminders(customers, new Date(clockNow), 7),
+    [customers, clockNow],
+  );
+
   const handleIncrement = (type: CardType) => {
     setConsumptions(prev => ({ ...prev, [type]: prev[type] + 1 }));
   };
@@ -2505,14 +2511,15 @@ export const BusinessPage: React.FC = () => {
                   // ── 1. CSV (Excel / nieuwsbrief import) ────────────
                   // Belgian/Dutch Excel uses semicolons as separator
                   const SEP = ';';
-                  const csvHeader = ['Naam','Contact','Level','Level_Punten','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Loyaliteitskorting','Klant_Sinds'].join(SEP);
+                  const csvHeader = ['Naam','Contact','Verjaardag','Level','Level_Punten','Koffie_Stempels','Wijn_Stempels','Bier_Stempels','Frisdrank_Stempels','Koffie_Volle_Kaarten','Wijn_Volle_Kaarten','Bier_Volle_Kaarten','Frisdrank_Volle_Kaarten','Koffie_Ingewisseld','Wijn_Ingewisseld','Bier_Ingewisseld','Frisdrank_Ingewisseld','Koffie_Totaal','Wijn_Totaal','Bier_Totaal','Frisdrank_Totaal','Koffie_Gem_Maand','Wijn_Gem_Maand','Bier_Gem_Maand','Frisdrank_Gem_Maand','Totaal_Bezoeken','Laatste_Bezoek','Geschatte_Omzet','Loyaliteitskorting','Klant_Sinds'].join(SEP);
                   const csvRows = exportCustomers.map((c, idx) => {
                     const st = allStats[idx];
                     const name = `"${c.name.replaceAll('"', '""')}"`;
                     const email = `"${getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail).replaceAll('"', '""')}"`;
+                    const birthday = `"${formatCustomerBirthday(c).replaceAll('"', '""')}"`;
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-                    return [name, email, LOYALTY_TIER_CONFIG[c.loyaltyTier].label, c.loyaltyPoints, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, `€${st.estimatedGivenAway.toFixed(2)}`, since].join(SEP);
+                    return [name, email, birthday, LOYALTY_TIER_CONFIG[c.loyaltyTier].label, c.loyaltyPoints, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, `€${st.estimatedGivenAway.toFixed(2)}`, since].join(SEP);
                   });
                   const csvTotalsRow = ['"TOTAAL ALLE KLANTEN"', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotal.coffee, grandTotal.wine, grandTotal.beer, grandTotal.soda, '', '', '', '', ''].join(SEP);
                   download([csvHeader, ...csvRows, '', csvTotalsRow].join('\n'), `cozy-moments-klanten-${fileDate}.csv`, 'text/csv');
@@ -2535,6 +2542,7 @@ export const BusinessPage: React.FC = () => {
                       '────────────────────────────────────────',
                       `${i + 1}. ${c.name}`,
                       `   Contact:       ${getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail)}`,
+                      `   Verjaardag:    ${formatCustomerBirthday(c)}`,
                       `   Level:         ${LOYALTY_TIER_CONFIG[c.loyaltyTier].label} (${c.loyaltyPoints} punten)`,
                       `   Klant sinds:   ${since}`,
                       `   Laatste bezoek: ${lastVisit}`,
@@ -2594,6 +2602,35 @@ export const BusinessPage: React.FC = () => {
                 <p className="text-sm text-gray-400 italic">Geen actieve promo's. Open het Open flessen-paneel om een fles in promo te zetten.</p>
               )}
             </div>
+
+            {birthdayReminders.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm p-4 mb-4 border border-amber-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <Gift size={16} className="text-amber-600" />
+                  <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">Verjaardagen</span>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {birthdayReminders.map((reminder) => (
+                    <button
+                      key={reminder.customer.id}
+                      type="button"
+                      onClick={() => setExpandedCustomer(reminder.customer.id)}
+                      className="rounded-xl border border-amber-100 bg-amber-50/70 px-3 py-3 text-left transition-colors hover:bg-amber-50"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[var(--color-cozy-text)] truncate">{reminder.customer.name}</p>
+                          <p className="mt-1 text-xs text-amber-700">{formatCustomerBirthday(reminder.customer)}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-amber-700 shadow-sm">
+                          {reminder.label}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ── Dashboard Summary Cards ─────────────────────────── */}
             {(() => {
@@ -2728,6 +2765,7 @@ export const BusinessPage: React.FC = () => {
                 ? tierFiltered.filter(c =>
                     c.name.toLowerCase().includes(q) ||
                     getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail).toLowerCase().includes(q) ||
+                      formatCustomerBirthday(c).toLowerCase().includes(q) ||
                     (c.loginAlias || '').toLowerCase().includes(q)
                   )
                 : tierFiltered;
@@ -2769,6 +2807,7 @@ export const BusinessPage: React.FC = () => {
                           )}
                         </div>
                         <p className="text-xs text-gray-400 truncate mt-0.5">{getCustomerContactLabel(customer.email, customer.loginAlias, customer.loginEmail)}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Verjaardag: {formatCustomerBirthday(customer)}</p>
                         <p className="text-[11px] text-[var(--color-cozy-text)]/65 mt-1">
                           {stats.loyaltyPoints} punten
                           {stats.loyaltyProgress.nextTier ? ` • nog ${stats.loyaltyProgress.pointsNeeded} tot ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : ' • hoogste level bereikt'}
@@ -2838,6 +2877,11 @@ export const BusinessPage: React.FC = () => {
                           <div className="flex items-center gap-2 mt-4 mb-4 bg-gray-50 rounded-xl px-4 py-3">
                             <Mail size={16} className="text-gray-400 flex-shrink-0" />
                             <span className="text-sm text-gray-600 break-all">{getCustomerContactLabel(customer.email, customer.loginAlias, customer.loginEmail)}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2 mb-4 bg-amber-50 rounded-xl px-4 py-3 border border-amber-100">
+                            <Gift size={16} className="text-amber-600 flex-shrink-0" />
+                            <span className="text-sm font-medium text-[var(--color-cozy-text)]">Verjaardag: {formatCustomerBirthday(customer)}</span>
                           </div>
 
                           {/* ── Klant Intelligence ──────────────────── */}

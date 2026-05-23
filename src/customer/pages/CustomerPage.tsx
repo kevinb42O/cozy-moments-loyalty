@@ -8,7 +8,7 @@ import { LoadingScreen } from '../../shared/components/LoadingScreen';
 import { supabase } from '../../shared/lib/supabase';
 import { normalizeActivePromos, type ActivePromo } from '../../shared/lib/drink-menu';
 import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
-import { formatCustomerBirthday, normalizeBirthdayInput } from '../../shared/lib/customer-birthday';
+import { formatCustomerBirthdays, normalizeBirthdayInput } from '../../shared/lib/customer-birthday';
 import { LOYALTY_TIER_CONFIG, LOYALTY_TIER_ORDER, getLoyaltyProgress } from '../../shared/lib/loyalty-tier';
 import {
   fetchCustomerPushState,
@@ -40,7 +40,8 @@ export const CustomerPage: React.FC = () => {
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
-  const [birthdayDraft, setBirthdayDraft] = useState({ day: '', month: '', year: '' });
+  const [birthdayDraft, setBirthdayDraft] = useState({ day: '', month: '', year: '', partnerFirstName: '', partnerDay: '', partnerMonth: '', partnerYear: '' });
+  const [showPartnerBirthday, setShowPartnerBirthday] = useState(false);
   const [birthdaySaving, setBirthdaySaving] = useState(false);
   const [birthdayMessage, setBirthdayMessage] = useState<string | null>(null);
   const [birthdayError, setBirthdayError] = useState<string | null>(null);
@@ -178,8 +179,13 @@ export const CustomerPage: React.FC = () => {
       day: currentCustomer?.birthdayDay ? String(currentCustomer.birthdayDay) : '',
       month: currentCustomer?.birthdayMonth ? String(currentCustomer.birthdayMonth) : '',
       year: currentCustomer?.birthdayYear ? String(currentCustomer.birthdayYear) : '',
+      partnerFirstName: currentCustomer?.partnerFirstName ?? '',
+      partnerDay: currentCustomer?.partnerBirthdayDay ? String(currentCustomer.partnerBirthdayDay) : '',
+      partnerMonth: currentCustomer?.partnerBirthdayMonth ? String(currentCustomer.partnerBirthdayMonth) : '',
+      partnerYear: currentCustomer?.partnerBirthdayYear ? String(currentCustomer.partnerBirthdayYear) : '',
     });
-  }, [currentCustomer?.id, currentCustomer?.birthdayDay, currentCustomer?.birthdayMonth, currentCustomer?.birthdayYear]);
+    setShowPartnerBirthday(Boolean(currentCustomer?.partnerFirstName));
+  }, [currentCustomer?.id, currentCustomer?.birthdayDay, currentCustomer?.birthdayMonth, currentCustomer?.birthdayYear, currentCustomer?.partnerFirstName, currentCustomer?.partnerBirthdayDay, currentCustomer?.partnerBirthdayMonth, currentCustomer?.partnerBirthdayYear]);
 
   useEffect(() => {
     setBirthdayMessage(null);
@@ -247,7 +253,10 @@ export const CustomerPage: React.FC = () => {
     currentCustomer.loginAlias,
     currentCustomer.loginEmail,
   );
-  const birthdayLabel = formatCustomerBirthday(currentCustomer);
+  const birthdayLabel = formatCustomerBirthdays(currentCustomer);
+  const hasPartnerDraft = showPartnerBirthday
+    || Boolean(birthdayDraft.partnerFirstName.trim() || birthdayDraft.partnerDay.trim() || birthdayDraft.partnerMonth.trim() || birthdayDraft.partnerYear.trim());
+  const shouldSubmitPartnerBirthday = hasPartnerDraft || Boolean(currentCustomer.partnerFirstName);
   const pushPermissionLabel = pushState.permission === 'default'
     ? 'nog niet gevraagd'
     : pushState.permission === 'granted'
@@ -347,7 +356,14 @@ export const CustomerPage: React.FC = () => {
         month: birthdayDraft.month.trim() ? Number(birthdayDraft.month) : null,
         year: birthdayDraft.year.trim() ? Number(birthdayDraft.year) : null,
       });
-      await updateCustomerBirthday(currentCustomer.id, normalized);
+      await updateCustomerBirthday(currentCustomer.id, normalized, shouldSubmitPartnerBirthday ? {
+        firstName: birthdayDraft.partnerFirstName,
+        birthday: {
+          day: birthdayDraft.partnerDay.trim() ? Number(birthdayDraft.partnerDay) : null,
+          month: birthdayDraft.partnerMonth.trim() ? Number(birthdayDraft.partnerMonth) : null,
+          year: birthdayDraft.partnerYear.trim() ? Number(birthdayDraft.partnerYear) : null,
+        },
+      } : undefined);
       setBirthdayMessage('Verjaardag opgeslagen.');
     } catch (error: any) {
       setBirthdayError(error?.message || 'Verjaardag opslaan mislukt.');
@@ -763,11 +779,11 @@ export const CustomerPage: React.FC = () => {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-[var(--color-cozy-olive)] mb-2">
                         <CalendarDays size={16} />
-                        <span className="text-xs font-medium uppercase tracking-wide">Verjaardag</span>
+                        <span className="text-xs font-medium uppercase tracking-wide">Verjaardagen</span>
                       </div>
                       <h3 className="font-display font-bold text-[var(--color-cozy-text)]">{birthdayLabel}</h3>
                       <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                        Dag en maand zijn genoeg. Het jaartal mag leeg blijven.
+                        Dag en maand zijn genoeg. Een tweede verjaardag kan onderaan toegevoegd worden.
                       </p>
                     </div>
                   </div>
@@ -804,6 +820,77 @@ export const CustomerPage: React.FC = () => {
                       className="w-full rounded-2xl border border-gray-200 bg-[#f8f8f5] px-3 py-3 text-sm font-medium text-[var(--color-cozy-text)] outline-none focus:border-[var(--color-cozy-olive)]"
                     />
                   </div>
+
+                  {showPartnerBirthday ? (
+                    <div className="mt-4 rounded-2xl border border-[#e8dcc8] bg-[#f8f8f5] px-3 py-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-cozy-olive)]">Partner</p>
+                          <p className="text-xs text-gray-500">Alleen voor gedeelde accounts.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBirthdayDraft((current) => ({ ...current, partnerFirstName: '', partnerDay: '', partnerMonth: '', partnerYear: '' }));
+                            setBirthdayError(null);
+                            setBirthdayMessage(null);
+                            setShowPartnerBirthday(false);
+                          }}
+                          className="rounded-full px-3 py-1.5 text-xs font-semibold text-gray-500 hover:bg-white"
+                        >
+                          Verwijderen
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={birthdayDraft.partnerFirstName}
+                        onChange={(event) => setBirthdayDraft((current) => ({ ...current, partnerFirstName: event.target.value }))}
+                        placeholder="Voornaam partner"
+                        autoComplete="given-name"
+                        className="mb-3 w-full rounded-2xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-[var(--color-cozy-text)] outline-none focus:border-[var(--color-cozy-olive)]"
+                      />
+                      <div className="grid grid-cols-3 gap-3">
+                        <input
+                          type="number"
+                          min="1"
+                          max="31"
+                          inputMode="numeric"
+                          value={birthdayDraft.partnerDay}
+                          onChange={(event) => setBirthdayDraft((current) => ({ ...current, partnerDay: event.target.value }))}
+                          placeholder="Dag"
+                          className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-[var(--color-cozy-text)] outline-none focus:border-[var(--color-cozy-olive)]"
+                        />
+                        <input
+                          type="number"
+                          min="1"
+                          max="12"
+                          inputMode="numeric"
+                          value={birthdayDraft.partnerMonth}
+                          onChange={(event) => setBirthdayDraft((current) => ({ ...current, partnerMonth: event.target.value }))}
+                          placeholder="Maand"
+                          className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-[var(--color-cozy-text)] outline-none focus:border-[var(--color-cozy-olive)]"
+                        />
+                        <input
+                          type="number"
+                          min="1900"
+                          max={new Date().getFullYear()}
+                          inputMode="numeric"
+                          value={birthdayDraft.partnerYear}
+                          onChange={(event) => setBirthdayDraft((current) => ({ ...current, partnerYear: event.target.value }))}
+                          placeholder="Jaar"
+                          className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-[var(--color-cozy-text)] outline-none focus:border-[var(--color-cozy-olive)]"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowPartnerBirthday(true)}
+                      className="mt-4 inline-flex min-h-10 items-center justify-center rounded-2xl border border-gray-200 bg-[#f8f8f5] px-4 text-sm font-semibold text-[var(--color-cozy-text)] transition-colors hover:bg-white"
+                    >
+                      Partner toevoegen
+                    </button>
+                  )}
 
                   {birthdayError && (
                     <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700 leading-relaxed">

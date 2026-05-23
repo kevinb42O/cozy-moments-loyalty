@@ -153,9 +153,9 @@ function favoriteTypes(customer: any) {
   return entries.filter(([, score]) => Number(score) === max).map(([type]) => type);
 }
 
-function nextBirthdayDate(customer: any, now = Date.now()) {
-  const day = Number(customer.birthday_day ?? 0);
-  const month = Number(customer.birthday_month ?? 0);
+function nextBirthdayDate(dayValue: unknown, monthValue: unknown, now = Date.now()) {
+  const day = Number(dayValue ?? 0);
+  const month = Number(monthValue ?? 0);
   if (!Number.isInteger(day) || !Number.isInteger(month) || day < 1 || month < 1 || month > 12) return null;
 
   const nowDate = new Date(now);
@@ -197,12 +197,17 @@ export function matchesAudience(customer: any, preference: any, filters: any, ca
   }
 
   if (typeof filters?.birthdayWindowDays === 'number') {
-    const birthday = nextBirthdayDate(customer, now);
-    if (!birthday) return false;
     const nowDate = new Date(now);
     const today = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
-    const daysUntil = Math.round((birthday.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
-    if (daysUntil < 0 || daysUntil > filters.birthdayWindowDays) return false;
+    const birthdayDates = [
+      nextBirthdayDate(customer.birthday_day, customer.birthday_month, now),
+      nextBirthdayDate(customer.partner_birthday_day, customer.partner_birthday_month, now),
+    ].filter(Boolean);
+    const hasBirthdayInWindow = birthdayDates.some((birthday) => {
+      const daysUntil = Math.round((birthday.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+      return daysUntil >= 0 && daysUntil <= filters.birthdayWindowDays;
+    });
+    if (!hasBirthdayInWindow) return false;
   }
 
   if (Array.isArray(filters?.favoriteDrinkTypes) && filters.favoriteDrinkTypes.length > 0) {

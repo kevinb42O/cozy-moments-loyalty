@@ -22,6 +22,10 @@ export interface CreateCustomerAccountResult {
   birthdayDay: number | null;
   birthdayMonth: number | null;
   birthdayYear: number | null;
+  partnerFirstName: string | null;
+  partnerBirthdayDay: number | null;
+  partnerBirthdayMonth: number | null;
+  partnerBirthdayYear: number | null;
 }
 
 export async function createCustomerAccount(input: CreateCustomerAccountInput) {
@@ -52,5 +56,9 @@ export async function createCustomerAccount(input: CreateCustomerAccountInput) {
     birthdayDay: result.birthdayDay ?? payload.birthdayDay,
     birthdayMonth: result.birthdayMonth ?? payload.birthdayMonth,
     birthdayYear: result.birthdayYear ?? payload.birthdayYear,
+    partnerFirstName: result.partnerFirstName ?? null,
+    partnerBirthdayDay: result.partnerBirthdayDay ?? null,
+    partnerBirthdayMonth: result.partnerBirthdayMonth ?? null,
+    partnerBirthdayYear: result.partnerBirthdayYear ?? null,
   } satisfies CreateCustomerAccountResult;
 }

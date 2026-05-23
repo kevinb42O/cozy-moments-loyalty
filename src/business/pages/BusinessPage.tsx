@@ -15,7 +15,7 @@ import { exportScreensaverToMp4 } from '../lib/screensaver-mp4-export';
 import { signQrPayload } from '../../shared/lib/qr-crypto';
 import { supabase } from '../../shared/lib/supabase';
 import { getCustomerContactLabel } from '../../shared/lib/customer-accounts';
-import { formatCustomerBirthday, getBirthdayReminders } from '../../shared/lib/customer-birthday';
+import { formatCustomerBirthdays, getBirthdayReminders } from '../../shared/lib/customer-birthday';
 import { isCustomerManagedByAdmin, isManagedCustomer } from '../lib/managed-customers';
 import {
   LOYALTY_TIER_CONFIG,
@@ -2516,7 +2516,7 @@ export const BusinessPage: React.FC = () => {
                     const st = allStats[idx];
                     const name = `"${c.name.replaceAll('"', '""')}"`;
                     const email = `"${getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail).replaceAll('"', '""')}"`;
-                    const birthday = `"${formatCustomerBirthday(c).replaceAll('"', '""')}"`;
+                    const birthday = `"${formatCustomerBirthdays(c).replaceAll('"', '""')}"`;
                     const since = new Date(c.createdAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     const lastVisit = c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
                     return [name, email, birthday, LOYALTY_TIER_CONFIG[c.loyaltyTier].label, c.loyaltyPoints, c.cards.coffee, c.cards.wine, c.cards.beer, c.cards.soda, c.rewards.coffee || 0, c.rewards.wine || 0, c.rewards.beer || 0, c.rewards.soda || 0, c.claimedRewards?.coffee || 0, c.claimedRewards?.wine || 0, c.claimedRewards?.beer || 0, c.claimedRewards?.soda || 0, st.total.coffee, st.total.wine, st.total.beer, st.total.soda, st.avgPerMonth.coffee.toFixed(1), st.avgPerMonth.wine.toFixed(1), st.avgPerMonth.beer.toFixed(1), st.avgPerMonth.soda.toFixed(1), c.totalVisits || 0, lastVisit, `€${st.estimatedRevenue.toFixed(2)}`, `€${st.estimatedGivenAway.toFixed(2)}`, since].join(SEP);
@@ -2542,7 +2542,7 @@ export const BusinessPage: React.FC = () => {
                       '────────────────────────────────────────',
                       `${i + 1}. ${c.name}`,
                       `   Contact:       ${getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail)}`,
-                      `   Verjaardag:    ${formatCustomerBirthday(c)}`,
+                      `   Verjaardag:    ${formatCustomerBirthdays(c)}`,
                       `   Level:         ${LOYALTY_TIER_CONFIG[c.loyaltyTier].label} (${c.loyaltyPoints} punten)`,
                       `   Klant sinds:   ${since}`,
                       `   Laatste bezoek: ${lastVisit}`,
@@ -2612,15 +2612,15 @@ export const BusinessPage: React.FC = () => {
                 <div className="grid gap-2 md:grid-cols-2">
                   {birthdayReminders.map((reminder) => (
                     <button
-                      key={reminder.customer.id}
+                      key={`${reminder.customer.id}-${reminder.owner}`}
                       type="button"
                       onClick={() => setExpandedCustomer(reminder.customer.id)}
                       className="rounded-xl border border-amber-100 bg-amber-50/70 px-3 py-3 text-left transition-colors hover:bg-amber-50"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-semibold text-[var(--color-cozy-text)] truncate">{reminder.customer.name}</p>
-                          <p className="mt-1 text-xs text-amber-700">{formatCustomerBirthday(reminder.customer)}</p>
+                          <p className="font-semibold text-[var(--color-cozy-text)] truncate">{reminder.personName}</p>
+                          <p className="mt-1 text-xs text-amber-700">{reminder.customer.name} - {reminder.birthdayLabel}</p>
                         </div>
                         <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-amber-700 shadow-sm">
                           {reminder.label}
@@ -2765,7 +2765,7 @@ export const BusinessPage: React.FC = () => {
                 ? tierFiltered.filter(c =>
                     c.name.toLowerCase().includes(q) ||
                     getCustomerContactLabel(c.email, c.loginAlias, c.loginEmail).toLowerCase().includes(q) ||
-                      formatCustomerBirthday(c).toLowerCase().includes(q) ||
+                      formatCustomerBirthdays(c).toLowerCase().includes(q) ||
                     (c.loginAlias || '').toLowerCase().includes(q)
                   )
                 : tierFiltered;
@@ -2807,7 +2807,7 @@ export const BusinessPage: React.FC = () => {
                           )}
                         </div>
                         <p className="text-xs text-gray-400 truncate mt-0.5">{getCustomerContactLabel(customer.email, customer.loginAlias, customer.loginEmail)}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">Verjaardag: {formatCustomerBirthday(customer)}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Verjaardag: {formatCustomerBirthdays(customer)}</p>
                         <p className="text-[11px] text-[var(--color-cozy-text)]/65 mt-1">
                           {stats.loyaltyPoints} punten
                           {stats.loyaltyProgress.nextTier ? ` • nog ${stats.loyaltyProgress.pointsNeeded} tot ${LOYALTY_TIER_CONFIG[stats.loyaltyProgress.nextTier].label}` : ' • hoogste level bereikt'}
@@ -2881,7 +2881,7 @@ export const BusinessPage: React.FC = () => {
 
                           <div className="flex items-center gap-2 mb-4 bg-amber-50 rounded-xl px-4 py-3 border border-amber-100">
                             <Gift size={16} className="text-amber-600 flex-shrink-0" />
-                            <span className="text-sm font-medium text-[var(--color-cozy-text)]">Verjaardag: {formatCustomerBirthday(customer)}</span>
+                            <span className="text-sm font-medium text-[var(--color-cozy-text)]">Verjaardag: {formatCustomerBirthdays(customer)}</span>
                           </div>
 
                           {/* ── Klant Intelligence ──────────────────── */}

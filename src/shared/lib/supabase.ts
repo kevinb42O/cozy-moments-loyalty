@@ -42,6 +42,10 @@ export type Database = {
           birthday_day: number | null;
           birthday_month: number | null;
           birthday_year: number | null;
+          partner_first_name: string | null;
+          partner_birthday_day: number | null;
+          partner_birthday_month: number | null;
+          partner_birthday_year: number | null;
           must_reset_password: boolean;
           created_by_admin_email: string | null;
           created_at: string;

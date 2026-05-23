@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS public.customers (
   birthday_day     INTEGER,
   birthday_month   INTEGER,
   birthday_year    INTEGER,
+  partner_first_name TEXT,
+  partner_birthday_day INTEGER,
+  partner_birthday_month INTEGER,
+  partner_birthday_year INTEGER,
   must_reset_password BOOLEAN NOT NULL DEFAULT FALSE,
   loyalty_points   INTEGER     NOT NULL DEFAULT 0,
   loyalty_tier     TEXT        NOT NULL DEFAULT 'bronze' CHECK (loyalty_tier IN ('bronze', 'silver', 'gold', 'vip')),
@@ -61,6 +65,18 @@ ALTER TABLE public.customers
 
 ALTER TABLE public.customers
   ADD COLUMN IF NOT EXISTS birthday_year INTEGER;
+
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS partner_first_name TEXT;
+
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS partner_birthday_day INTEGER;
+
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS partner_birthday_month INTEGER;
+
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS partner_birthday_year INTEGER;
 
 ALTER TABLE public.customers
   DROP CONSTRAINT IF EXISTS customers_birthday_day_check;
@@ -113,6 +129,72 @@ ALTER TABLE public.customers
 CREATE INDEX IF NOT EXISTS customers_birthday_month_day_idx
   ON public.customers (birthday_month, birthday_day)
   WHERE birthday_month IS NOT NULL AND birthday_day IS NOT NULL;
+
+ALTER TABLE public.customers
+  DROP CONSTRAINT IF EXISTS customers_partner_birthday_day_check;
+
+ALTER TABLE public.customers
+  ADD CONSTRAINT customers_partner_birthday_day_check
+  CHECK (partner_birthday_day IS NULL OR partner_birthday_day BETWEEN 1 AND 31);
+
+ALTER TABLE public.customers
+  DROP CONSTRAINT IF EXISTS customers_partner_birthday_month_check;
+
+ALTER TABLE public.customers
+  ADD CONSTRAINT customers_partner_birthday_month_check
+  CHECK (partner_birthday_month IS NULL OR partner_birthday_month BETWEEN 1 AND 12);
+
+ALTER TABLE public.customers
+  DROP CONSTRAINT IF EXISTS customers_partner_birthday_year_check;
+
+ALTER TABLE public.customers
+  ADD CONSTRAINT customers_partner_birthday_year_check
+  CHECK (partner_birthday_year IS NULL OR partner_birthday_year BETWEEN 1900 AND EXTRACT(YEAR FROM NOW())::INTEGER);
+
+ALTER TABLE public.customers
+  DROP CONSTRAINT IF EXISTS customers_partner_birthday_complete_check;
+
+ALTER TABLE public.customers
+  ADD CONSTRAINT customers_partner_birthday_complete_check
+  CHECK (
+    (partner_first_name IS NULL AND partner_birthday_day IS NULL AND partner_birthday_month IS NULL AND partner_birthday_year IS NULL)
+    OR (partner_first_name IS NOT NULL AND partner_birthday_day IS NOT NULL AND partner_birthday_month IS NOT NULL)
+  );
+
+ALTER TABLE public.customers
+  DROP CONSTRAINT IF EXISTS customers_partner_first_name_check;
+
+ALTER TABLE public.customers
+  ADD CONSTRAINT customers_partner_first_name_check
+  CHECK (
+    partner_first_name IS NULL
+    OR (
+      partner_first_name = btrim(partner_first_name)
+      AND char_length(partner_first_name) BETWEEN 2 AND 40
+      AND partner_first_name !~ '[[:space:]]'
+    )
+  );
+
+ALTER TABLE public.customers
+  DROP CONSTRAINT IF EXISTS customers_partner_birthday_valid_date_check;
+
+ALTER TABLE public.customers
+  ADD CONSTRAINT customers_partner_birthday_valid_date_check
+  CHECK (
+    partner_birthday_day IS NULL
+    OR partner_birthday_day <= CASE partner_birthday_month
+      WHEN 2 THEN 29
+      WHEN 4 THEN 30
+      WHEN 6 THEN 30
+      WHEN 9 THEN 30
+      WHEN 11 THEN 30
+      ELSE 31
+    END
+  );
+
+CREATE INDEX IF NOT EXISTS customers_partner_birthday_month_day_idx
+  ON public.customers (partner_birthday_month, partner_birthday_day)
+  WHERE partner_birthday_month IS NOT NULL AND partner_birthday_day IS NOT NULL;
 
 UPDATE public.customers
 SET login_email = COALESCE(NULLIF(login_email, ''), email)

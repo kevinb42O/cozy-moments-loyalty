@@ -27,6 +27,10 @@ function customer(overrides: Partial<Customer>): Customer {
     birthdayDay: null,
     birthdayMonth: null,
     birthdayYear: null,
+    partnerFirstName: null,
+    partnerBirthdayDay: null,
+    partnerBirthdayMonth: null,
+    partnerBirthdayYear: null,
     loyaltyPoints: 0,
     loyaltyTier: 'bronze',
     mustResetPassword: false,
@@ -111,6 +115,7 @@ describe('push notification audience helpers', () => {
     const customers = [
       customer({ id: 'today', birthdayDay: 23, birthdayMonth: 5 }),
       customer({ id: 'soon', birthdayDay: 30, birthdayMonth: 5 }),
+      customer({ id: 'partner-soon', partnerFirstName: 'Lina', partnerBirthdayDay: 24, partnerBirthdayMonth: 5 }),
       customer({ id: 'later', birthdayDay: 31, birthdayMonth: 5 }),
       customer({ id: 'empty' }),
     ];
@@ -129,6 +134,6 @@ describe('push notification audience helpers', () => {
     ));
 
     expect(todayOnly.map((entry) => entry.id)).toEqual(['today']);
-    expect(thisWeek.map((entry) => entry.id)).toEqual(['today', 'soon']);
+    expect(thisWeek.map((entry) => entry.id)).toEqual(['today', 'soon', 'partner-soon']);
   });
 });

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { supabase } from '../lib/supabase';
 import { calculateLifetimeConsumptions, resolveLoyaltyTier, type LoyaltyTier } from '../lib/loyalty-tier';
 import { getCustomerLoginAlias } from '../lib/customer-accounts';
-import { normalizeBirthdayInput, type CustomerBirthdayInput } from '../lib/customer-birthday';
+import { buildSharedAccountName, normalizeBirthdayInput, normalizePartnerBirthdayInput, type CustomerBirthdayInput, type CustomerPartnerBirthdayInput } from '../lib/customer-birthday';
 
 export type CardType = 'coffee' | 'wine' | 'beer' | 'soda';
 
@@ -30,6 +30,10 @@ export interface Customer {
   birthdayDay: number | null;
   birthdayMonth: number | null;
   birthdayYear: number | null;
+  partnerFirstName: string | null;
+  partnerBirthdayDay: number | null;
+  partnerBirthdayMonth: number | null;
+  partnerBirthdayYear: number | null;
   loyaltyPoints: number;
   loyaltyTier: LoyaltyTier;
   mustResetPassword: boolean;
@@ -68,7 +72,7 @@ interface LoyaltyContextType {
   applyManualAdjustment: (input: ManualAdjustmentInput) => Promise<boolean>;
   deleteCustomer: (customerId: string) => Promise<boolean>;
   upsertCustomer: (id: string, name: string, email: string) => Promise<void>;
-  updateCustomerBirthday: (customerId: string, birthday: CustomerBirthdayInput) => Promise<void>;
+  updateCustomerBirthday: (customerId: string, birthday: CustomerBirthdayInput, partner?: CustomerPartnerBirthdayInput) => Promise<void>;
   refreshCustomers: () => Promise<void>;
 }
 
@@ -123,6 +127,10 @@ function rowToCustomer(row: any): Customer {
     birthdayDay: row.birthday_day ?? null,
     birthdayMonth: row.birthday_month ?? null,
     birthdayYear: row.birthday_year ?? null,
+    partnerFirstName: row.partner_first_name ?? null,
+    partnerBirthdayDay: row.partner_birthday_day ?? null,
+    partnerBirthdayMonth: row.partner_birthday_month ?? null,
+    partnerBirthdayYear: row.partner_birthday_year ?? null,
     loyaltyPoints,
     loyaltyTier,
     mustResetPassword: row.must_reset_password ?? false,
@@ -181,6 +189,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       coffee_claimed: 0, wine_claimed: 0, beer_claimed: 0, soda_claimed: 0,
       total_visits: 0, last_visit_at: null, welcome_bonus_claimed: false,
       birthday_day: null, birthday_month: null, birthday_year: null,
+      partner_first_name: null, partner_birthday_day: null, partner_birthday_month: null, partner_birthday_year: null,
       must_reset_password: false, created_by_admin_email: null };
 
     const { error } = await supabase.from('customers').upsert(
@@ -309,16 +318,35 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [fetchFromSupabase]);
 
-  const updateCustomerBirthday = useCallback(async (customerId: string, birthday: CustomerBirthdayInput) => {
+  const updateCustomerBirthday = useCallback(async (customerId: string, birthday: CustomerBirthdayInput, partner?: CustomerPartnerBirthdayInput) => {
     if (!supabase) return;
 
+    const currentCustomer = customers.find((customer) => customer.id === customerId) ?? null;
     const normalized = normalizeBirthdayInput(birthday);
+    const normalizedPartner = partner
+      ? normalizePartnerBirthdayInput(partner)
+      : {
+          firstName: currentCustomer?.partnerFirstName ?? null,
+          birthday: {
+            day: currentCustomer?.partnerBirthdayDay ?? null,
+            month: currentCustomer?.partnerBirthdayMonth ?? null,
+            year: currentCustomer?.partnerBirthdayYear ?? null,
+          },
+        };
+    const nextName = currentCustomer && partner
+      ? buildSharedAccountName(currentCustomer.name, normalizedPartner.firstName, currentCustomer.partnerFirstName)
+      : undefined;
     const { error } = await supabase
       .from('customers')
       .update({
+        ...(nextName ? { name: nextName } : {}),
         birthday_day: normalized.day,
         birthday_month: normalized.month,
         birthday_year: normalized.year,
+        partner_first_name: normalizedPartner.firstName,
+        partner_birthday_day: normalizedPartner.birthday.day,
+        partner_birthday_month: normalizedPartner.birthday.month,
+        partner_birthday_year: normalizedPartner.birthday.year,
       })
       .eq('id', customerId);
 
@@ -328,7 +356,7 @@ export const LoyaltyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     await fetchFromSupabase();
-  }, [fetchFromSupabase]);
+  }, [customers, fetchFromSupabase]);
 
   const currentCustomer = customers.find(c => c.id === currentCustomerId) ?? null;
 

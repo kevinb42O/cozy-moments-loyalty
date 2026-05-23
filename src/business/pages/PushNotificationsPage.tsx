@@ -5,7 +5,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useLoyalty, cardTypeLabels, type CardType } from '../../shared/store/LoyaltyContext';
 import { LOYALTY_TIER_CONFIG, LOYALTY_TIER_ORDER, type LoyaltyTier } from '../../shared/lib/loyalty-tier';
-import { formatCustomerBirthday } from '../../shared/lib/customer-birthday';
+import { formatCustomerBirthdays } from '../../shared/lib/customer-birthday';
 import {
   buildPushAudienceWarnings,
   type PushAudienceFilters,
@@ -631,7 +631,7 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
                       Eerste matches: {customers
                         .filter((customer) => matchingCustomerNames.includes(customer.name))
                         .slice(0, 4)
-                        .map((customer) => `${customer.name} (${formatCustomerBirthday(customer)})`)
+                        .map((customer) => `${customer.name} (${formatCustomerBirthdays(customer)})`)
                         .join(', ')}
                     </p>
                   )}

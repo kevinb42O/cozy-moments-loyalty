@@ -38,7 +38,7 @@ import {
   getCustomerLoginIdentifier,
   TEMP_CUSTOMER_PASSWORD,
 } from '../../shared/lib/customer-accounts';
-import { formatCustomerBirthday, normalizeBirthdayInput } from '../../shared/lib/customer-birthday';
+import { formatCustomerBirthdays, normalizeBirthdayInput } from '../../shared/lib/customer-birthday';
 import { createCustomerAccount, type CreateCustomerAccountResult } from '../lib/create-customer-account';
 
 interface CreateCustomerPageProps {
@@ -429,7 +429,7 @@ export function CreateCustomerPage({
   const [correctionSaving, setCorrectionSaving] = useState(false);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [correctionSuccess, setCorrectionSuccess] = useState<string | null>(null);
-  const [managedBirthdayDraft, setManagedBirthdayDraft] = useState({ day: '', month: '', year: '' });
+  const [managedBirthdayDraft, setManagedBirthdayDraft] = useState({ day: '', month: '', year: '', partnerFirstName: '', partnerDay: '', partnerMonth: '', partnerYear: '' });
   const [managedBirthdaySaving, setManagedBirthdaySaving] = useState(false);
   const [managedBirthdayError, setManagedBirthdayError] = useState<string | null>(null);
   const [managedBirthdaySuccess, setManagedBirthdaySuccess] = useState<string | null>(null);
@@ -496,8 +496,12 @@ export function CreateCustomerPage({
       day: selectedCustomer?.birthdayDay ? String(selectedCustomer.birthdayDay) : '',
       month: selectedCustomer?.birthdayMonth ? String(selectedCustomer.birthdayMonth) : '',
       year: selectedCustomer?.birthdayYear ? String(selectedCustomer.birthdayYear) : '',
+      partnerFirstName: selectedCustomer?.partnerFirstName ?? '',
+      partnerDay: selectedCustomer?.partnerBirthdayDay ? String(selectedCustomer.partnerBirthdayDay) : '',
+      partnerMonth: selectedCustomer?.partnerBirthdayMonth ? String(selectedCustomer.partnerBirthdayMonth) : '',
+      partnerYear: selectedCustomer?.partnerBirthdayYear ? String(selectedCustomer.partnerBirthdayYear) : '',
     });
-  }, [selectedCustomer?.id, selectedCustomer?.birthdayDay, selectedCustomer?.birthdayMonth, selectedCustomer?.birthdayYear]);
+  }, [selectedCustomer?.id, selectedCustomer?.birthdayDay, selectedCustomer?.birthdayMonth, selectedCustomer?.birthdayYear, selectedCustomer?.partnerFirstName, selectedCustomer?.partnerBirthdayDay, selectedCustomer?.partnerBirthdayMonth, selectedCustomer?.partnerBirthdayYear]);
 
   useEffect(() => {
     setManagedBirthdayError(null);
@@ -546,6 +550,10 @@ export function CreateCustomerPage({
     birthdayDay: optionalNumber(form.birthdayDay),
     birthdayMonth: optionalNumber(form.birthdayMonth),
     birthdayYear: optionalNumber(form.birthdayYear),
+    partnerFirstName: null,
+    partnerBirthdayDay: null,
+    partnerBirthdayMonth: null,
+    partnerBirthdayYear: null,
   } satisfies CreateCustomerAccountResult;
 
   const totalVisitDraft = DRINK_META.reduce((total, item) => total + visitDraft[item.type], 0);
@@ -795,8 +803,15 @@ export function CreateCustomerPage({
         year: optionalNumber(managedBirthdayDraft.year),
       });
 
-      await updateCustomerBirthday(selectedCustomer.id, birthday);
-      setManagedBirthdaySuccess('Verjaardag opgeslagen.');
+      await updateCustomerBirthday(selectedCustomer.id, birthday, {
+        firstName: managedBirthdayDraft.partnerFirstName,
+        birthday: {
+          day: optionalNumber(managedBirthdayDraft.partnerDay),
+          month: optionalNumber(managedBirthdayDraft.partnerMonth),
+          year: optionalNumber(managedBirthdayDraft.partnerYear),
+        },
+      });
+      setManagedBirthdaySuccess('Verjaardagen opgeslagen.');
     } catch (birthdayError: any) {
       setManagedBirthdayError(birthdayError?.message || 'Verjaardag opslaan mislukt.');
     } finally {
@@ -1014,7 +1029,7 @@ export function CreateCustomerPage({
                   <p className="admin-phase-kicker">Verjaardag</p>
                   <div className="mt-2 flex items-start gap-2">
                     <CalendarDays size={16} className="mt-0.5 text-[var(--color-cozy-olive)]" />
-                    <p className="text-sm font-medium text-[var(--color-cozy-text)]">{formatCustomerBirthday(activeAccount)}</p>
+                    <p className="text-sm font-medium text-[var(--color-cozy-text)]">{formatCustomerBirthdays(activeAccount)}</p>
                   </div>
                 </div>
               </div>
@@ -1070,7 +1085,7 @@ export function CreateCustomerPage({
                     </div>
                     <div className={cn('rounded-[22px] px-4 py-4', isDarkMode ? 'bg-black/20' : 'bg-white/80')}>
                       <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-700">Verjaardag</p>
-                      <p className="mt-2 text-sm font-semibold text-[var(--color-cozy-text)]">{formatCustomerBirthday(result)}</p>
+                      <p className="mt-2 text-sm font-semibold text-[var(--color-cozy-text)]">{formatCustomerBirthdays(result)}</p>
                     </div>
                   </div>
                 </div>
@@ -1250,7 +1265,7 @@ export function CreateCustomerPage({
 
                       <div className="admin-phase-muted-note mt-3 flex items-center justify-between gap-3 text-xs">
                         <span>{totalRewards} open beloning{totalRewards === 1 ? '' : 'en'}</span>
-                        <span>{formatCustomerBirthday(customer)}</span>
+                        <span>{formatCustomerBirthdays(customer)}</span>
                         <span>{customer.totalVisits} bezoek{customer.totalVisits === 1 ? '' : 'en'}</span>
                       </div>
                     </button>
@@ -1322,7 +1337,7 @@ export function CreateCustomerPage({
                         </div>
                         <div className="admin-phase-metric rounded-[22px] px-4 py-4">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-cozy-olive)]">Verjaardag</p>
-                          <p className="mt-2 text-sm font-bold text-[var(--color-cozy-text)]">{formatCustomerBirthday(selectedCustomer)}</p>
+                          <p className="mt-2 text-sm font-bold text-[var(--color-cozy-text)]">{formatCustomerBirthdays(selectedCustomer)}</p>
                         </div>
                       </div>
                     </div>
@@ -1365,61 +1380,122 @@ export function CreateCustomerPage({
                         <div>
                           <p className="text-[10px] uppercase tracking-[0.22em] text-amber-700">Verjaardag</p>
                           <h4 className="mt-2 text-xl font-display font-bold text-[var(--color-cozy-text)]">
-                            {formatCustomerBirthday(selectedCustomer)}
+                            {formatCustomerBirthdays(selectedCustomer)}
                           </h4>
                           <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-amber-900/70')}>
                             Vul dag en maand in. Het geboortejaar mag leeg blijven.
                           </p>
                         </div>
 
-                        <div className="grid w-full gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] lg:max-w-2xl">
-                          <input
-                            type="number"
-                            min="1"
-                            max="31"
-                            inputMode="numeric"
-                            value={managedBirthdayDraft.day}
-                            onChange={(event) => {
-                              setManagedBirthdayDraft((current) => ({ ...current, day: event.target.value }));
-                              setManagedBirthdayError(null);
-                              setManagedBirthdaySuccess(null);
-                            }}
-                            placeholder="Dag"
-                            className="admin-phase-input text-base"
-                          />
-                          <input
-                            type="number"
-                            min="1"
-                            max="12"
-                            inputMode="numeric"
-                            value={managedBirthdayDraft.month}
-                            onChange={(event) => {
-                              setManagedBirthdayDraft((current) => ({ ...current, month: event.target.value }));
-                              setManagedBirthdayError(null);
-                              setManagedBirthdaySuccess(null);
-                            }}
-                            placeholder="Maand"
-                            className="admin-phase-input text-base"
-                          />
-                          <input
-                            type="number"
-                            min="1900"
-                            max={new Date().getFullYear()}
-                            inputMode="numeric"
-                            value={managedBirthdayDraft.year}
-                            onChange={(event) => {
-                              setManagedBirthdayDraft((current) => ({ ...current, year: event.target.value }));
-                              setManagedBirthdayError(null);
-                              setManagedBirthdaySuccess(null);
-                            }}
-                            placeholder="Jaar"
-                            className="admin-phase-input text-base"
-                          />
+                        <div className="w-full space-y-3 lg:max-w-2xl">
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <input
+                              type="number"
+                              min="1"
+                              max="31"
+                              inputMode="numeric"
+                              value={managedBirthdayDraft.day}
+                              onChange={(event) => {
+                                setManagedBirthdayDraft((current) => ({ ...current, day: event.target.value }));
+                                setManagedBirthdayError(null);
+                                setManagedBirthdaySuccess(null);
+                              }}
+                              placeholder="Dag"
+                              className="admin-phase-input text-base"
+                            />
+                            <input
+                              type="number"
+                              min="1"
+                              max="12"
+                              inputMode="numeric"
+                              value={managedBirthdayDraft.month}
+                              onChange={(event) => {
+                                setManagedBirthdayDraft((current) => ({ ...current, month: event.target.value }));
+                                setManagedBirthdayError(null);
+                                setManagedBirthdaySuccess(null);
+                              }}
+                              placeholder="Maand"
+                              className="admin-phase-input text-base"
+                            />
+                            <input
+                              type="number"
+                              min="1900"
+                              max={new Date().getFullYear()}
+                              inputMode="numeric"
+                              value={managedBirthdayDraft.year}
+                              onChange={(event) => {
+                                setManagedBirthdayDraft((current) => ({ ...current, year: event.target.value }));
+                                setManagedBirthdayError(null);
+                                setManagedBirthdaySuccess(null);
+                              }}
+                              placeholder="Jaar"
+                              className="admin-phase-input text-base"
+                            />
+                          </div>
+
+                          <div className="rounded-[22px] border border-amber-100 bg-white/65 p-3">
+                            <div className="grid gap-3 md:grid-cols-[1.1fr_1fr_1fr_1fr]">
+                              <input
+                                type="text"
+                                value={managedBirthdayDraft.partnerFirstName}
+                                onChange={(event) => {
+                                  setManagedBirthdayDraft((current) => ({ ...current, partnerFirstName: event.target.value }));
+                                  setManagedBirthdayError(null);
+                                  setManagedBirthdaySuccess(null);
+                                }}
+                                placeholder="Partner voornaam"
+                                className="admin-phase-input text-base"
+                              />
+                              <input
+                                type="number"
+                                min="1"
+                                max="31"
+                                inputMode="numeric"
+                                value={managedBirthdayDraft.partnerDay}
+                                onChange={(event) => {
+                                  setManagedBirthdayDraft((current) => ({ ...current, partnerDay: event.target.value }));
+                                  setManagedBirthdayError(null);
+                                  setManagedBirthdaySuccess(null);
+                                }}
+                                placeholder="Dag"
+                                className="admin-phase-input text-base"
+                              />
+                              <input
+                                type="number"
+                                min="1"
+                                max="12"
+                                inputMode="numeric"
+                                value={managedBirthdayDraft.partnerMonth}
+                                onChange={(event) => {
+                                  setManagedBirthdayDraft((current) => ({ ...current, partnerMonth: event.target.value }));
+                                  setManagedBirthdayError(null);
+                                  setManagedBirthdaySuccess(null);
+                                }}
+                                placeholder="Maand"
+                                className="admin-phase-input text-base"
+                              />
+                              <input
+                                type="number"
+                                min="1900"
+                                max={new Date().getFullYear()}
+                                inputMode="numeric"
+                                value={managedBirthdayDraft.partnerYear}
+                                onChange={(event) => {
+                                  setManagedBirthdayDraft((current) => ({ ...current, partnerYear: event.target.value }));
+                                  setManagedBirthdayError(null);
+                                  setManagedBirthdaySuccess(null);
+                                }}
+                                placeholder="Jaar"
+                                className="admin-phase-input text-base"
+                              />
+                            </div>
+                          </div>
+
                           <button
                             type="button"
                             onClick={handleManagedBirthdaySave}
                             disabled={managedBirthdaySaving}
-                            className="admin-phase-button-primary inline-flex min-h-12 items-center justify-center gap-2 px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                            className="admin-phase-button-primary inline-flex min-h-12 w-full items-center justify-center gap-2 px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <CalendarDays size={16} />
                             {managedBirthdaySaving ? 'Opslaan...' : 'Opslaan'}

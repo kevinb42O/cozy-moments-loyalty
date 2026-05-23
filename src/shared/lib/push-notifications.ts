@@ -1,6 +1,6 @@
 import type { CardType, Customer } from '../store/LoyaltyContext';
 import type { LoyaltyTier } from './loyalty-tier';
-import { getNextBirthdayDate } from './customer-birthday';
+import { hasCustomerBirthdayWithinWindow } from './customer-birthday';
 
 export const PUSH_CAMPAIGN_TYPES = [
   'manual_custom',
@@ -351,15 +351,7 @@ export function matchesPushAudience(
   }
 
   if (typeof filters.birthdayWindowDays === 'number') {
-    const nextBirthday = getNextBirthdayDate(customer, new Date(now));
-    if (!nextBirthday) {
-      return false;
-    }
-
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const daysUntil = Math.round((nextBirthday.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
-    if (daysUntil < 0 || daysUntil > filters.birthdayWindowDays) {
+    if (!hasCustomerBirthdayWithinWindow(customer, new Date(now), filters.birthdayWindowDays)) {
       return false;
     }
   }

@@ -179,9 +179,12 @@ export const CustomerPage: React.FC = () => {
       month: currentCustomer?.birthdayMonth ? String(currentCustomer.birthdayMonth) : '',
       year: currentCustomer?.birthdayYear ? String(currentCustomer.birthdayYear) : '',
     });
+  }, [currentCustomer?.id, currentCustomer?.birthdayDay, currentCustomer?.birthdayMonth, currentCustomer?.birthdayYear]);
+
+  useEffect(() => {
     setBirthdayMessage(null);
     setBirthdayError(null);
-  }, [currentCustomer?.id, currentCustomer?.birthdayDay, currentCustomer?.birthdayMonth, currentCustomer?.birthdayYear]);
+  }, [currentCustomer?.id]);
 
 
   if (!currentCustomer) {

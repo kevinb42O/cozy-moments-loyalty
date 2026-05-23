@@ -105,4 +105,30 @@ describe('push notification audience helpers', () => {
 
     expect(result.map((entry) => entry.id)).toEqual(['inactive']);
   });
+
+  it('matches customers with birthdays today or within the selected birthday window', () => {
+    const now = Date.parse('2026-05-23T12:00:00.000Z');
+    const customers = [
+      customer({ id: 'today', birthdayDay: 23, birthdayMonth: 5 }),
+      customer({ id: 'soon', birthdayDay: 30, birthdayMonth: 5 }),
+      customer({ id: 'later', birthdayDay: 31, birthdayMonth: 5 }),
+      customer({ id: 'empty' }),
+    ];
+
+    const todayOnly = customers.filter((entry) => matchesPushAudience(
+      entry,
+      preferences(entry.id),
+      { birthdayWindowDays: 0 },
+      now,
+    ));
+    const thisWeek = customers.filter((entry) => matchesPushAudience(
+      entry,
+      preferences(entry.id),
+      { birthdayWindowDays: 7 },
+      now,
+    ));
+
+    expect(todayOnly.map((entry) => entry.id)).toEqual(['today']);
+    expect(thisWeek.map((entry) => entry.id)).toEqual(['today', 'soon']);
+  });
 });

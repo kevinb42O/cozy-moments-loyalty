@@ -5,6 +5,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useLoyalty, cardTypeLabels, type CardType } from '../../shared/store/LoyaltyContext';
 import { LOYALTY_TIER_CONFIG, LOYALTY_TIER_ORDER, type LoyaltyTier } from '../../shared/lib/loyalty-tier';
+import { formatCustomerBirthday } from '../../shared/lib/customer-birthday';
 import {
   buildPushAudienceWarnings,
   type PushAudienceFilters,
@@ -32,7 +33,7 @@ interface PushNotificationsPageProps {
 }
 
 type WorkspaceMode = 'compose' | 'history' | 'settings';
-type AudiencePreset = 'all' | 'reward' | 'inactive' | 'tier' | 'favorite' | 'single';
+type AudiencePreset = 'all' | 'reward' | 'birthday' | 'inactive' | 'tier' | 'favorite' | 'single';
 
 type DraftState = {
   campaignType: PushCampaignType;
@@ -45,6 +46,7 @@ type DraftState = {
   loyaltyTier: LoyaltyTier;
   favoriteDrinkType: CardType;
   inactivityDays: number;
+  birthdayWindowDays: number;
   minVisits: number;
 };
 
@@ -59,6 +61,7 @@ const DEFAULT_DRAFT: DraftState = {
   loyaltyTier: 'gold',
   favoriteDrinkType: 'wine',
   inactivityDays: 30,
+  birthdayWindowDays: 7,
   minVisits: 3,
 };
 
@@ -91,6 +94,10 @@ function buildFilters(draft: DraftState): PushAudienceFilters {
     return { inactivityDays: draft.inactivityDays, minVisits: draft.minVisits };
   }
 
+  if (draft.audiencePreset === 'birthday') {
+    return { birthdayWindowDays: draft.birthdayWindowDays };
+  }
+
   if (draft.audiencePreset === 'tier') {
     return { loyaltyTiers: [draft.loyaltyTier] };
   }
@@ -109,6 +116,7 @@ function buildFilters(draft: DraftState): PushAudienceFilters {
 function buildAudienceLabel(draft: DraftState) {
   if (draft.audiencePreset === 'reward') return 'Klanten met een beloning klaar';
   if (draft.audiencePreset === 'inactive') return `${draft.minVisits}+ bezoeken, ${draft.inactivityDays}+ dagen niet geweest`;
+  if (draft.audiencePreset === 'birthday') return draft.birthdayWindowDays === 0 ? 'Klanten die vandaag jarig zijn' : `Jarig binnen ${draft.birthdayWindowDays} dagen`;
   if (draft.audiencePreset === 'tier') return `${LOYALTY_TIER_CONFIG[draft.loyaltyTier].label} klanten`;
   if (draft.audiencePreset === 'favorite') return `${cardTypeLabels[draft.favoriteDrinkType]} liefhebbers`;
   if (draft.audiencePreset === 'single') return 'Een specifieke klant';
@@ -229,6 +237,27 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
 
   const updateDraft = <TField extends keyof DraftState>(field: TField, value: DraftState[TField]) => {
     setDraft((current) => ({ ...current, [field]: value }));
+    setError(null);
+    setNotice(null);
+    setConfirmBroadSend(false);
+  };
+
+  const updateAudiencePreset = (nextPreset: AudiencePreset) => {
+    setDraft((current) => {
+      if (nextPreset !== 'birthday') {
+        return { ...current, audiencePreset: nextPreset };
+      }
+
+      return {
+        ...current,
+        audiencePreset: 'birthday',
+        campaignType: 'manual_custom',
+        deliveryCategory: 'reminder',
+        deeplink: '/dashboard',
+        title: current.title === DEFAULT_DRAFT.title ? 'Een Cozy verjaardagsgroet' : current.title,
+        body: current.body === DEFAULT_DRAFT.body ? 'We denken vandaag aan jou bij Cozy Moments. Geniet van je dag!' : current.body,
+      };
+    });
     setError(null);
     setNotice(null);
     setConfirmBroadSend(false);
@@ -512,7 +541,7 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
                   <select className="admin-phase-input text-base" value={draft.campaignType} onChange={(event) => {
                     const nextType = event.target.value as PushCampaignType;
                     updateDraft('campaignType', nextType);
-                    updateDraft('deliveryCategory', nextType === 'promo_open_bottle' || nextType === 'manual_custom' ? 'promo' : nextType.includes('reward') ? 'reward' : 'reminder');
+                    updateDraft('deliveryCategory', nextType === 'promo_open_bottle' || (nextType === 'manual_custom' && draft.audiencePreset !== 'birthday') ? 'promo' : nextType.includes('reward') ? 'reward' : 'reminder');
                   }}>
                     <option value="manual_custom">Custom melding</option>
                     <option value="reward_ready">Beloning klaar</option>
@@ -523,8 +552,9 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
                 </label>
                 <label className="space-y-2">
                   <span className="admin-phase-label">Doelgroep</span>
-                  <select className="admin-phase-input text-base" value={draft.audiencePreset} onChange={(event) => updateDraft('audiencePreset', event.target.value as AudiencePreset)}>
+                  <select className="admin-phase-input text-base" value={draft.audiencePreset} onChange={(event) => updateAudiencePreset(event.target.value as AudiencePreset)}>
                     <option value="reward">Beloning klaar</option>
+                    <option value="birthday">Jarig / bijna jarig</option>
                     <option value="inactive">Inactieve trouwe klanten</option>
                     <option value="tier">Loyalty status</option>
                     <option value="favorite">Favoriete drankgroep</option>
@@ -564,6 +594,47 @@ export function PushNotificationsPage({ adminEmail, isDarkMode }: PushNotificati
                     <span className="admin-phase-label">Minimum bezoeken</span>
                     <input className="admin-phase-input text-base" type="number" min={1} max={25} value={draft.minVisits} onChange={(event) => updateDraft('minVisits', Number(event.target.value))} />
                   </label>
+                </div>
+              )}
+
+              {draft.audiencePreset === 'birthday' && (
+                <div className="mt-5 space-y-4 rounded-[26px] border border-amber-100 bg-amber-50/70 px-5 py-5">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-amber-700">Verjaardagsdoelgroep</p>
+                      <h4 className="mt-2 text-xl font-display font-bold text-[var(--color-cozy-text)]">Manueel naar jarige klanten</h4>
+                      <p className={cn('mt-2 text-sm', isDarkMode ? 'text-[#a8b3c1]' : 'text-amber-900/70')}>
+                        Deze selectie gebruikt alleen klanten met een ingevulde verjaardag en een actief push-toestel.
+                      </p>
+                    </div>
+                    <div className="inline-flex rounded-[22px] bg-white/80 p-1 shadow-sm ring-1 ring-amber-100">
+                      {([
+                        [0, 'Vandaag'],
+                        [7, 'Binnen 7 dagen'],
+                      ] as const).map(([days, label]) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => updateDraft('birthdayWindowDays', days)}
+                          className={cn(
+                            'rounded-[18px] px-4 py-2 text-sm font-semibold transition-colors',
+                            draft.birthdayWindowDays === days ? 'bg-[var(--color-cozy-text)] text-white shadow-sm' : 'text-[var(--color-cozy-text)] hover:bg-amber-50',
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {matchingCustomerNames.length > 0 && (
+                    <p className="text-xs font-medium text-amber-800">
+                      Eerste matches: {customers
+                        .filter((customer) => matchingCustomerNames.includes(customer.name))
+                        .slice(0, 4)
+                        .map((customer) => `${customer.name} (${formatCustomerBirthday(customer)})`)
+                        .join(', ')}
+                    </p>
+                  )}
                 </div>
               )}
 

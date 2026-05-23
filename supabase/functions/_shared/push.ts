@@ -153,6 +153,27 @@ function favoriteTypes(customer: any) {
   return entries.filter(([, score]) => Number(score) === max).map(([type]) => type);
 }
 
+function nextBirthdayDate(customer: any, now = Date.now()) {
+  const day = Number(customer.birthday_day ?? 0);
+  const month = Number(customer.birthday_month ?? 0);
+  if (!Number.isInteger(day) || !Number.isInteger(month) || day < 1 || month < 1 || month > 12) return null;
+
+  const nowDate = new Date(now);
+  const currentYear = nowDate.getFullYear();
+  const today = new Date(currentYear, nowDate.getMonth(), nowDate.getDate());
+  let birthday = new Date(currentYear, month - 1, day);
+
+  if (birthday.getMonth() !== month - 1 || birthday.getDate() !== day) {
+    birthday = new Date(currentYear, 1, 28);
+  }
+
+  if (birthday < today) {
+    birthday = new Date(currentYear + 1, birthday.getMonth(), birthday.getDate());
+  }
+
+  return birthday;
+}
+
 export function matchesAudience(customer: any, preference: any, filters: any, category: string, now = Date.now()) {
   if (!preference?.push_enabled) return false;
   if (category === 'promo' && !preference.promo_opt_in) return false;
@@ -173,6 +194,15 @@ export function matchesAudience(customer: any, preference: any, filters: any, ca
   if (typeof filters?.recentVisitDays === 'number') {
     const lastVisit = Date.parse(customer.last_visit_at ?? '');
     if (!Number.isFinite(lastVisit) || now - lastVisit > filters.recentVisitDays * 24 * 60 * 60 * 1000) return false;
+  }
+
+  if (typeof filters?.birthdayWindowDays === 'number') {
+    const birthday = nextBirthdayDate(customer, now);
+    if (!birthday) return false;
+    const nowDate = new Date(now);
+    const today = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
+    const daysUntil = Math.round((birthday.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+    if (daysUntil < 0 || daysUntil > filters.birthdayWindowDays) return false;
   }
 
   if (Array.isArray(filters?.favoriteDrinkTypes) && filters.favoriteDrinkTypes.length > 0) {

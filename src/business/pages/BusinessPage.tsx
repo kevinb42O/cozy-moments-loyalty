@@ -87,6 +87,9 @@ const HIDDEN_ADMIN_VIEWS: Array<{ view: Extract<BusinessView, 'customers' | 'cre
   { view: 'screensaver', label: 'Screensaver' },
 ];
 
+const TRANSACTION_QR_SIZE = 360;
+const TRANSACTION_QR_LEVEL = 'M' as const;
+
 // ── Admin audio chime (same Web Audio approach as Scanner) ────────────────────
 let adminAudioCtx: AudioContext | null = null;
 
@@ -2079,8 +2082,16 @@ export const BusinessPage: React.FC = () => {
                   aria-hidden="true"
                   className="pointer-events-none select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 object-contain opacity-10"
                 />
-                <div className="relative p-6 md:p-8 rounded-[40px] shadow-xl mb-8 bg-[#ffffff] border border-black/5">
-                  <QRCodeSVG value={qrPayload} size={300} level="H" bgColor="#FFFFFF" fgColor="#111111" />
+                <div className="relative w-full max-w-[408px] p-6 md:max-w-[424px] md:p-8 rounded-[40px] shadow-xl mb-8 bg-[#ffffff] border border-black/5">
+                  <QRCodeSVG
+                    value={qrPayload}
+                    size={TRANSACTION_QR_SIZE}
+                    level={TRANSACTION_QR_LEVEL}
+                    boostLevel={false}
+                    bgColor="#FFFFFF"
+                    fgColor="#111111"
+                    className="block w-full h-auto"
+                  />
                 </div>
                 <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">
                   Laat de klant scannen
@@ -3644,8 +3655,16 @@ export const BusinessPage: React.FC = () => {
                   aria-hidden="true"
                   className="pointer-events-none select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 object-contain opacity-10"
                 />
-                <div className="relative p-6 md:p-8 rounded-[40px] shadow-xl mb-8 bg-[#ffffff] border border-black/5">
-                  <QRCodeSVG value={qrPayload} size={300} level="H" bgColor="#FFFFFF" fgColor="#111111" />
+                <div className="relative w-full max-w-[408px] p-6 md:max-w-[424px] md:p-8 rounded-[40px] shadow-xl mb-8 bg-[#ffffff] border border-black/5">
+                  <QRCodeSVG
+                    value={qrPayload}
+                    size={TRANSACTION_QR_SIZE}
+                    level={TRANSACTION_QR_LEVEL}
+                    boostLevel={false}
+                    bgColor="#FFFFFF"
+                    fgColor="#111111"
+                    className="block w-full h-auto"
+                  />
                 </div>
                 <h3 className="text-2xl font-serif font-semibold text-[var(--color-cozy-text)] mb-2">
                   Laat de klant scannen

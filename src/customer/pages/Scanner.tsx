@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { ArrowLeft, CheckCircle, Camera, RefreshCw, Gift, Sparkles } from 'lucide-react';
 import { useLoyalty, CardType, cardTypeLabels } from '../../shared/store/LoyaltyContext';
 import { LoyaltyCard } from '../../shared/components/LoyaltyCard';
@@ -16,6 +16,19 @@ interface ScanResult {
   bonusApplied?: boolean;
   bonusType?: CardType;
   previousCards?: Record<CardType, number>;
+}
+
+const SCANNER_MIN_QRBOX_SIZE = 240;
+const SCANNER_MAX_QRBOX_SIZE = 340;
+const SCANNER_QRBOX_RATIO = 0.78;
+
+function getScannerQrbox(viewfinderWidth: number, viewfinderHeight: number) {
+  const viewfinderShortSide = Math.min(viewfinderWidth, viewfinderHeight);
+  const size = Math.floor(Math.min(
+    SCANNER_MAX_QRBOX_SIZE,
+    Math.max(SCANNER_MIN_QRBOX_SIZE, viewfinderShortSide * SCANNER_QRBOX_RATIO),
+  ));
+  return { width: size, height: size };
 }
 
 // Module-level AudioContext that gets unlocked on user tap and reused for chimes.
@@ -266,12 +279,25 @@ export const Scanner: React.FC = () => {
           return;
         }
 
-        const html5Qrcode = new Html5Qrcode('reader', false);
+        const html5Qrcode = new Html5Qrcode('reader', {
+          verbose: false,
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          useBarCodeDetectorIfSupported: true,
+        });
         scannerRef.current = html5Qrcode;
 
         await html5Qrcode.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 240, height: 240 }, disableFlip: false },
+          {
+            fps: 15,
+            qrbox: getScannerQrbox,
+            disableFlip: false,
+            videoConstraints: {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
           (decodedText) => {
             verifyQrPayload(decodedText).then(({ valid, payload, error: verifyError }) => {
               if (!valid) {
